@@ -1,3 +1,7 @@
 flask_venv
 _pycache_
 requirements.txt
+.env
+celery_beat.log
+celery_worker.log
+gunicorn.log

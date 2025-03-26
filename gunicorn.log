@@ -1,0 +1,5 @@
+[2025-03-26 22:10:38 +0600] [927] [INFO] Starting gunicorn 23.0.0
+[2025-03-26 22:10:38 +0600] [927] [INFO] Listening at: http://0.0.0.0:5000 (927)
+[2025-03-26 22:10:38 +0600] [927] [INFO] Using worker: sync
+[2025-03-26 22:10:38 +0600] [928] [INFO] Booting worker with pid: 928
+INFO:root:Ad-hoc task executed and logged successfully.

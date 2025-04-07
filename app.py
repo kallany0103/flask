@@ -1386,7 +1386,7 @@ def Create_TaskSchedule():
             dt = datetime.strptime(one_time_date, "%Y-%m-%d %H:%M")
             cron_schedule = crontab(minute=dt.minute, hour=dt.hour, day_of_month=dt.day, month_of_year=dt.month)
 
-        if schedule_type == "PERIODIC":
+        elif schedule_type == "PERIODIC":
             # Extract frequency type and frequency value from schedule_data
             frequency_type_raw = schedule_data.get('FREQUENCY_TYPE', 'MINUTES')
             frequency_type = frequency_type_raw.upper().strip().rstrip('s').replace('(', '').replace(')', '')

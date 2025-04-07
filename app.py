@@ -1192,166 +1192,142 @@ def Delete_ExecutionMethod(internal_execution_method):
 
 
 
+# @flask_app.route('/api/v1/Create_TaskSchedule', methods=['POST'])
+# def Create_TaskSchedule_v1():
+#     try:
+#         user_schedule_name = request.json.get('user_schedule_name', 'Immediate')
+#         task_name = request.json.get('task_name')
+#         parameters = request.json.get('parameters', {})
+#         schedule_type = request.json.get('schedule_type')
+#         schedule_data = request.json.get('schedule', {})
+
+#         if not task_name:
+#             return jsonify({'error': 'Task name is required'}), 400
+
+#         # Fetch task details from the database
+#         task = ArmAsyncTask.query.filter_by(task_name=task_name).first()
+#         if not task:
+#             return jsonify({'error': f'No task found with task_name: {task_name}'}), 400
+
+#         user_task_name = task.user_task_name
+#         executor = task.executor
+#         script_name = task.script_name
+
+#         schedule_name = str(uuid.uuid4())
+#         redbeat_schedule_name = f"{user_schedule_name}_{schedule_name}"
+#         args = [script_name, user_task_name, task_name, user_schedule_name, redbeat_schedule_name, schedule_data]
+#         kwargs = {}
+
+#         # Validate task parameters
+#         task_params = ArmAsyncTaskParam.query.filter_by(task_name=task_name).all()
+#         for param in task_params:
+#             param_name = param.parameter_name
+#             if param_name in parameters:
+#                 kwargs[param_name] = parameters[param_name]
+#             else:
+#                 return jsonify({'error': f'Missing value for parameter: {param_name}'}), 400
+
+#         # Handle scheduling based on schedule type
+#         cron_schedule = None
+#         schedule_minutes = None
+
+#         if schedule_type == "WEEKLY_SPECIFIC_DAYS":
+#             values = schedule_data.get('VALUES', [])  # e.g., ["Monday", "Wednesday"]
+#             day_map = {
+#                 "SUN": 0, "MON": 1, "TUE": 2, "WED": 3,
+#                 "THU": 4, "FRI": 5, "SAT": 6
+#             }
+#             days_of_week = ",".join(str(day_map[day.upper()]) for day in values if day.upper() in day_map)
+#             cron_schedule = crontab(minute=0, hour=0, day_of_week=days_of_week)
+
+#         elif schedule_type == "MONTHLY_SPECIFIC_DATES":
+#             values = schedule_data.get('VALUES', [])  # e.g., ["5", "15"]
+#             dates_of_month = ",".join(values)
+#             cron_schedule = crontab(minute=0, hour=0, day_of_month=dates_of_month)
+
+#         elif schedule_type == "ONCE":
+#             one_time_date = schedule_data.get('VALUES')  # e.g., {"date": "2025-03-01 14:30"}
+#             if not one_time_date:
+#                 return jsonify({'error': 'Date is required for one-time execution'}), 400
+#             dt = datetime.strptime(one_time_date, "%Y-%m-%d %H:%M")
+#             cron_schedule = crontab(minute=dt.minute, hour=dt.hour, day_of_month=dt.day, month_of_year=dt.month)
+
+#         elif schedule_type == "PERIODIC":
+#             frequency_type = schedule_data.get('FREQUENCY_TYPE', 'minutes').lower()
+#             frequency = schedule_data.get('FREQUENCY', 1)
+
+#             if frequency_type == 'month':
+#                 schedule_minutes = frequency * 30 * 24 * 60
+#             elif frequency_type == 'day':
+#                 schedule_minutes = frequency * 24 * 60
+#             elif frequency_type == 'hour':
+#                 schedule_minutes = frequency * 60
+#             else:
+#                 schedule_minutes = frequency  # Default to minutes
+
+#         # Handle Ad-hoc Requests
+#         elif schedule_type == "IMMEDIATE":
+#             try:
+#                 result = execute_ad_hoc_task_v1(
+#                     user_schedule_name=user_schedule_name,
+#                     executor=executor,
+#                     task_name=task_name,
+#                     args=args,
+#                     kwargs=kwargs,
+#                     schedule_type=schedule_type,
+#                     cancelled_yn='N',
+#                     created_by=101
+#                 )
+#                 return jsonify(result), 201
+#             except Exception as e:
+#                 return jsonify({"error": "Failed to execute ad-hoc task", "details": str(e)}), 500
+
+#         else:
+#             return jsonify({'error': 'Invalid schedule type'}), 400
+#         # Handle Scheduled Tasks
+#         try:
+#             create_redbeat_schedule(
+#                 schedule_name=redbeat_schedule_name,
+#                 executor=executor,
+#                 schedule_minutes=schedule_minutes if schedule_minutes else None,
+#                 cron_schedule=cron_schedule if cron_schedule else None,
+#                 args=args,
+#                 kwargs=kwargs,
+#                 celery_app=celery
+#             )
+#         except Exception as e:
+#             return jsonify({"error": "Failed to create RedBeat schedule", "details": str(e)}), 500
+
+#         # Store schedule in DB
+#         new_schedule = ArmAsyncTaskScheduleNew(
+#             user_schedule_name=user_schedule_name,
+#             redbeat_schedule_name=redbeat_schedule_name,
+#             task_name=task_name,
+#             args=args,
+#             kwargs=kwargs,
+#             parameters=kwargs,
+#             schedule_type=schedule_type,
+#             schedule=schedule_data,
+#             ready_for_redbeat="N",
+#             cancelled_yn='N',
+#             created_by=101
+#         )
+
+#         db.session.add(new_schedule)
+#         db.session.commit()
+
+#         return jsonify({
+#             "message": "Task schedule created successfully!",
+#             "schedule_id": new_schedule.arm_task_sche_id
+#         }), 201
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({"error": "Failed to create task schedule", "details": str(e)}), 500
+
 
 @flask_app.route('/Create_TaskSchedule', methods=['POST'])
 def Create_TaskSchedule():
-    try:
-        # Extract data from request
-        user_schedule_name = request.json.get('user_schedule_name', 'Immediate')  # Default 'ad-hoc' if missing
-        task_name = request.json.get('task_name')
-        args = []
-        schedule_minutes = request.json.get('schedule')  # Default interval: 1 minute
-        created_by = 101
-        parameters = request.json.get('parameters', {})
-        #ready_for_redbeat = request.json.get('ready_for_redbeat', 'Y')
-
-        # Fetch task from database
-        tasks = ArmAsyncTask.query.filter_by(task_name=task_name).first()
-        if not tasks:
-            return jsonify({'error': f'No task found with user_task_name: {task_name}'}), 400
-
-        user_task_name = tasks.user_task_name
-        executor = tasks.executor
-        script_name = tasks.script_name
-
-        schedule_name = str(uuid.uuid4())
-        redbeat_schedule_name = f"{user_schedule_name}{schedule_name}"
-
-        # Extend args only for periodic tasks
-        args.extend([script_name, user_task_name, task_name, user_schedule_name, redbeat_schedule_name, schedule_minutes])
-
-        # Fetch and validate task parameters
-        task_params = ArmAsyncTaskParam.query.filter_by(task_name=task_name).all()
-        kwargs = {}
-        if task_params:
-            for param in task_params:
-                param_name = param.parameter_name
-                if param_name in parameters:
-                    kwargs[param_name] = parameters[param_name]
-                else:
-                    return jsonify({'error': f'Missing value for parameter: {param_name}'}), 400
-
-
-        # Handle Ad-hoc Requests (user_schedule_name == "ad-hoc")
-        if user_schedule_name.lower() == 'immediate':
-            try:
-                result = execute_ad_hoc_task(
-                    user_schedule_name=user_schedule_name,
-                    executor=executor,
-                    task_name=task_name,
-                    args=args,
-                    kwargs=kwargs,
-                    cancelled_yn='N',
-                    created_by=created_by
-                )
-                return jsonify(result), 201
-            except Exception as e:
-                return jsonify({"error": "Failed to execute ad-hoc task", "details": str(e)}), 500
-
-        # Handle Periodic Task Scheduling
-        try:
-            create_redbeat_schedule(
-                schedule_name=redbeat_schedule_name,
-                executor=executor,
-                schedule_minutes=schedule_minutes,
-                args=args,
-                kwargs=kwargs,
-                celery_app=celery  # Use your Celery app instance
-            )
-        except Exception as e:
-            return jsonify({"error": "Failed to create RedBeat schedule", "details": str(e)}), 500
-
-        # Insert the new schedule into the database
-        new_schedule = ArmAsyncTaskSchedule(
-            user_schedule_name=user_schedule_name,  # Will be 'ad-hoc' if missing
-            redbeat_schedule_name=redbeat_schedule_name,
-            task_name=task_name,
-            args=args,
-            kwargs=kwargs,
-            schedule=schedule_minutes,
-            cancelled_yn='N',
-            created_by=created_by
-        )
-        db.session.add(new_schedule)
-        db.session.commit()
-
-        return jsonify({
-            "message": "Task schedule created successfully!",
-            "schedule_id": new_schedule.arm_task_sche_id
-        }), 201
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": "Failed to create task schedule", "details": str(e)}), 500
-
-
-
-@flask_app.route('/api/v2/Create_TaskSchedule', methods=['POST'])
-def Create_TaskSchedule_v2():
-    try:
-        user_schedule_name = request.json.get('user_schedule_name', 'ad-hoc')
-        task_name = request.json.get('task_name')
-        parameters = request.json.get('parameters', {})
-        schedule_type = request.json.get('schedule_type')
-        schedule_data = request.json.get('schedule', {})
-        ready_for_redbeat = "N"
-        created_by = 101
-        args = []
-        if not task_name:
-            return jsonify({'error': 'Task name is required'}), 400
-
-        # Fetch task details from database
-        task = ArmAsyncTask.query.filter_by(task_name=task_name).first()
-        if not task:
-            return jsonify({'error': f'No task found with task_name: {task_name}'}), 400
-
-        user_task_name = task.user_task_name
-        executor = task.executor
-        script_name = task.script_name
-
-
-        schedule_name = str(uuid.uuid4())
-        redbeat_schedule_name = f"{user_schedule_name}_{schedule_name}"
-
-        # Validate task parameters
-        task_params = ArmAsyncTaskParam.query.filter_by(task_name=task_name).all()
-        kwargs = {}
-        for param in task_params:
-            param_name = param.parameter_name
-            if param_name in parameters:
-                kwargs[param_name] = parameters[param_name]
-            else:
-                return jsonify({'error': f'Missing value for parameter: {param_name}'}), 400
-        #  Store schedule in DB
-        new_schedule = ArmAsyncTaskScheduleNew(
-            user_schedule_name=user_schedule_name,
-            redbeat_schedule_name=redbeat_schedule_name,
-            task_name=task_name,
-            args=args,
-            kwargs=kwargs,
-            parameters=kwargs,
-            schedule_type=schedule_type,
-            schedule=schedule_data,
-            ready_for_redbeat=ready_for_redbeat,
-            cancelled_yn='N',
-            created_by=created_by
-        )
-
-        db.session.add(new_schedule)
-        db.session.commit()
-
-        return jsonify({
-            "message": "Task schedule created successfully!",
-            "schedule_id": new_schedule.arm_task_sche_id
-        }), 201
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": "Failed to create task schedule", "details": str(e)}), 500
-
-
-@flask_app.route('/api/v1/Create_TaskSchedule', methods=['POST'])
-def Create_TaskSchedule_v1():
     try:
         user_schedule_name = request.json.get('user_schedule_name', 'Immediate')
         task_name = request.json.get('task_name')
@@ -1410,18 +1386,27 @@ def Create_TaskSchedule_v1():
             dt = datetime.strptime(one_time_date, "%Y-%m-%d %H:%M")
             cron_schedule = crontab(minute=dt.minute, hour=dt.hour, day_of_month=dt.day, month_of_year=dt.month)
 
-        elif schedule_type == "PERIODIC":
-            frequency_type = schedule_data.get('FREQUENCY_TYPE', 'minutes').lower()
+        if schedule_type == "PERIODIC":
+            # Extract frequency type and frequency value from schedule_data
+            frequency_type_raw = schedule_data.get('FREQUENCY_TYPE', 'MINUTES')
+            frequency_type = frequency_type_raw.upper().strip().rstrip('s').replace('(', '').replace(')', '')
             frequency = schedule_data.get('FREQUENCY', 1)
 
-            if frequency_type == 'month':
-                schedule_minutes = frequency * 30 * 24 * 60
-            elif frequency_type == 'day':
-                schedule_minutes = frequency * 24 * 60
-            elif frequency_type == 'hour':
-                schedule_minutes = frequency * 60
+            # Log frequency values to help with debugging
+            print(f"Frequency Type: {frequency_type}")
+            print(f"Frequency: {frequency}")
+           
+            # Handle different frequency types
+            if frequency_type == 'MONTHS':
+               schedule_minutes = frequency * 30 * 24 * 60  # Approximate calculation: 1 month = 30 days
+            elif frequency_type == 'DAYS':
+               schedule_minutes = frequency * 24 * 60  # 1 day = 24 hours = 1440 minutes
+            elif frequency_type == 'HOURS':
+               schedule_minutes = frequency * 60  # 1 hour = 60 minutes
+            elif frequency_type == 'MINUTES':
+               schedule_minutes = frequency  # Frequency is already in minutes
             else:
-                schedule_minutes = frequency  # Default to minutes
+               return jsonify({'error': f'Invalid frequency type: {frequency_type}'}), 400
 
         # Handle Ad-hoc Requests
         elif schedule_type == "IMMEDIATE":
@@ -1484,25 +1469,8 @@ def Create_TaskSchedule_v1():
         return jsonify({"error": "Failed to create task schedule", "details": str(e)}), 500
 
 
-
 @flask_app.route('/Show_TaskSchedules', methods=['GET'])
-def Show_Periodic_TaskSchedules():
-    try:
-        # Query all periodic schedules (excluding 'ad-hoc' user_schedule_name)
-        #schedules = ArmAsyncTaskScheduleNew.query.filter(ArmAsyncTaskSchedule.user_schedule_name != 'ad-hoc').all()
-        schedules = ArmAsyncTaskScheduleNew.query.filter( ArmAsyncTaskScheduleNew.user_schedule_name != 'ad-hoc',
-                                                         ArmAsyncTaskScheduleNew.ready_for_redbeat != 'N').all()
-
-        # Return the schedules as a JSON response
-        return jsonify([schedule.json() for schedule in schedules])
-
-    except Exception as e:
-        # Handle any errors and return them as a JSON response
-        return jsonify({"error": str(e)}), 500
-
-
-@flask_app.route('/api/v1/Show_TaskSchedules', methods=['GET'])
-def Show_Periodic_TaskSchedules_v1():
+def Show_TaskSchedules():
     try:
         schedules = ArmAsyncTaskSchedulesV.query.filter( ArmAsyncTaskSchedulesV.ready_for_redbeat != 'Y').all()
         # Return the schedules as a JSON response
@@ -1527,73 +1495,8 @@ def Show_TaskSchedule(task_name):
 
 
 
-@flask_app.route('/Update_TaskSchedule/<string:task_name>/<string:redbeat_schedule_name>', methods=['PUT'])
-def Update_TaskSchedule(task_name,redbeat_schedule_name):
-    try:
-        # Start a transaction
-        db.session.begin()
-
-        # Retrieve the schedule from the database
-        schedule = ArmAsyncTaskSchedule.query.filter_by(task_name=task_name,redbeat_schedule_name=redbeat_schedule_name).first()
-        executors= ArmAsyncTask.query.filter_by(task_name=task_name).first()
-        if schedule:
-            # Update the database fields based on the request data
-            if 'user_schedule_name' in request.json:
-                schedule.user_schedule_name = request.json.get('user_schedule_name')
-            if 'parameters' in request.json:
-                schedule.parameters = request.json.get('parameters')
-            if 'schedule_minutes' in request.json:
-                schedule.schedule = request.json.get('schedule_minutes')
-            schedule.last_updated_by = 102
-
-            # Ensure args field is extended with schedule_minutes and schedule_name
-            schedule_minutes = request.json.get('schedule_minutes', schedule.schedule)  # Default to existing if not provided
-            if not schedule.args:
-                schedule.args = []  # Ensure args is a list if it's empty
-
-            # Extend the args with the new schedule details
-            schedule.args.extend([schedule_minutes, redbeat_schedule_name])
-
-            # Commit the changes to the database (but not yet persisted)
-            db.session.commit()  # Committing changes temporarily to allow Redis update
-            celery_app = celery
-
-            # Now, call the update_redbeat_schedule function to update the schedule in Redis
-            try:
-                update_redbeat_schedule(
-                    schedule_name=redbeat_schedule_name,
-                    task=executors.executor,
-                    schedule_minutes=schedule_minutes,
-                    args=schedule.args,  # Use the updated args with schedule_minutes and schedule_name
-                    kwargs=request.json.get('parameters', schedule.kwargs),
-                    celery_app=celery_app
-                )
-            except Exception as e:
-                # If Redis update fails, rollback database changes
-                db.session.rollback()
-                return make_response(jsonify({
-                    "message": f"Error updating Redis. Database changes rolled back. Redis Error: {str(e)}"
-                }), 500)
-
-            # If Redis update succeeds, commit the changes to the database
-            db.session.commit()
-
-            # Return success response
-            return make_response(jsonify({
-                "message": f"Task Periodic Schedule for {redbeat_schedule_name} updated successfully in the database and Redis"
-            }), 200)
-
-        # If no schedule was found in the database
-        return make_response(jsonify({"message": f"Task Periodic Schedule for {redbeat_schedule_name} not found"}), 404)
-
-    except Exception as e:
-        # Handle any errors
-        db.session.rollback()
-        return make_response(jsonify({"message": "Error updating Task Periodic Schedule", "error": str(e)}), 500)
-
-
-@flask_app.route('/api/v1/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
-def Update_TaskSchedule_v1(task_name):
+@flask_app.route('/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
+def Update_TaskSchedule(task_name):
     try:
         # Retrieve redbeat_schedule_name from request payload
         redbeat_schedule_name = request.json.get('redbeat_schedule_name')
@@ -1638,43 +1541,8 @@ def Update_TaskSchedule_v1(task_name):
         return make_response(jsonify({"message": "Error updating Task Periodic Schedule", "error": str(e)}), 500)
 
 
-
-@flask_app.route('/Cancel_TaskSchedule/<string:task_name>/<string:redbeat_schedule_name>', methods=['PUT'])
-def Cancel_TaskSchedule(task_name,redbeat_schedule_name):
-    try:
-        # Find the task schedule by schedule_name
-        schedule = ArmAsyncTaskSchedule.query.filter_by(task_name=task_name,redbeat_schedule_name=redbeat_schedule_name).first()
-        if schedule:
-            # Update the cancelled_yn field to 'Y' (indicating cancellation)
-            schedule.cancelled_yn = 'Y'
-
-            # Commit the change to the database
-            db.session.commit()
-
-            # Now, call the function to delete the schedule from Redis
-            redis_response, redis_status = delete_schedule_from_redis(redbeat_schedule_name)
-
-            # If there is an issue deleting from Redis, rollback the database update
-            if redis_status != 200:
-                db.session.rollback()
-                return make_response(jsonify({"message": "Task schedule cancelled, but failed to delete from Redis", "error": redis_response['error']}), 500)
-
-            # Return success message if both operations are successful
-            return make_response(jsonify({"message": f"Task periodic schedule for {redbeat_schedule_name} has been cancelled successfully, and deleted from Redis"}), 200)
-
-        # If no schedule was found
-        return make_response(jsonify({"message": f"Task periodic schedule for {redbeat_schedule_name} not found"}), 404)
-
-    except Exception as e:
-        return make_response(jsonify({"message": "Error cancelling task periodic schedule", "error": str(e)}), 500)
-
-
-
-
-
-
-@flask_app.route('/api/v1/Cancel_TaskSchedule/<string:task_name>', methods=['PUT'])
-def Cancel_TaskSchedule_v1(task_name):
+@flask_app.route('/Cancel_TaskSchedule/<string:task_name>', methods=['PUT'])
+def Cancel_TaskSchedule(task_name):
     try:
         # Extract redbeat_schedule_name from payload
         redbeat_schedule_name = request.json.get('redbeat_schedule_name')

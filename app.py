@@ -1399,6 +1399,8 @@ def Create_TaskSchedule():
             # Handle different frequency types
             if frequency_type == 'MONTHS':
                schedule_minutes = frequency * 30 * 24 * 60  # Approximate calculation: 1 month = 30 days
+            elif frequency_type == 'WEEKS':
+               schedule_minutes = frequency * 7 * 24 * 60  # 7 days * 24 hours * 60 minutes
             elif frequency_type == 'DAYS':
                schedule_minutes = frequency * 24 * 60  # 1 day = 24 hours = 1440 minutes
             elif frequency_type == 'HOURS':

@@ -1671,15 +1671,15 @@ def Cancel_TaskSchedule(task_name,redbeat_schedule_name):
 
 
 
+
+
 @flask_app.route('/api/v1/Cancel_TaskSchedule/<string:task_name>', methods=['PUT'])
 def Cancel_TaskSchedule_v1(task_name):
     try:
-        # Parse JSON payload
-        data = request.get_json()
-        redbeat_schedule_name = data.get("redbeat_schedule_name")
-
+        # Extract redbeat_schedule_name from payload
+        redbeat_schedule_name = request.json.get('redbeat_schedule_name')
         if not redbeat_schedule_name:
-            return make_response(jsonify({"message": "Missing required parameter: redbeat_schedule_name"}), 400)
+            return make_response(jsonify({"message": "redbeat_schedule_name is required in the payload"}), 400)
 
         # Find the task schedule in the database
         schedule = ArmAsyncTaskScheduleNew.query.filter_by(task_name=task_name, redbeat_schedule_name=redbeat_schedule_name).first()
@@ -1697,11 +1697,21 @@ def Cancel_TaskSchedule_v1(task_name):
         # Commit the change to the database
         db.session.commit()
 
-        return make_response(jsonify({"message": f"Task periodic schedule for {redbeat_schedule_name} has been cancelled successfully in the database"}), 200)
+        # Now, call the function to delete the schedule from Redis
+        redis_response, redis_status = delete_schedule_from_redis(redbeat_schedule_name)
+
+        # If there is an issue deleting from Redis, rollback the database update
+        if redis_status != 200:
+            db.session.rollback()
+            return make_response(jsonify({"message": "Task schedule cancelled, but failed to delete from Redis", "error": redis_response['error']}), 500)
+
+        # Return success message if both operations are successful
+        return make_response(jsonify({"message": f"Task periodic schedule for {redbeat_schedule_name} has been cancelled successfully in the database and deleted from Redis"}), 200)
 
     except Exception as e:
         db.session.rollback()  # Rollback on failure
         return make_response(jsonify({"message": "Error cancelling task periodic schedule", "error": str(e)}), 500)
+
 
 
 
@@ -1772,7 +1782,9 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
 @flask_app.route('/view_requests', methods=['GET'])
 def get_all_tasks():
     try:
-        tasks = ArmAsyncTaskRequest.query.all()
+        fourteen_days = datetime.utcnow() - timedelta(days=14)
+        tasks = ArmAsyncTaskRequest.query.filter(ArmAsyncTaskRequest.creation_date>=fourteen_days).all()
+        #tasks = ArmAsyncTaskRequest.query.limit(100000).all()
         if not tasks:
             return jsonify({"message": "No tasks found"}), 404
         return jsonify([task.json() for task in tasks]), 200

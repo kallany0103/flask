@@ -1649,18 +1649,40 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
         db.session.close()
 
 
-@flask_app.route('/view_requests', methods=['GET'])
-def get_all_tasks():
+# @flask_app.route('/view_requests', methods=['GET'])
+# def get_all_tasks():
+#     try:
+#         fourteen_days = datetime.utcnow() - timedelta(days=14)
+#         tasks = ArmAsyncTaskRequest.query.filter(ArmAsyncTaskRequest.creation_date>=fourteen_days).all()
+#         #tasks = ArmAsyncTaskRequest.query.limit(100000).all()
+#         if not tasks:
+#             return jsonify({"message": "No tasks found"}), 404
+#         return jsonify([task.json() for task in tasks]), 200
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+@flask_app.route('/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
+def view_requests(page, page_limit):
     try:
         fourteen_days = datetime.utcnow() - timedelta(days=14)
-        tasks = ArmAsyncTaskRequest.query.filter(ArmAsyncTaskRequest.creation_date>=fourteen_days).all()
-        #tasks = ArmAsyncTaskRequest.query.limit(100000).all()
-        if not tasks:
+        # Filter by date
+        query = ArmAsyncTaskRequest.query.filter(
+            ArmAsyncTaskRequest.creation_date >= fourteen_days
+        )
+
+        # Paginate using offset and limit
+        requests = query.order_by(ArmAsyncTaskRequest.creation_date.desc())\
+                     .offset((page - 1) * page_limit).limit(page_limit) \
+                     .all()
+
+        if not requests:
             return jsonify({"message": "No tasks found"}), 404
-        return jsonify([task.json() for task in tasks]), 200
+
+        return jsonify({"requests": [request.json() for request in requests]
+        }), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 
 

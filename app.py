@@ -1669,6 +1669,10 @@ def view_requests(page, page_limit):
         query = ArmAsyncTaskRequest.query.filter(
             ArmAsyncTaskRequest.creation_date >= fourteen_days
         )
+        
+        # Total number of matching tasks
+        total = query.count()
+        total_pages = (total + page_limit - 1) // page_limit
 
         # Paginate using offset and limit
         requests = query.order_by(ArmAsyncTaskRequest.creation_date.desc())\
@@ -1678,7 +1682,9 @@ def view_requests(page, page_limit):
         if not requests:
             return jsonify({"message": "No tasks found"}), 404
 
-        return jsonify({"requests": [request.json() for request in requests]
+        return jsonify({"total records": total,
+                        "total pages": total_pages,
+                        "requests": [request.json() for request in requests]
         }), 200
 
     except Exception as e:

@@ -1682,8 +1682,8 @@ def view_requests(page, page_limit):
         if not requests:
             return jsonify({"message": "No tasks found"}), 404
 
-        return jsonify({"total records": total,
-                        "total pages": total_pages,
+        return jsonify({"total_records": total,
+                        "total_pages": total_pages,
                         "requests": [request.json() for request in requests]
         }), 200
 

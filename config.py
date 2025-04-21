@@ -8,6 +8,8 @@ from dotenv import load_dotenv   # Import load_dotenv to load environment variab
 
 # Load environment variables from the .env file
 #load_dotenv()  # This loads the variables defined in the .env file into the environment
+
+
 # Define the path where the .env file is stored
 ENV_PATH = "/d01/def/app/server/.server_env"
 

@@ -381,6 +381,7 @@ class ArmAsyncTaskRequest(db.Model):
     executor = db.Column(db.String(200))
     user_schedule_name = db.Column(db.String(200))
     redbeat_schedule_name = db.Column(db.String(200))
+    schedule_type = db.Column(db.String(50))
     schedule = db.Column(db.JSON)
     args = db.Column(db.JSON)
     kwargs = db.Column(db.JSON)
@@ -403,6 +404,7 @@ class ArmAsyncTaskRequest(db.Model):
             "executor": self.executor,
             "user_schedule_name": self.user_schedule_name,
             "redbeat_schedule_name": self.redbeat_schedule_name,
+            "schedule_type": self.schedule_type,
             "schedule": self.schedule,
             "args": self.args,
             "kwargs": self.kwargs,

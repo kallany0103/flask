@@ -6,6 +6,23 @@ from sqlalchemy import Text
 from sqlalchemy import Text, TIMESTAMP
 
 
+
+class DefTenantEnterpriseSetup(db.Model):
+    __tablename__  = 'def_tenant_enterprise_setup'
+    __table_args__ = {'schema': 'apps'}
+    
+    tenant_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    enterprise_name  = db.Column(db.String)
+    enterprise_type  = db.Column(db.String)
+
+    def json(self):
+        return {
+            'tenant_id'       : self.tenant_id,
+            'enterprise_name' : self.enterprise_name,
+            'enterprise_type' : self.enterprise_type
+        }
+
+
 class DefTenant(db.Model):
     __tablename__  = 'def_tenants'
     __table_args__ = {'schema': 'apps'}

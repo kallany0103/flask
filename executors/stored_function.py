@@ -15,7 +15,8 @@ def execute(self, *args, **kwargs):
     task_name = args[2] if len(args) > 2 else None
     user_schedule_name = args[3] if len(args) > 3 else None
     redbeat_schedule_name = args[4] if len(args) > 4 else None
-    schedule = args[5] if len(args) > 5 else None
+    schedule_type = args[5] if len(args) > 5 else None
+    schedule = args[6] if len(args) > 6 else None
     params = kwargs
 
     conn = None
@@ -55,6 +56,7 @@ def execute(self, *args, **kwargs):
             "executor": self.name,
             "user_schedule_name": user_schedule_name,
             "redbeat_schedule_name": redbeat_schedule_name,
+            "schedule_type":schedule_type,
             "schedule": schedule,
             "args": args,
             "kwargs": params,

@@ -18,7 +18,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from executors import flask_app # Import Flask app and tasks
 from executors.extensions import db
 from celery import current_app as celery  # Access the current Celery app
-from executors.models import ArmAsyncTask, ArmAsyncTaskParam, ArmAsyncTaskSchedule, ArmAsyncTaskRequest, ArmAsyncTaskSchedulesV, ArmAsyncExecutionMethods, ArmAsyncTaskScheduleNew, DefTenant, DefUser, DefPerson, DefUserCredential, DefAccessProfile, DefUsersView, Message 
+from executors.models import ArmAsyncTask, ArmAsyncTaskParam, ArmAsyncTaskSchedule, ArmAsyncTaskRequest, ArmAsyncTaskSchedulesV, ArmAsyncExecutionMethods, ArmAsyncTaskScheduleNew, DefTenant, DefUser, DefPerson, DefUserCredential, DefAccessProfile, DefUsersView, Message, DefTenantEnterpriseSetup
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
 from celery.schedules import crontab
@@ -55,7 +55,7 @@ def generate_user_id():
 def generate_tenant_id():
     try:
         # Query the max tenant_id from the arc_tenants table
-        max_tenant_id = db.session.query(db.func.max(DefTenant.tenant_id)).scalar()
+        max_tenant_id = db.session.query(db.func.max(DefTenantEnterpriseSetup.tenant_id)).scalar()
         if max_tenant_id is not None:
             # If max_tenant_id is not None, set the start value for the counter
             tenant_id_counter = count(start=max_tenant_id + 1)
@@ -70,6 +70,25 @@ def generate_tenant_id():
         print(f"Error generating tenant ID: {e}")
         return None
 
+
+
+# def generate_tenant_enterprise_id():
+#     try:
+#         # Query the max tenant_id from the arc_tenants table
+#         max_tenant_id = db.session.query(db.func.max(DefTenantEnterpriseSetup.tenant_id)).scalar()
+#         if max_tenant_id is not None:
+#             # If max_tenant_id is not None, set the start value for the counter
+#             tenant_id_counter = count(start=max_tenant_id + 1)
+#         else:
+#             # If max_tenant_id is None, set a default start value based on the current timestamp
+#             tenant_id_counter = count(start=int(datetime.timestamp(datetime.utcnow())))
+
+#         # Generate a unique tenant_id using the counter
+#         return next(tenant_id_counter)
+#     except Exception as e:
+#         # Handle specific exceptions as needed
+#         print(f"Error generating tenant ID: {e}")
+#         return None
 
 def current_timestamp():
     return datetime.now().strftime('%d-%m-%Y %H:%M:%S')
@@ -173,7 +192,87 @@ def delete_message(id):
         return make_response(jsonify({"message": "Message not found"}), 404)
     except Exception as e:
         return make_response(jsonify({"message": "Error deleting message", "error": str(e)}), 500)
-    
+
+
+
+
+# Create enterprise setup
+@flask_app.route('/create_enterprise', methods=['POST'])
+def create_enterprise():
+    try:
+        data = request.get_json()
+        tenant_id       = generate_tenant_id()
+        enterprise_name = data['enterprise_name']
+        enterprise_type = data['enterprise_type']
+
+        new_enterprise = DefTenantEnterpriseSetup(
+            tenant_id=tenant_id,
+            enterprise_name=enterprise_name,
+            enterprise_type=enterprise_type
+        )
+
+        db.session.add(new_enterprise)
+        db.session.commit()
+        return make_response(jsonify({"message": "Enterprise setup created successfully"}), 201)
+
+    except IntegrityError:
+        return make_response(jsonify({"message": "Error creating enterprise setup", "error": "Setup already exists"}), 409)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error creating enterprise setup", "error": str(e)}), 500)
+
+
+# Get all enterprise setups
+@flask_app.route('/get_enterprises', methods=['GET'])
+def get_enterprises():
+    try:
+        setups = DefTenantEnterpriseSetup.query.all()
+        return make_response(jsonify([setup.json() for setup in setups]), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving enterprise setups", "error": str(e)}), 500)
+
+
+# Get one enterprise setup by tenant_id
+@flask_app.route('/get_enterprise/<int:tenant_id>', methods=['GET'])
+def get_enterprise(tenant_id):
+    try:
+        setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
+        if setup:
+            return make_response(jsonify(setup.json()), 200)
+        return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving enterprise setup", "error": str(e)}), 500)
+
+
+# Update enterprise setup
+@flask_app.route('/update_enterprise/<int:tenant_id>', methods=['PUT'])
+def update_enterprise(tenant_id):
+    try:
+        setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
+        if setup:
+            data = request.get_json()
+            setup.enterprise_name = data.get('enterprise_name', setup.enterprise_name)
+            setup.enterprise_type = data.get('enterprise_type', setup.enterprise_type)
+            db.session.commit()
+            return make_response(jsonify({"message": "Enterprise setup updated successfully"}), 200)
+        return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error updating enterprise setup", "error": str(e)}), 500)
+
+
+# Delete enterprise setup
+@flask_app.route('/delete_enterprise/<int:tenant_id>', methods=['DELETE'])
+def delete_enterprise(tenant_id):
+    try:
+        setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
+        if setup:
+            db.session.delete(setup)
+            db.session.commit()
+            return make_response(jsonify({"message": "Enterprise setup deleted successfully"}), 200)
+        return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error deleting enterprise setup", "error": str(e)}), 500)
+
+ 
 
 # Create a tenant
 @flask_app.route('/tenants', methods=['POST'])
@@ -1349,7 +1448,7 @@ def Create_TaskSchedule():
 
         schedule_name = str(uuid.uuid4())
         redbeat_schedule_name = f"{user_schedule_name}_{schedule_name}"
-        args = [script_name, user_task_name, task_name, user_schedule_name, redbeat_schedule_name, schedule_data]
+        args = [script_name, user_task_name, task_name, user_schedule_name, redbeat_schedule_name, schedule_type, schedule_data]
         kwargs = {}
 
         # Validate task parameters

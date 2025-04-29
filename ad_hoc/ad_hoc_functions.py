@@ -7,7 +7,7 @@ from celery.schedules import schedule as celery_schedule
 import json
 import logging
 from executors.extensions import db 
-from executors.models import ArmAsyncTask, ArmAsyncTaskParam, ArmAsyncTaskSchedule, ArmAsyncTaskScheduleNew
+from executors.models import DefAsyncTask, DefAsyncTaskParam, DefAsyncTaskSchedule, DefAsyncTaskScheduleNew
 
 
 def execute_ad_hoc_task(user_schedule_name, task_name, executor, args, kwargs, cancelled_yn, created_by):
@@ -38,7 +38,7 @@ def execute_ad_hoc_task(user_schedule_name, task_name, executor, args, kwargs, c
         celery.send_task(executor, args=args, kwargs=kwargs)
 
         # Log the execution in the database
-        new_schedule = ArmAsyncTaskSchedule(
+        new_schedule = DefAsyncTaskSchedule(
             user_schedule_name=user_schedule_name,
             task_name=task_name,
             args=args,
@@ -54,7 +54,7 @@ def execute_ad_hoc_task(user_schedule_name, task_name, executor, args, kwargs, c
         # Return a success response
         return {
             "message": "Ad-hoc task executed and logged successfully!",
-            "schedule_id": new_schedule.arm_task_sche_id
+            "schedule_id": new_schedule.def_task_sche_id
         }
     except Exception as e:
         db.session.rollback()
@@ -94,7 +94,7 @@ def execute_ad_hoc_task_v1(user_schedule_name, task_name, executor, args, kwargs
         celery.send_task(executor, args=args, kwargs=kwargs)
 
         # Log the execution in the database
-        new_schedule = ArmAsyncTaskScheduleNew(
+        new_schedule = DefAsyncTaskScheduleNew(
             user_schedule_name = user_schedule_name,
             task_name=task_name,
             args=args,
@@ -112,7 +112,7 @@ def execute_ad_hoc_task_v1(user_schedule_name, task_name, executor, args, kwargs
         # Return a success response
         return {
             "message": "Ad-hoc task executed and logged successfully!",
-            "schedule_id": new_schedule.arm_task_sche_id
+            "schedule_id": new_schedule.def_task_sche_id
         }
     except Exception as e:
         db.session.rollback()

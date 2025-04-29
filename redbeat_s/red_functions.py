@@ -6,7 +6,7 @@ from datetime import timedelta
 from celery.schedules import schedule as celery_schedule
 import json
 import logging
-#from tasks.models import ArmAsyncTask, ArmAsyncTaskParam, ArmAsyncTaskSchedule
+#from tasks.models import DefAsyncTask, DefAsyncTaskParam, DefAsyncTaskSchedule
 #from tasks.extensions import db 
 
 # Set up the logger

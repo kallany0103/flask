@@ -18,7 +18,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from executors import flask_app # Import Flask app and tasks
 from executors.extensions import db
 from celery import current_app as celery  # Access the current Celery app
-from executors.models import ArmAsyncTask, ArmAsyncTaskParam, ArmAsyncTaskSchedule, ArmAsyncTaskRequest, ArmAsyncTaskSchedulesV, ArmAsyncExecutionMethods, ArmAsyncTaskScheduleNew, DefTenant, DefUser, DefPerson, DefUserCredential, DefAccessProfile, DefUsersView, Message, DefTenantEnterpriseSetup
+from executors.models import DefAsyncTask, DefAsyncTaskParam, DefAsyncTaskSchedule, DefAsyncTaskRequest, DefAsyncTaskSchedulesV, DefAsyncExecutionMethods, DefAsyncTaskScheduleNew, DefTenant, DefUser, DefPerson, DefUserCredential, DefAccessProfile, DefUsersView, Message, DefTenantEnterpriseSetup
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
 from celery.schedules import crontab
@@ -964,12 +964,12 @@ def Create_ExecutionMethod():
             return jsonify({"error": "Missing required fields: execution_method or internal_execution_method"}), 400
 
         # Check if the execution method already exists
-        existing_method = ArmAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
+        existing_method = DefAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
         if existing_method:
             return jsonify({"error": f"Execution method '{internal_execution_method}' already exists"}), 409
 
         # Create a new execution method object
-        new_method = ArmAsyncExecutionMethods(
+        new_method = DefAsyncExecutionMethods(
             execution_method=execution_method,
             internal_execution_method=internal_execution_method,
             executor=executor,
@@ -990,7 +990,7 @@ def Create_ExecutionMethod():
 @flask_app.route('/Show_ExecutionMethods', methods=['GET'])
 def Show_ExecutionMethods():
     try:
-        methods = ArmAsyncExecutionMethods.query.all()
+        methods = DefAsyncExecutionMethods.query.all()
         if not methods:
             return jsonify({"message": "No execution methods found"}), 404
         return jsonify([method.json() for method in methods]), 200
@@ -1001,7 +1001,7 @@ def Show_ExecutionMethods():
 @flask_app.route('/Show_ExecutionMethod/<string:internal_execution_method>', methods=['GET'])
 def Show_ExecutionMethod(internal_execution_method):
     try:
-        method = ArmAsyncExecutionMethods.query.get(internal_execution_method)
+        method = DefAsyncExecutionMethods.query.get(internal_execution_method)
         if not method:
             return jsonify({"message": f"Execution method '{internal_execution_method}' not found"}), 404
         return jsonify(method.json()), 200
@@ -1012,7 +1012,7 @@ def Show_ExecutionMethod(internal_execution_method):
 @flask_app.route('/Update_ExecutionMethod/<string:internal_execution_method>', methods=['PUT'])
 def Update_ExecutionMethod(internal_execution_method):
     try:
-        execution_method = ArmAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
+        execution_method = DefAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
 
         if execution_method:
             # Only update fields that are provided in the request
@@ -1051,7 +1051,7 @@ def Create_Task():
         srs = request.json.get('srs')
         sf  = request.json.get('sf')
 
-        new_task = ArmAsyncTask(
+        new_task = DefAsyncTask(
             user_task_name = user_task_name,
             task_name = task_name,
             execution_method = execution_method,
@@ -1070,7 +1070,7 @@ def Create_Task():
         db.session.add(new_task)
         db.session.commit()
 
-        return {"message": "ARM async task created successfully"}, 201
+        return {"message": "DEF async task created successfully"}, 201
 
     except Exception as e:
         return {"message": "Error creating Task", "error": str(e)}, 500
@@ -1079,16 +1079,16 @@ def Create_Task():
 @flask_app.route('/Show_Tasks', methods=['GET'])
 def Show_Tasks():
     try:
-        tasks = ArmAsyncTask.query.all()
+        tasks = DefAsyncTask.query.all()
         return make_response(jsonify([task.json() for task in tasks]))
     except Exception as e:
-        return make_response(jsonify({"message": "Error getting ARM async Tasks", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
 
 
 @flask_app.route('/Show_Task/<task_name>', methods=['GET'])
 def Show_Task(task_name):
     try:
-        task = ArmAsyncTask.query.filter_by(task_name=task_name).first()
+        task = DefAsyncTask.query.filter_by(task_name=task_name).first()
 
         if not task:
             return {"message": f"Task with name '{task_name}' not found"}, 404
@@ -1102,7 +1102,7 @@ def Show_Task(task_name):
 @flask_app.route('/Update_Task/<string:task_name>', methods=['PUT'])
 def Update_Task(task_name):
     try:
-        task = ArmAsyncTask.query.filter_by(task_name=task_name).first()
+        task = DefAsyncTask.query.filter_by(task_name=task_name).first()
         if task:
             # Only update fields that are provided in the request
             if 'user_task_name' in request.json:
@@ -1124,19 +1124,19 @@ def Update_Task(task_name):
             task.updated_at = datetime.utcnow()
 
             db.session.commit()
-            return make_response(jsonify({"message": "ARM async Task updated successfully"}), 200)
+            return make_response(jsonify({"message": "DEF async Task updated successfully"}), 200)
 
-        return make_response(jsonify({"message": f"ARM async Task with name '{task_name}' not found"}), 404)
+        return make_response(jsonify({"message": f"DEF async Task with name '{task_name}' not found"}), 404)
 
     except Exception as e:
-        return make_response(jsonify({"message": "Error updating ARM async Task", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error updating DEF async Task", "error": str(e)}), 500)
 
 
 @flask_app.route('/Cancel_Task/<string:task_name>', methods=['PUT'])
 def Cancel_Task(task_name):
     try:
-        # Find the task by task_name in the ARM_ASYNC_TASKS table
-        task = ArmAsyncTask.query.filter_by(task_name=task_name).first()
+        # Find the task by task_name in the DEF_ASYNC_TASKS table
+        task = DefAsyncTask.query.filter_by(task_name=task_name).first()
 
         if task:
             # Update the cancelled_yn field to 'Y' (indicating cancellation)
@@ -1156,8 +1156,8 @@ def Cancel_Task(task_name):
 @flask_app.route('/Add_TaskParams/<string:task_name>', methods=['POST'])
 def Add_TaskParams(task_name):
     try:
-        # Check if the task exists in the ARM_ASYNC_TASKS table
-        existing_task = ArmAsyncTask.query.filter_by(task_name=task_name).first()
+        # Check if the task exists in the DEF_ASYNC_TASKS table
+        existing_task = DefAsyncTask.query.filter_by(task_name=task_name).first()
         if not existing_task:
             return jsonify({"error": f"Task '{task_name}' does not exist"}), 404
 
@@ -1180,7 +1180,7 @@ def Add_TaskParams(task_name):
                 return jsonify({"error": "Missing required parameter fields"}), 400
 
             # Create a new parameter object
-            new_param = ArmAsyncTaskParam(
+            new_param = DefAsyncTaskParam(
                 task_name=task_name,
                 #seq=seq,
                 parameter_name=parameter_name,
@@ -1203,7 +1203,7 @@ def Add_TaskParams(task_name):
 @flask_app.route('/Show_TaskParams/<string:task_name>', methods=['GET'])
 def Show_Parameter(task_name):
     try:
-        parameters = ArmAsyncTaskParam.query.filter_by(task_name=task_name).all()
+        parameters = DefAsyncTaskParam.query.filter_by(task_name=task_name).all()
 
         if not parameters:
             return make_response(jsonify({"message": f"No parameters found for task '{task_name}'"}), 404)
@@ -1214,8 +1214,8 @@ def Show_Parameter(task_name):
         return make_response(jsonify({"message": "Error getting Task Parameters", "error": str(e)}), 500)
 
 
-@flask_app.route('/Update_TaskParams/<string:task_name>/<int:arm_param_id>', methods=['PUT'])
-def Update_TaskParams(task_name, arm_param_id):
+@flask_app.route('/Update_TaskParams/<string:task_name>/<int:def_param_id>', methods=['PUT'])
+def Update_TaskParams(task_name, def_param_id):
     try:
         # Get the updated values from the request body
         parameter_name = request.json.get('parameter_name')
@@ -1224,11 +1224,11 @@ def Update_TaskParams(task_name, arm_param_id):
         last_updated_by = 101
 
         # Find the task parameter by task_name and seq
-        param = ArmAsyncTaskParam.query.filter_by(task_name=task_name, arm_param_id=arm_param_id).first()
+        param = DefAsyncTaskParam.query.filter_by(task_name=task_name, def_param_id=def_param_id).first()
 
         # If the parameter does not exist, return a 404 response
         if not param:
-            return jsonify({"message": f"Parameter with arm_param_id '{arm_param_id}' not found for task '{task_name}'"}), 404
+            return jsonify({"message": f"Parameter with def_param_id '{def_param_id}' not found for task '{task_name}'"}), 404
 
         # Update the fields with the new values
         if parameter_name:
@@ -1250,21 +1250,21 @@ def Update_TaskParams(task_name, arm_param_id):
 
 
 
-@flask_app.route('/Delete_TaskParams/<string:task_name>/<int:arm_param_id>', methods=['DELETE'])
-def Delete_TaskParams(task_name, arm_param_id):
+@flask_app.route('/Delete_TaskParams/<string:task_name>/<int:def_param_id>', methods=['DELETE'])
+def Delete_TaskParams(task_name, def_param_id):
     try:
         # Find the task parameter by task_name and seq
-        param = ArmAsyncTaskParam.query.filter_by(task_name=task_name, arm_param_id=arm_param_id).first()
+        param = DefAsyncTaskParam.query.filter_by(task_name=task_name, def_param_id=def_param_id).first()
 
         # If the parameter does not exist, return a 404 response
         if not param:
-            return jsonify({"message": f"Parameter with arm_param_id '{arm_param_id}' not found for task '{task_name}'"}), 404
+            return jsonify({"message": f"Parameter with def_param_id '{def_param_id}' not found for task '{task_name}'"}), 404
 
         # Delete the parameter from the database
         db.session.delete(param)
         db.session.commit()
 
-        return jsonify({"message": f"Parameter with arm_param_id '{arm_param_id}' successfully deleted from task '{task_name}'"}), 200
+        return jsonify({"message": f"Parameter with def_param_id '{def_param_id}' successfully deleted from task '{task_name}'"}), 200
 
     except Exception as e:
         return jsonify({"error": "Failed to delete task parameter", "details": str(e)}), 500
@@ -1274,7 +1274,7 @@ def Delete_TaskParams(task_name, arm_param_id):
 def Delete_ExecutionMethod(internal_execution_method):
     try:
         # Find the execution method by internal_execution_method
-        execution_method = ArmAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
+        execution_method = DefAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
 
         # If the execution method does not exist, return a 404 response
         if not execution_method:
@@ -1304,7 +1304,7 @@ def Delete_ExecutionMethod(internal_execution_method):
 #             return jsonify({'error': 'Task name is required'}), 400
 
 #         # Fetch task details from the database
-#         task = ArmAsyncTask.query.filter_by(task_name=task_name).first()
+#         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
 #         if not task:
 #             return jsonify({'error': f'No task found with task_name: {task_name}'}), 400
 
@@ -1318,7 +1318,7 @@ def Delete_ExecutionMethod(internal_execution_method):
 #         kwargs = {}
 
 #         # Validate task parameters
-#         task_params = ArmAsyncTaskParam.query.filter_by(task_name=task_name).all()
+#         task_params = DefAsyncTaskParam.query.filter_by(task_name=task_name).all()
 #         for param in task_params:
 #             param_name = param.parameter_name
 #             if param_name in parameters:
@@ -1398,7 +1398,7 @@ def Delete_ExecutionMethod(internal_execution_method):
 #             return jsonify({"error": "Failed to create RedBeat schedule", "details": str(e)}), 500
 
 #         # Store schedule in DB
-#         new_schedule = ArmAsyncTaskScheduleNew(
+#         new_schedule = DefAsyncTaskScheduleNew(
 #             user_schedule_name=user_schedule_name,
 #             redbeat_schedule_name=redbeat_schedule_name,
 #             task_name=task_name,
@@ -1417,7 +1417,7 @@ def Delete_ExecutionMethod(internal_execution_method):
 
 #         return jsonify({
 #             "message": "Task schedule created successfully!",
-#             "schedule_id": new_schedule.arm_task_sche_id
+#             "schedule_id": new_schedule.def_task_sche_id
 #         }), 201
 
 #     except Exception as e:
@@ -1438,7 +1438,7 @@ def Create_TaskSchedule():
             return jsonify({'error': 'Task name is required'}), 400
 
         # Fetch task details from the database
-        task = ArmAsyncTask.query.filter_by(task_name=task_name).first()
+        task = DefAsyncTask.query.filter_by(task_name=task_name).first()
         if not task:
             return jsonify({'error': f'No task found with task_name: {task_name}'}), 400
 
@@ -1452,7 +1452,7 @@ def Create_TaskSchedule():
         kwargs = {}
 
         # Validate task parameters
-        task_params = ArmAsyncTaskParam.query.filter_by(task_name=task_name).all()
+        task_params = DefAsyncTaskParam.query.filter_by(task_name=task_name).all()
         for param in task_params:
             param_name = param.parameter_name
             if param_name in parameters:
@@ -1543,7 +1543,7 @@ def Create_TaskSchedule():
             return jsonify({"error": "Failed to create RedBeat schedule", "details": str(e)}), 500
 
         # Store schedule in DB
-        new_schedule = ArmAsyncTaskScheduleNew(
+        new_schedule = DefAsyncTaskScheduleNew(
             user_schedule_name=user_schedule_name,
             redbeat_schedule_name=redbeat_schedule_name,
             task_name=task_name,
@@ -1562,7 +1562,7 @@ def Create_TaskSchedule():
 
         return jsonify({
             "message": "Task schedule created successfully!",
-            "schedule_id": new_schedule.arm_task_sche_id
+            "schedule_id": new_schedule.def_task_sche_id
         }), 201
 
     except Exception as e:
@@ -1573,7 +1573,7 @@ def Create_TaskSchedule():
 @flask_app.route('/Show_TaskSchedules', methods=['GET'])
 def Show_TaskSchedules():
     try:
-        schedules = ArmAsyncTaskSchedulesV.query.filter( ArmAsyncTaskSchedulesV.ready_for_redbeat != 'Y').all()
+        schedules = DefAsyncTaskSchedulesV.query.filter( DefAsyncTaskSchedulesV.ready_for_redbeat != 'Y').all()
         # Return the schedules as a JSON response
         return jsonify([schedule.json() for schedule in schedules])
 
@@ -1585,7 +1585,7 @@ def Show_TaskSchedules():
 @flask_app.route('/Show_TaskSchedule/<string:task_name>', methods=['GET'])
 def Show_TaskSchedule(task_name):
     try:
-        schedule = ArmAsyncTaskSchedule.query.filter_by(task_name=task_name).first()
+        schedule = DefAsyncTaskSchedule.query.filter_by(task_name=task_name).first()
         if schedule:
             return make_response(jsonify(schedule.json()), 200)
 
@@ -1605,7 +1605,7 @@ def Update_TaskSchedule(task_name):
             return make_response(jsonify({"message": "redbeat_schedule_name is required in the payload"}), 400)
 
         # Retrieve the schedule from the database
-        schedule = ArmAsyncTaskScheduleNew.query.filter_by(
+        schedule = DefAsyncTaskScheduleNew.query.filter_by(
             task_name=task_name, redbeat_schedule_name=redbeat_schedule_name
         ).first()
 
@@ -1651,7 +1651,7 @@ def Cancel_TaskSchedule(task_name):
             return make_response(jsonify({"message": "redbeat_schedule_name is required in the payload"}), 400)
 
         # Find the task schedule in the database
-        schedule = ArmAsyncTaskScheduleNew.query.filter_by(task_name=task_name, redbeat_schedule_name=redbeat_schedule_name).first()
+        schedule = DefAsyncTaskScheduleNew.query.filter_by(task_name=task_name, redbeat_schedule_name=redbeat_schedule_name).first()
 
         if not schedule:
             return make_response(jsonify({"message": f"Task periodic schedule for {redbeat_schedule_name} not found"}), 404)
@@ -1702,8 +1702,8 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
     """
     try:
         # Find the task schedule by schedule_id and user_schedule_name
-        schedule = ArmAsyncTaskSchedule.query.filter_by(
-            arm_task_sche_id=schedule_id,
+        schedule = DefAsyncTaskSchedule.query.filter_by(
+            def_task_sche_id=schedule_id,
             user_schedule_name=user_schedule_name,
             task_name=task_name
         ).first()
@@ -1752,8 +1752,8 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
 # def get_all_tasks():
 #     try:
 #         fourteen_days = datetime.utcnow() - timedelta(days=14)
-#         tasks = ArmAsyncTaskRequest.query.filter(ArmAsyncTaskRequest.creation_date>=fourteen_days).all()
-#         #tasks = ArmAsyncTaskRequest.query.limit(100000).all()
+#         tasks = DefAsyncTaskRequest.query.filter(DefAsyncTaskRequest.creation_date>=fourteen_days).all()
+#         #tasks = DefAsyncTaskRequest.query.limit(100000).all()
 #         if not tasks:
 #             return jsonify({"message": "No tasks found"}), 404
 #         return jsonify([task.json() for task in tasks]), 200
@@ -1765,8 +1765,8 @@ def view_requests(page, page_limit):
     try:
         fourteen_days = datetime.utcnow() - timedelta(days=14)
         # Filter by date
-        query = ArmAsyncTaskRequest.query.filter(
-            ArmAsyncTaskRequest.creation_date >= fourteen_days
+        query = DefAsyncTaskRequest.query.filter(
+            DefAsyncTaskRequest.creation_date >= fourteen_days
         )
         
         # Total number of matching tasks
@@ -1774,7 +1774,7 @@ def view_requests(page, page_limit):
         total_pages = (total + page_limit - 1) // page_limit
 
         # Paginate using offset and limit
-        requests = query.order_by(ArmAsyncTaskRequest.creation_date.desc())\
+        requests = query.order_by(DefAsyncTaskRequest.creation_date.desc())\
                      .offset((page - 1) * page_limit).limit(page_limit) \
                      .all()
 

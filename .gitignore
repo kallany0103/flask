@@ -4,3 +4,4 @@ _pycache_
 celery_beat.log
 celery_worker.log
 gunicorn.log
+commands.txt

@@ -186,8 +186,8 @@ class Message(db.Model):
 
 
 
-# class ArmAsyncExecutionMethods(db.Model):
-#     __tablename__ = 'arm_async_execution_methods'
+# class DefAsyncExecutionMethods(db.Model):
+#     __tablename__ = 'def_async_execution_methods'
 
 #     execution_method = db.Column(db.String(255), unique=True, nullable=False)  # Unique execution method
 #     internal_execution_method = db.Column(db.String(255), primary_key=True) 
@@ -211,8 +211,8 @@ class Message(db.Model):
 #         }
     
 
-class ArmAsyncExecutionMethods(db.Model):
-    __tablename__ = 'arm_async_execution_methods'
+class DefAsyncExecutionMethods(db.Model):
+    __tablename__ = 'def_async_execution_methods'
 
     execution_method = db.Column(db.String(255), unique=True, nullable=False)  # Unique execution method
     internal_execution_method = db.Column(db.String(255), primary_key=True) 
@@ -227,10 +227,10 @@ class ArmAsyncExecutionMethods(db.Model):
         }
 
  
-class ArmAsyncTask(db.Model):
-    __tablename__ = 'arm_async_tasks'
+class DefAsyncTask(db.Model):
+    __tablename__ = 'def_async_tasks'
 
-    arm_task_id = db.Column(db.Integer, primary_key=True)  # Auto-incrementing primary key
+    def_task_id = db.Column(db.Integer, primary_key=True)  # Auto-incrementing primary key
     user_task_name = db.Column(db.String(255), nullable=False)
     task_name = db.Column(db.String(255), nullable=False, unique=True)  # Task name (required)
     internal_execution_method = db.Column(db.String(255), primary_key=True)
@@ -249,7 +249,7 @@ class ArmAsyncTask(db.Model):
 
     def json(self):
         return {
-            "arm_task_id": self.arm_task_id,
+            "def_task_id": self.def_task_id,
             "user_task_name": self.user_task_name,
             "task_name": self.task_name,
             "internal_execution_method": self.internal_execution_method,
@@ -266,10 +266,10 @@ class ArmAsyncTask(db.Model):
             "last_update_date": self.last_update_date,
         }
         
-class ArmAsyncTaskParam(db.Model):
-    __tablename__ = 'arm_async_task_params'
+class DefAsyncTaskParam(db.Model):
+    __tablename__ = 'def_async_task_params'
 
-    arm_param_id = db.Column(db.Integer, primary_key=True)  # Auto-incrementing primary key
+    def_param_id = db.Column(db.Integer, primary_key=True)  # Auto-incrementing primary key
     task_name = db.Column(db.String(255), nullable=False)  # Task name (required)
     #seq = db.Column(db.Integer, nullable=False)  # Sequence/order (required)
     parameter_name = db.Column(db.String(150))  # Parameter name (optional)
@@ -282,7 +282,7 @@ class ArmAsyncTaskParam(db.Model):
 
     def json(self):
         return {
-            "arm_param_id": self.arm_param_id,
+            "def_param_id": self.def_param_id,
             "task_name": self.task_name,
             "parameter_name": self.parameter_name,
             "data_type": self.data_type,
@@ -294,10 +294,10 @@ class ArmAsyncTaskParam(db.Model):
         }
 
 
-class ArmAsyncTaskSchedule(db.Model):
-    __tablename__ = 'arm_async_task_schedules'
+class DefAsyncTaskSchedule(db.Model):
+    __tablename__ = 'def_async_task_schedules'
 
-    arm_task_sche_id = db.Column(db.Integer, primary_key=True)  # Auto-incrementing primary key
+    def_task_sche_id = db.Column(db.Integer, primary_key=True)  # Auto-incrementing primary key
     user_schedule_name = db.Column(db.String(255), nullable=False)  # Schedule name (required)
     redbeat_schedule_name = db.Column(db.String(255), nullable=False)
     task_name = db.Column(db.String(255), nullable=False)  # Task name (required)
@@ -312,7 +312,7 @@ class ArmAsyncTaskSchedule(db.Model):
 
     def json(self):
         return {
-            "arm_task_sche_id": self.arm_task_sche_id,
+            "def_task_sche_id": self.def_task_sche_id,
             "user_schedule_name": self.user_schedule_name,
             "redbeat_schedule_name": self.redbeat_schedule_name,
             "task_name": self.task_name,
@@ -328,11 +328,11 @@ class ArmAsyncTaskSchedule(db.Model):
     
 
 
-class ArmAsyncTaskScheduleNew(db.Model):
-    __tablename__ = 'arm_async_task_schedules'
+class DefAsyncTaskScheduleNew(db.Model):
+    __tablename__ = 'def_async_task_schedules'
     __table_args__ = {'extend_existing': True}  # Allow redefinition
 
-    arm_task_sche_id = db.Column(db.Integer, primary_key=True)  # Auto-incrementing primary key
+    def_task_sche_id = db.Column(db.Integer, primary_key=True)  # Auto-incrementing primary key
     user_schedule_name = db.Column(db.String(255), nullable=False)  # Schedule name (required)
     redbeat_schedule_name = db.Column(db.String(255), nullable=False)
     task_name = db.Column(db.String(255), nullable=False)  # Task name (required)
@@ -350,7 +350,7 @@ class ArmAsyncTaskScheduleNew(db.Model):
 
     def json(self):
         return {
-            "arm_task_sche_id": self.arm_task_sche_id,
+            "def_task_sche_id": self.def_task_sche_id,
             "user_schedule_name": self.user_schedule_name,
             "redbeat_schedule_name": self.redbeat_schedule_name,
             "task_name": self.task_name,
@@ -370,8 +370,8 @@ class ArmAsyncTaskScheduleNew(db.Model):
 
 
 
-class ArmAsyncTaskRequest(db.Model):
-    __tablename__ = 'arm_async_task_requests'
+class DefAsyncTaskRequest(db.Model):
+    __tablename__ = 'def_async_task_requests'
 
     request_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.String(200), nullable=False, unique=True)
@@ -419,10 +419,10 @@ class ArmAsyncTaskRequest(db.Model):
 
     
 
-class ArmAsyncTaskSchedulesV(db.Model):
-    __tablename__ = 'arm_async_task_schedules_v'  # View name
+class DefAsyncTaskSchedulesV(db.Model):
+    __tablename__ = 'def_async_task_schedules_v'  # View name
     
-    arm_task_sche_id = db.Column(db.Integer, primary_key=True)
+    def_task_sche_id = db.Column(db.Integer, primary_key=True)
     user_schedule_name = db.Column(db.String(255), nullable=False)
     redbeat_schedule_name = db.Column(db.String(255), nullable=False)
     user_task_name = db.Column(db.String(200))
@@ -442,7 +442,7 @@ class ArmAsyncTaskSchedulesV(db.Model):
     # JSON method to return data as a dictionary
     def json(self):
         return {
-            "arm_task_sche_id": self.arm_task_sche_id,
+            "def_task_sche_id": self.def_task_sche_id,
             "user_schedule_name": self.user_schedule_name,
             "redbeat_schedule_name": self.redbeat_schedule_name,
             "user_task_name": self.user_task_name,

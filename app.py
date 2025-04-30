@@ -52,23 +52,23 @@ def generate_user_id():
 
 
 
-def generate_tenant_id():
-    try:
-        # Query the max tenant_id from the arc_tenants table
-        max_tenant_id = db.session.query(db.func.max(DefTenantEnterpriseSetup.tenant_id)).scalar()
-        if max_tenant_id is not None:
-            # If max_tenant_id is not None, set the start value for the counter
-            tenant_id_counter = count(start=max_tenant_id + 1)
-        else:
-            # If max_tenant_id is None, set a default start value based on the current timestamp
-            tenant_id_counter = count(start=int(datetime.timestamp(datetime.utcnow())))
+# def generate_tenant_id():
+#     try:
+#         # Query the max tenant_id from the arc_tenants table
+#         max_tenant_id = db.session.query(db.func.max(DefTenantEnterpriseSetup.tenant_id)).scalar()
+#         if max_tenant_id is not None:
+#             # If max_tenant_id is not None, set the start value for the counter
+#             tenant_id_counter = count(start=max_tenant_id + 1)
+#         else:
+#             # If max_tenant_id is None, set a default start value based on the current timestamp
+#             tenant_id_counter = count(start=int(datetime.timestamp(datetime.utcnow())))
 
-        # Generate a unique tenant_id using the counter
-        return next(tenant_id_counter)
-    except Exception as e:
-        # Handle specific exceptions as needed
-        print(f"Error generating tenant ID: {e}")
-        return None
+#         # Generate a unique tenant_id using the counter
+#         return next(tenant_id_counter)
+#     except Exception as e:
+#         # Handle specific exceptions as needed
+#         print(f"Error generating tenant ID: {e}")
+#         return None
 
 
 
@@ -201,12 +201,12 @@ def delete_message(id):
 def create_enterprise():
     try:
         data = request.get_json()
-        tenant_id       = generate_tenant_id()
+        # tenant_id       = generate_tenant_id()
         enterprise_name = data['enterprise_name']
         enterprise_type = data['enterprise_type']
 
         new_enterprise = DefTenantEnterpriseSetup(
-            tenant_id=tenant_id,
+            # tenant_id=tenant_id,
             enterprise_name=enterprise_name,
             enterprise_type=enterprise_type
         )
@@ -279,10 +279,9 @@ def delete_enterprise(tenant_id):
 def create_tenant():
     try:
        data = request.get_json()
-       tenant_id   = generate_tenant_id()  # Call the function to get the result
+    #    tenant_id   = generate_tenant_id()  # Call the function to get the result
        tenant_name = data['tenant_name']
-       new_tenant  = DefTenant(tenant_id = tenant_id, 
-                               tenant_name = tenant_name)
+       new_tenant  = DefTenant(tenant_name = tenant_name)
        db.session.add(new_tenant)
        db.session.commit()
        return make_response(jsonify({"message": "Tenant created successfully"}), 201)
@@ -1596,50 +1595,138 @@ def Show_TaskSchedule(task_name):
 
 
 
+# @flask_app.route('/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
+# def Update_TaskSchedule(task_name):
+
+#     try:
+#         # Retrieve redbeat_schedule_name from request payload
+#         redbeat_schedule_name = request.json.get('redbeat_schedule_name')
+#         if not redbeat_schedule_name:
+#             return make_response(jsonify({"message": "redbeat_schedule_name is required in the payload"}), 400)
+
+#         # Retrieve the schedule from the database
+#         schedule = DefAsyncTaskScheduleNew.query.filter_by(
+#             task_name=task_name, redbeat_schedule_name=redbeat_schedule_name
+#         ).first()
+
+#         # Check if schedule exists
+#         if not schedule:
+#             return make_response(jsonify({"message": f"Task Periodic Schedule for {redbeat_schedule_name} not found"}), 404)
+
+#         # Check if ready_for_redbeat is 'N' (allow updates only if it's 'N')
+#         if schedule.ready_for_redbeat != 'N':
+#             return make_response(jsonify({
+#                 "message": f"Task Periodic Schedule for {redbeat_schedule_name} is not marked as 'N'. Update is not allowed."
+#             }), 400)
+
+#         # Update database fields based on the request data
+#         if 'parameters' in request.json:
+#             schedule.parameters = request.json.get('parameters')
+#             schedule.kwargs = request.json.get('parameters')
+#         if 'schedule_type' in request.json:
+#             schedule.schedule_type = request.json.get('schedule_type')
+#         if 'schedule' in request.json:
+#             schedule.schedule = request.json.get('schedule')
+
+#         schedule.last_updated_by = 102  # Static user ID
+
+#         # Commit changes to the database
+#         db.session.commit()
+
+#         return make_response(jsonify({
+#             "message": f"Task Periodic Schedule for {redbeat_schedule_name} updated successfully in the database"
+#         }), 200)
+
+#     except Exception as e:
+#         db.session.rollback()  # Rollback in case of an error
+#         return make_response(jsonify({"message": "Error updating Task Periodic Schedule", "error": str(e)}), 500)
+
+
 @flask_app.route('/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
 def Update_TaskSchedule(task_name):
     try:
-        # Retrieve redbeat_schedule_name from request payload
         redbeat_schedule_name = request.json.get('redbeat_schedule_name')
         if not redbeat_schedule_name:
-            return make_response(jsonify({"message": "redbeat_schedule_name is required in the payload"}), 400)
+            return jsonify({"message": "redbeat_schedule_name is required in the payload"}), 400
 
-        # Retrieve the schedule from the database
         schedule = DefAsyncTaskScheduleNew.query.filter_by(
             task_name=task_name, redbeat_schedule_name=redbeat_schedule_name
         ).first()
+        executors = DefAsyncTask.query.filter_by(task_name=task_name).first()
 
-        # Check if schedule exists
         if not schedule:
-            return make_response(jsonify({"message": f"Task Periodic Schedule for {redbeat_schedule_name} not found"}), 404)
+            return jsonify({"message": f"Task Periodic Schedule for {redbeat_schedule_name} not found"}), 404
 
-        # Check if ready_for_redbeat is 'N' (allow updates only if it's 'N')
         if schedule.ready_for_redbeat != 'N':
-            return make_response(jsonify({
+            return jsonify({
                 "message": f"Task Periodic Schedule for {redbeat_schedule_name} is not marked as 'N'. Update is not allowed."
-            }), 400)
+            }), 400
 
-        # Update database fields based on the request data
-        if 'parameters' in request.json:
-            schedule.parameters = request.json.get('parameters')
-            schedule.kwargs = request.json.get('parameters')
-        if 'schedule_type' in request.json:
-            schedule.schedule_type = request.json.get('schedule_type')
-        if 'schedule' in request.json:
-            schedule.schedule = request.json.get('schedule')
-
+        # Update fields
+        schedule.parameters = request.json.get('parameters', schedule.parameters)
+        schedule.kwargs = request.json.get('parameters', schedule.kwargs)
+        schedule.schedule_type = request.json.get('schedule_type', schedule.schedule_type)
+        schedule.schedule = request.json.get('schedule', schedule.schedule)
         schedule.last_updated_by = 102  # Static user ID
 
-        # Commit changes to the database
-        db.session.commit()
+        # Handle scheduling logic
+        cron_schedule = None
+        schedule_minutes = None
 
-        return make_response(jsonify({
-            "message": f"Task Periodic Schedule for {redbeat_schedule_name} updated successfully in the database"
-        }), 200)
+        if schedule.schedule_type == "WEEKLY_SPECIFIC_DAYS":
+            values = schedule.schedule.get('VALUES', [])
+            day_map = {"SUN": 0, "MON": 1, "TUE": 2, "WED": 3, "THU": 4, "FRI": 5, "SAT": 6}
+            days_of_week = ",".join(str(day_map[day.upper()]) for day in values if day.upper() in day_map)
+            cron_schedule = crontab(minute=0, hour=0, day_of_week=days_of_week)
+
+        elif schedule.schedule_type == "MONTHLY_SPECIFIC_DATES":
+            values = schedule.schedule.get('VALUES', [])
+            dates_of_month = ",".join(values)
+            cron_schedule = crontab(minute=0, hour=0, day_of_month=dates_of_month)
+
+        elif schedule.schedule_type == "ONCE":
+            one_time_date = schedule.schedule.get('VALUES')
+            dt = datetime.strptime(one_time_date, "%Y-%m-%d %H:%M")
+            cron_schedule = crontab(minute=dt.minute, hour=dt.hour, day_of_month=dt.day, month_of_year=dt.month)
+
+        elif schedule.schedule_type == "PERIODIC":
+            frequency_type = schedule.schedule.get('FREQUENCY_TYPE', 'minutes').lower()
+            frequency = schedule.schedule.get('FREQUENCY', 1)
+            
+            if frequency_type == 'months':
+                schedule_minutes = frequency * 30 * 24 * 60
+            elif frequency_type == 'days':
+                schedule_minutes = frequency * 24 * 60
+            elif frequency_type == 'hours':
+                schedule_minutes = frequency * 60
+            else:
+                schedule_minutes = frequency  # Default to minutes
+
+        # Ensure at least one scheduling method is provided
+        if not schedule_minutes and not cron_schedule:
+            return jsonify({"message": "Either 'schedule_minutes' or 'cron_schedule' must be provided."}), 400
+
+        # Update RedBeat schedule
+        try:
+            update_redbeat_schedule(
+                schedule_name=redbeat_schedule_name,
+                task=executors.executor,
+                schedule_minutes=schedule_minutes,
+                cron_schedule=cron_schedule,
+                args=schedule.args,
+                kwargs=schedule.kwargs,
+                celery_app=celery
+            )
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"message": "Error updating Redis. Database changes rolled back.", "error": str(e)}), 500
+
+        db.session.commit()
+        return jsonify({"message": f"Task Schedule for {redbeat_schedule_name} updated successfully in database and Redis"}), 200
 
     except Exception as e:
-        db.session.rollback()  # Rollback in case of an error
-        return make_response(jsonify({"message": "Error updating Task Periodic Schedule", "error": str(e)}), 500)
+        db.session.rollback()
+        return jsonify({"message": "Error updating Task Schedule", "error": str(e)}), 500
 
 
 @flask_app.route('/Cancel_TaskSchedule/<string:task_name>', methods=['PUT'])

@@ -7,17 +7,17 @@ import os                        # Import os for environment variable handling
 from dotenv import load_dotenv   # Import load_dotenv to load environment variables from a .env file
 
 # Load environment variables from the .env file
-load_dotenv()  # This loads the variables defined in the .env file into the environment
+# load_dotenv()  # This loads the variables defined in the .env file into the environment
 
 
 # Define the path where the .env file is stored
-# ENV_PATH = "/d01/def/app/server/.server_env"
+ENV_PATH = "/d01/def/app/server/.server_env"
 
 # Load the .env file (check if it exists before loading it)
-# if os.path.exists(ENV_PATH):
-#     load_dotenv(ENV_PATH)
-# else:
-#     print(f"Error: The .env file was not found at {ENV_PATH}")
+if os.path.exists(ENV_PATH):
+    load_dotenv(ENV_PATH)
+else:
+    print(f"Error: The .env file was not found at {ENV_PATH}")
 
 
 # Fetch Redis and database URLs from environment variables

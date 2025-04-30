@@ -104,7 +104,7 @@ def create_redbeat_schedule(schedule_name, executor, schedule_minutes=None, cron
 #         print(f"Failed to update RedBeat entry: {e}")
 #         raise
 
-def update_redbeat_schedule(schedule_name, task, schedule_minutes=1, args=None, kwargs=None, celery_app=None):
+# def update_redbeat_schedule(schedule_name, task, schedule_minutes=1, args=None, kwargs=None, celery_app=None):
     # Default values for args and kwargs
     args = args or []
     kwargs = kwargs or {}
@@ -132,6 +132,40 @@ def update_redbeat_schedule(schedule_name, task, schedule_minutes=1, args=None, 
         print(f"Failed to update RedBeat entry: {e}")
         raise
 
+
+def update_redbeat_schedule(schedule_name, task, schedule_minutes=None, cron_schedule=None, args=None, kwargs=None, celery_app=None):
+   
+    # Default values for args and kwargs
+    args = args or []
+    kwargs = kwargs or {}
+
+    try:
+        # Fetch the existing RedBeat entry
+        entry = RedBeatSchedulerEntry.from_key(f"redbeat:{schedule_name}", app=celery_app)
+
+        # Validate if the task_name matches
+        if entry.task != task:
+            raise ValueError(f"Task name mismatch: Expected '{task}', found '{entry.task}'")
+
+        # Determine the correct schedule type
+        if cron_schedule:
+            entry.schedule = cron_schedule  # Use crontab scheduling
+        elif schedule_minutes is not None:
+            entry.schedule = celery_schedule(schedule_minutes * 60)  # Use interval scheduling
+        else:
+            raise ValueError("Either 'schedule_minutes' or 'cron_schedule' must be provided.")
+
+        # Update entry fields
+        entry.args = args
+        entry.kwargs = kwargs
+
+        # Save the updated entry back to Redis
+        entry.save()
+        print(f" RedBeat entry updated: {entry.name}")
+
+    except Exception as e:
+        print(f" Failed to update RedBeat entry: {e}")
+        raise
 
 
 

@@ -8,7 +8,7 @@ from .stored_procedure import execute as execute_procedure
 from .stored_function import execute as execute_function
 from .extensions import db
 
-#load_dotenv()
+# load_dotenv()
 # Define the path where the .env file is stored
 ENV_PATH = "/d01/def/app/server/.server_env"
 

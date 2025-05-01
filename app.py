@@ -197,16 +197,16 @@ def delete_message(id):
 
 
 # Create enterprise setup
-@flask_app.route('/create_enterprise', methods=['POST'])
-def create_enterprise():
+@flask_app.route('/create_enterprise/<int:tenant_id>', methods=['POST'])
+def create_enterprise(tenant_id):
     try:
         data = request.get_json()
-        # tenant_id       = generate_tenant_id()
+        tenant_id       = tenant_id
         enterprise_name = data['enterprise_name']
         enterprise_type = data['enterprise_type']
 
         new_enterprise = DefTenantEnterpriseSetup(
-            # tenant_id=tenant_id,
+            tenant_id=tenant_id,
             enterprise_name=enterprise_name,
             enterprise_type=enterprise_type
         )

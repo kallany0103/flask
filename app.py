@@ -18,7 +18,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from executors import flask_app # Import Flask app and tasks
 from executors.extensions import db
 from celery import current_app as celery  # Access the current Celery app
-from executors.models import DefAsyncTask, DefAsyncTaskParam, DefAsyncTaskSchedule, DefAsyncTaskRequest, DefAsyncTaskSchedulesV, DefAsyncExecutionMethods, DefAsyncTaskScheduleNew, DefTenant, DefUser, DefPerson, DefUserCredential, DefAccessProfile, DefUsersView, Message, DefTenantEnterpriseSetup
+from executors.models import DefAsyncTask, DefAsyncTaskParam, DefAsyncTaskSchedule, DefAsyncTaskRequest, DefAsyncTaskSchedulesV, DefAsyncExecutionMethods, DefAsyncTaskScheduleNew, DefTenant, DefUser, DefPerson, DefUserCredential, DefAccessProfile, DefUsersView, Message, DefTenantEnterpriseSetup, DefTenantEnterpriseSetupV
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
 from celery.schedules import crontab
@@ -194,86 +194,6 @@ def delete_message(id):
         return make_response(jsonify({"message": "Error deleting message", "error": str(e)}), 500)
 
 
-
-
-# Create enterprise setup
-@flask_app.route('/create_enterprise/<int:tenant_id>', methods=['POST'])
-def create_enterprise(tenant_id):
-    try:
-        data = request.get_json()
-        tenant_id       = tenant_id
-        enterprise_name = data['enterprise_name']
-        enterprise_type = data['enterprise_type']
-
-        new_enterprise = DefTenantEnterpriseSetup(
-            tenant_id=tenant_id,
-            enterprise_name=enterprise_name,
-            enterprise_type=enterprise_type
-        )
-
-        db.session.add(new_enterprise)
-        db.session.commit()
-        return make_response(jsonify({"message": "Enterprise setup created successfully"}), 201)
-
-    except IntegrityError:
-        return make_response(jsonify({"message": "Error creating enterprise setup", "error": "Setup already exists"}), 409)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error creating enterprise setup", "error": str(e)}), 500)
-
-
-# Get all enterprise setups
-@flask_app.route('/get_enterprises', methods=['GET'])
-def get_enterprises():
-    try:
-        setups = DefTenantEnterpriseSetup.query.all()
-        return make_response(jsonify([setup.json() for setup in setups]), 200)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving enterprise setups", "error": str(e)}), 500)
-
-
-# Get one enterprise setup by tenant_id
-@flask_app.route('/get_enterprise/<int:tenant_id>', methods=['GET'])
-def get_enterprise(tenant_id):
-    try:
-        setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
-        if setup:
-            return make_response(jsonify(setup.json()), 200)
-        return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving enterprise setup", "error": str(e)}), 500)
-
-
-# Update enterprise setup
-@flask_app.route('/update_enterprise/<int:tenant_id>', methods=['PUT'])
-def update_enterprise(tenant_id):
-    try:
-        setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
-        if setup:
-            data = request.get_json()
-            setup.enterprise_name = data.get('enterprise_name', setup.enterprise_name)
-            setup.enterprise_type = data.get('enterprise_type', setup.enterprise_type)
-            db.session.commit()
-            return make_response(jsonify({"message": "Enterprise setup updated successfully"}), 200)
-        return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error updating enterprise setup", "error": str(e)}), 500)
-
-
-# Delete enterprise setup
-@flask_app.route('/delete_enterprise/<int:tenant_id>', methods=['DELETE'])
-def delete_enterprise(tenant_id):
-    try:
-        setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
-        if setup:
-            db.session.delete(setup)
-            db.session.commit()
-            return make_response(jsonify({"message": "Enterprise setup deleted successfully"}), 200)
-        return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error deleting enterprise setup", "error": str(e)}), 500)
-
- 
-
 # Create a tenant
 @flask_app.route('/tenants', methods=['POST'])
 def create_tenant():
@@ -291,7 +211,7 @@ def create_tenant():
     except Exception as e:
         return make_response(jsonify({"message": "Error creating Tenant", "error": str(e)}), 500)
 
-        
+       
 
 # Get all tenants
 @flask_app.route('/tenants', methods=['GET'])
@@ -343,6 +263,104 @@ def delete_tenant(tenant_id):
     except Exception as e:
         return make_response(jsonify({"message": "Error deleting tenant", "error": str(e)}), 500)
 
+
+# Create enterprise setup
+@flask_app.route('/create_enterprise/<int:tenant_id>', methods=['POST'])
+def create_enterprise(tenant_id):
+    try:
+        data = request.get_json()
+        tenant_id       = tenant_id
+        enterprise_name = data['enterprise_name']
+        enterprise_type = data['enterprise_type']
+
+        new_enterprise = DefTenantEnterpriseSetup(
+            tenant_id=tenant_id,
+            enterprise_name=enterprise_name,
+            enterprise_type=enterprise_type
+        )
+
+        db.session.add(new_enterprise)
+        db.session.commit()
+        return make_response(jsonify({"message": "Enterprise setup created successfully"}), 201)
+
+    except IntegrityError:
+        return make_response(jsonify({"message": "Error creating enterprise setup", "error": "Setup already exists"}), 409)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error creating enterprise setup", "error": str(e)}), 500)
+
+
+# Get all enterprise setups
+# @flask_app.route('/get_enterprises', methods=['GET'])
+# def get_enterprises():
+#     try:
+#         setups = DefTenantEnterpriseSetup.query.all()
+#         return make_response(jsonify([setup.json() for setup in setups]), 200)
+#     except Exception as e:
+#         return make_response(jsonify({"message": "Error retrieving enterprise setups", "error": str(e)}), 500)
+
+
+# Get one enterprise setup by tenant_id
+@flask_app.route('/get_enterprise/<int:tenant_id>', methods=['GET'])
+def get_enterprise(tenant_id):
+    try:
+        setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
+        if setup:
+            return make_response(jsonify(setup.json()), 200)
+        return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving enterprise setup", "error": str(e)}), 500)
+
+
+# Update enterprise setup
+@flask_app.route('/update_enterprise/<int:tenant_id>', methods=['PUT'])
+def update_enterprise(tenant_id):
+    try:
+        setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
+        if setup:
+            data = request.get_json()
+            setup.enterprise_name = data.get('enterprise_name', setup.enterprise_name)
+            setup.enterprise_type = data.get('enterprise_type', setup.enterprise_type)
+            db.session.commit()
+            return make_response(jsonify({"message": "Enterprise setup updated successfully"}), 200)
+        return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error updating enterprise setup", "error": str(e)}), 500)
+
+
+# Delete enterprise setup
+@flask_app.route('/delete_enterprise/<int:tenant_id>', methods=['DELETE'])
+def delete_enterprise(tenant_id):
+    try:
+        setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
+        if setup:
+            db.session.delete(setup)
+            db.session.commit()
+            return make_response(jsonify({"message": "Enterprise setup deleted successfully"}), 200)
+        return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error deleting enterprise setup", "error": str(e)}), 500)
+
+ 
+
+ 
+
+
+
+#get all tenants enterprise setups
+@flask_app.route('/get_enterprises', methods=['GET'])
+def get_enterprises():
+    try:
+        results = db.session.query(DefTenantEnterpriseSetupV).all()
+        
+        if not results:
+            return jsonify({'data': [], 'message': 'No records found'}), 200
+
+        data = [row.json() for row in results]
+        
+        return jsonify(data), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @flask_app.route('/defusers', methods=['POST'])

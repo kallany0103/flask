@@ -34,7 +34,25 @@ class DefTenant(db.Model):
         return {'tenant_id'  : self.tenant_id,
                 'tenant_name': self.tenant_name
            }
-        
+
+
+class DefTenantEnterpriseSetupV(db.Model):
+    __tablename__ = 'def_tenant_enterprise_setup_v'
+    __table_args__ = {'schema': 'apps'}
+
+    tenant_id = db.Column(db.Integer, primary_key=True)
+    tenant_name = db.Column(db.Text)
+    enterprise_name = db.Column(db.Text)
+    enterprise_type = db.Column(db.Text)
+
+    def json(self):
+        return {
+            # 'tenant_id': self.tenant_id,
+            'tenant_name': self.tenant_name,
+            'enterprise_name': self.enterprise_name,
+            'enterprise_type': self.enterprise_type
+        }
+
 
 class DefUser(db.Model):
     __tablename__  = 'def_users'
@@ -460,5 +478,4 @@ class DefAsyncTaskSchedulesV(db.Model):
             "last_update_date": self.last_update_date
         }
     
-
 

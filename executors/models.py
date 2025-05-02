@@ -47,7 +47,7 @@ class DefTenantEnterpriseSetupV(db.Model):
 
     def json(self):
         return {
-            # 'tenant_id': self.tenant_id,
+            'tenant_id': self.tenant_id,
             'tenant_name': self.tenant_name,
             'enterprise_name': self.enterprise_name,
             'enterprise_type': self.enterprise_type

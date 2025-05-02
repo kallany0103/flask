@@ -217,7 +217,7 @@ def create_tenant():
 @flask_app.route('/tenants', methods=['GET'])
 def get_tenants():
     try:
-        tenants = DefTenant.query.all()
+        tenants = DefTenant.query.order_by(DefTenant.tenant_id.desc()).all()
         return make_response(jsonify([tenant.json() for tenant in tenants]))
     except Exception as e:
         return make_response(jsonify({"message": "Error getting Tenants", "error": str(e)}), 500)
@@ -289,14 +289,14 @@ def create_enterprise(tenant_id):
         return make_response(jsonify({"message": "Error creating enterprise setup", "error": str(e)}), 500)
 
 
-# Get all enterprise setups
-# @flask_app.route('/get_enterprises', methods=['GET'])
-# def get_enterprises():
-#     try:
-#         setups = DefTenantEnterpriseSetup.query.all()
-#         return make_response(jsonify([setup.json() for setup in setups]), 200)
-#     except Exception as e:
-#         return make_response(jsonify({"message": "Error retrieving enterprise setups", "error": str(e)}), 500)
+#Get all enterprise setups
+@flask_app.route('/get_enterprises', methods=['GET'])
+def get_enterprises():
+    try:
+        setups = DefTenantEnterpriseSetup.query.order_by(DefTenantEnterpriseSetup.tenant_id.desc()).all()
+        return make_response(jsonify([setup.json() for setup in setups]), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving enterprise setups", "error": str(e)}), 500)
 
 
 # Get one enterprise setup by tenant_id
@@ -347,10 +347,13 @@ def delete_enterprise(tenant_id):
 
 
 #get all tenants enterprise setups
-@flask_app.route('/get_enterprises', methods=['GET'])
-def get_enterprises():
+@flask_app.route('/enterprises', methods=['GET'])
+def enterprises():
     try:
-        results = db.session.query(DefTenantEnterpriseSetupV).all()
+        # results = db.session.query(DefTenantEnterpriseSetupV).all()
+        results = db.session.query(DefTenantEnterpriseSetupV).order_by(
+            DefTenantEnterpriseSetupV.tenant_id.desc()
+        ).all()
         
         if not results:
             return jsonify({'data': [], 'message': 'No records found'}), 200

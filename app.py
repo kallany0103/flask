@@ -265,7 +265,7 @@ def delete_tenant(tenant_id):
 
 
 # Create enterprise setup
-@flask_app.route('/create_enterprise/<int:tenant_id>', methods=['POST'])
+@flask_app.route('/create_enterpriseV1/<int:tenant_id>', methods=['POST'])
 def create_enterprise(tenant_id):
     try:
         data = request.get_json()
@@ -287,6 +287,41 @@ def create_enterprise(tenant_id):
         return make_response(jsonify({"message": "Error creating enterprise setup", "error": "Setup already exists"}), 409)
     except Exception as e:
         return make_response(jsonify({"message": "Error creating enterprise setup", "error": str(e)}), 500)
+
+# Create or update enterprise setup
+@flask_app.route('/create_enterprise/<int:tenant_id>', methods=['POST'])
+def create_update_enterprise(tenant_id):
+    try:
+        data = request.get_json()
+        tenant_id       = tenant_id
+        enterprise_name = data['enterprise_name']
+        enterprise_type = data['enterprise_type']
+
+        existing_enterprise = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
+
+        if existing_enterprise:
+            existing_enterprise.enterprise_name = enterprise_name
+            existing_enterprise.enterprise_type = enterprise_type
+            message = "Enterprise setup updated successfully"
+
+        else:
+            new_enterprise = DefTenantEnterpriseSetup(
+                tenant_id=tenant_id,
+                enterprise_name=enterprise_name,
+                enterprise_type=enterprise_type
+            )
+
+            db.session.add(new_enterprise)
+            message = "Enterprise setup created successfully"
+
+        db.session.commit()
+        return make_response(jsonify({"message": message}), 200)
+
+    except IntegrityError:
+        return make_response(jsonify({"message": "Error creating or updating enterprise setup", "error": "Integrity error"}), 409)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error creating or updating enterprise setup", "error": str(e)}), 500)
+
 
 
 #Get all enterprise setups

@@ -479,3 +479,85 @@ class DefAsyncTaskSchedulesV(db.Model):
         }
     
 
+class DefAccessModel(db.Model):
+    __tablename__ = 'def_access_models'
+    __table_args__ = {'schema': 'apps'}
+
+    def_access_model_id = db.Column(db.Integer, primary_key=True)  
+    model_name         = db.Column(db.Text)                       
+    description        = db.Column(db.Text)                       
+    type               = db.Column(db.Text)                       
+    run_status         = db.Column(db.Text)                       
+    state              = db.Column(db.Text)                       
+    last_run_date      = db.Column(db.Text)                       
+    created_by         = db.Column(db.Text)                       
+    last_updated_by    = db.Column(db.Text)                       
+    last_updated_date  = db.Column(db.Text)                       
+    revision           = db.Column(db.Integer)                    
+    revision_date      = db.Column(db.Text)                       
+
+
+    # logics = db.relationship("DefAccessModelLogic", back_populates="model")
+
+    def json(self):
+        return {
+            "def_access_model_id": self.def_access_model_id,
+            "model_name": self.model_name,
+            "description": self.description,
+            "type": self.type,
+            "run_status": self.run_status,
+            "state": self.state,
+            "last_run_date": self.last_run_date,
+            "created_by": self.created_by,
+            "last_updated_by": self.last_updated_by,
+            "last_updated_date": self.last_updated_date,
+            "revision": self.revision,
+            "revision_date": self.revision_date
+        }
+
+class DefAccessModelLogic(db.Model):
+    __tablename__ = 'def_access_model_logics'
+    __table_args__ = {'schema': 'apps'}
+
+    def_access_model_logic_id = db.Column(db.Integer, primary_key=True) 
+    def_access_model_id       = db.Column(db.Integer, db.ForeignKey('apps.def_access_models.def_access_model_id'), nullable=False)  # Foreign key to def_access_models
+    filter                    = db.Column(db.Text)                       
+    object                    = db.Column(db.Text)                       
+    attribute                 = db.Column(db.Text)                       
+    condition                 = db.Column(db.Text)                       
+    value                     = db.Column(db.Text)                       
+
+    
+    # model = db.relationship("DefAccessModel", back_populates="logics")
+    # attributes = db.relationship("DefAccessModelLogicAttribute", back_populates="logic")
+
+    def json(self):
+        return {
+            "def_access_model_logic_id": self.def_access_model_logic_id,
+            "def_access_model_id": self.def_access_model_id,
+            "filter": self.filter,
+            "object": self.object,
+            "attribute": self.attribute,
+            "condition": self.condition,
+            "value": self.value
+        }
+
+class DefAccessModelLogicAttribute(db.Model):
+    __tablename__ = 'def_access_model_logic_attributes'
+    __table_args__ = {'schema': 'apps'}
+
+    id                        = db.Column(db.Integer, primary_key=True)  
+    def_access_model_logic_id = db.Column(db.Integer, db.ForeignKey('apps.def_access_model_logics.def_access_model_logic_id'), nullable=False)  # Foreign key to def_access_model_logics
+    widget_position           = db.Column(db.Integer)                    
+    widget_state              = db.Column(db.Integer)                    
+
+    
+    # logic = db.relationship("DefAccessModelLogic", back_populates="attributes")
+
+    def json(self):
+        return {
+            "id": self.id,
+            "def_access_model_logic_id": self.def_access_model_logic_id,
+            "widget_position": self.widget_position,
+            "widget_state": self.widget_state
+        }

@@ -18,7 +18,27 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from executors import flask_app # Import Flask app and tasks
 from executors.extensions import db
 from celery import current_app as celery  # Access the current Celery app
-from executors.models import DefAsyncTask, DefAsyncTaskParam, DefAsyncTaskSchedule, DefAsyncTaskRequest, DefAsyncTaskSchedulesV, DefAsyncExecutionMethods, DefAsyncTaskScheduleNew, DefTenant, DefUser, DefPerson, DefUserCredential, DefAccessProfile, DefUsersView, Message, DefTenantEnterpriseSetup, DefTenantEnterpriseSetupV
+from executors.models import (
+    DefAsyncTask,
+    DefAsyncTaskParam,
+    DefAsyncTaskSchedule,
+    DefAsyncTaskRequest,
+    DefAsyncTaskSchedulesV,
+    DefAsyncExecutionMethods,
+    DefAsyncTaskScheduleNew,
+    DefTenant,
+    DefUser,
+    DefPerson,
+    DefUserCredential,
+    DefAccessProfile,
+    DefUsersView,
+    Message,
+    DefTenantEnterpriseSetup,
+    DefTenantEnterpriseSetupV,
+    DefAccessModel,
+    DefAccessModelLogic,
+    DefAccessModelLogicAttribute
+)
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
 from celery.schedules import crontab
@@ -1932,7 +1952,249 @@ def view_requests(page, page_limit):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+#def_access_models
+@flask_app.route('/def_access_models', methods=['POST'])
+def create_def_access_models():
+    try:
+        model_name = request.json.get('model_name')
+        description = request.json.get('description')
+        type = request.json.get('type')
+        run_status = request.json.get('run_status')
+        state = request.json.get('state')
+        last_run_date = current_timestamp() #current_timestamp
+        created_by = request.json.get('created_by')
+        last_updated_by = request.json.get('last_updated_by')
+        last_updated_date = current_timestamp()
+        revision = request.json.get('revision')
+        revision_date = current_timestamp()
 
+        new_def_access_model = DefAccessModel(
+            model_name = model_name,
+            description = description,
+            type = type,
+            run_status = run_status,
+            state = state,
+            last_run_date = last_run_date,
+            created_by = created_by,
+            last_updated_by = last_updated_by,
+            last_updated_date = last_updated_date,
+            revision = revision,
+            revision_date = revision_date
+        )
+        db.session.add(new_def_access_model)
+        db.session.commit()
+        return make_response(jsonify({"message": "DefAccessModel created successfully!"}), 201)
+    except Exception as e:
+        return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
+    
+@flask_app.route('/def_access_models', methods=['GET'])
+def get_def_access_models():
+    try:
+        models = DefAccessModel.query.order_by(DefAccessModel.def_access_model_id.desc()).all()
+        return make_response(jsonify([model.json() for model in models]), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
+    
+@flask_app.route('/def_access_models/<int:model_id>', methods=['GET'])
+def get_def_access_model(model_id):
+    try:
+        model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
+        return make_response(jsonify(model.json()), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
+
+@flask_app.route('/def_access_models/<int:model_id>', methods=['PUT'])
+def update_def_access_model(model_id):
+    try:
+        model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
+        if model:
+            model.model_name        = request.json.get('model_name', model.model_name)
+            model.description       = request.json.get('description', model.description)
+            model.type              = request.json.get('type', model.type)
+            model.run_status        = request.json.get('run_status', model.run_status)
+            model.state             = request.json.get('state', model.state)
+            model.last_run_date     = request.json.get('last_run_date', model.last_run_date)
+            model.last_updated_by   = request.json.get('last_updated_by', model.last_updated_by)
+            model.last_updated_date = current_timestamp()
+            model.revision          = request.json.get('revision', model.revision)
+            model.revision_date     = request.json.get('revision_date', model.revision_date)
+
+            db.session.commit()
+            return make_response(jsonify({'message': 'DefAccessModel updated successfully'}), 200)
+        else:
+            return make_response(jsonify({'message': 'DefAccessModel not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error updating DefAccessModel', 'error': str(e)}), 500)
+
+@flask_app.route('/def_access_models/<int:model_id>', methods=['DELETE'])
+def delete_def_access_model(model_id):
+    try:
+        model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
+        if model:
+            db.session.delete(model)
+            db.session.commit()
+            return make_response(jsonify({'message': 'DefAccessModel deleted successfully'}), 200)
+        else:
+            return make_response(jsonify({'message': 'DefAccessModel not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error deleting DefAccessModel', 'error': str(e)}), 500)
+
+#def_access_model_logics
+@flask_app.route('/def_access_model_logics', methods=['POST'])
+def create_def_access_model_logic():
+    try:
+        def_access_model_id = request.json.get('def_access_model_id')
+        filter_text = request.json.get('filter')
+        object_text = request.json.get('object')
+        attribute = request.json.get('attribute')
+        condition = request.json.get('condition')
+        value = request.json.get('value')
+
+        if not def_access_model_id:
+            return make_response(jsonify({'message': 'def_access_model_id is required'}), 400)
+
+        new_logic = DefAccessModelLogic(
+            def_access_model_id=def_access_model_id,
+            filter=filter_text,
+            object=object_text,
+            attribute=attribute,
+            condition=condition,
+            value=value
+        )
+        db.session.add(new_logic)
+        db.session.commit()
+        return make_response(jsonify({'message': 'DefAccessModelLogic created successfully!'}), 201)
+    except Exception as e:
+        return make_response(jsonify({'message': f'Error: {str(e)}'}), 500)
+
+
+@flask_app.route('/def_access_model_logics', methods=['GET'])
+def get_def_access_model_logics():
+    try:
+        logics = DefAccessModelLogic.query.order_by(DefAccessModelLogic.def_access_model_logic_id.desc()).all()
+        return make_response(jsonify([logic.json() for logic in logics]), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error retrieving logics', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_model_logics/<int:logic_id>', methods=['GET'])
+def get_def_access_model_logic(logic_id):
+    try:
+        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=logic_id).first()
+        if logic:
+            return make_response(jsonify(logic.json()), 200)
+        else:
+            return make_response(jsonify({'message': 'Logic not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error retrieving logic', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_model_logics/<int:logic_id>', methods=['PUT'])
+def update_def_access_model_logic(logic_id):
+    try:
+        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=logic_id).first()
+        if logic:
+            logic.def_access_model_id = request.json.get('def_access_model_id', logic.def_access_model_id)
+            logic.filter = request.json.get('filter', logic.filter)
+            logic.object = request.json.get('object', logic.object)
+            logic.attribute = request.json.get('attribute', logic.attribute)
+            logic.condition = request.json.get('condition', logic.condition)
+            logic.value = request.json.get('value', logic.value)
+
+            db.session.commit()
+            return make_response(jsonify({'message': 'Logic updated successfully'}), 200)
+        else:
+            return make_response(jsonify({'message': 'Logic not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error updating logic', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_model_logics/<int:logic_id>', methods=['DELETE'])
+def delete_def_access_model_logic(logic_id):
+    try:
+        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=logic_id).first()
+        if logic:
+            db.session.delete(logic)
+            db.session.commit()
+            return make_response(jsonify({'message': 'Logic deleted successfully'}), 200)
+        else:
+            return make_response(jsonify({'message': 'Logic not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error deleting logic', 'error': str(e)}), 500)
+
+#def_access_model_logic_attributes
+@flask_app.route('/def_access_model_logic_attributes', methods=['POST'])
+def create_def_access_model_logic_attribute():
+    try:
+        def_access_model_logic_id = request.json.get('def_access_model_logic_id')
+        widget_position = request.json.get('widget_position')
+        widget_state = request.json.get('widget_state')
+
+        if not def_access_model_logic_id:
+            return make_response(jsonify({'message': 'def_access_model_logic_id is required'}), 400)
+
+        new_attribute = DefAccessModelLogicAttribute(
+            def_access_model_logic_id=def_access_model_logic_id,
+            widget_position=widget_position,
+            widget_state=widget_state
+        )
+        db.session.add(new_attribute)
+        db.session.commit()
+        return make_response(jsonify({"message": "DefAccessModelLogicAttribute created successfully!"}), 201)
+    except Exception as e:
+        return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
+
+
+@flask_app.route('/def_access_model_logic_attributes', methods=['GET'])
+def get_def_access_model_logic_attributes():
+    try:
+        attributes = DefAccessModelLogicAttribute.query.order_by(DefAccessModelLogicAttribute.id.desc()).all()
+        return make_response(jsonify([attr.json() for attr in attributes]), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving attributes", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_access_model_logic_attributes/<int:attr_id>', methods=['GET'])
+def get_def_access_model_logic_attribute(attr_id):
+    try:
+        attribute = DefAccessModelLogicAttribute.query.filter_by(id=attr_id).first()
+        if attribute:
+            return make_response(jsonify(attribute.json()), 200)
+        else:
+            return make_response(jsonify({'message': 'Attribute not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving attribute", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_access_model_logic_attributes/<int:attr_id>', methods=['PUT'])
+def update_def_access_model_logic_attribute(attr_id):
+    try:
+        attribute = DefAccessModelLogicAttribute.query.filter_by(id=attr_id).first()
+        if attribute:
+            attribute.def_access_model_logic_id = request.json.get('def_access_model_logic_id', attribute.def_access_model_logic_id)
+            attribute.widget_position = request.json.get('widget_position', attribute.widget_position)
+            attribute.widget_state = request.json.get('widget_state', attribute.widget_state)
+
+            db.session.commit()
+            return make_response(jsonify({'message': 'Attribute updated successfully'}), 200)
+        else:
+            return make_response(jsonify({'message': 'Attribute not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error updating attribute', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_model_logic_attributes/<int:attr_id>', methods=['DELETE'])
+def delete_def_access_model_logic_attribute(attr_id):
+    try:
+        attribute = DefAccessModelLogicAttribute.query.filter_by(id=attr_id).first()
+        if attribute:
+            db.session.delete(attribute)
+            db.session.commit()
+            return make_response(jsonify({'message': 'Attribute deleted successfully'}), 200)
+        else:
+            return make_response(jsonify({'message': 'Attribute not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error deleting attribute', 'error': str(e)}), 500)
 
 if __name__ == "__main__":
     flask_app.run(debug=True)

@@ -1965,7 +1965,7 @@ def create_def_access_models():
         created_by = request.json.get('created_by')
         last_updated_by = request.json.get('last_updated_by')
         last_updated_date = current_timestamp()
-        revision = request.json.get('revision')
+        revision = 0
         revision_date = current_timestamp()
 
         new_def_access_model = DefAccessModel(
@@ -2016,7 +2016,7 @@ def update_def_access_model(model_id):
             model.last_run_date     = current_timestamp() #current_timestamp()
             model.last_updated_by   = request.json.get('last_updated_by', model.last_updated_by)
             model.last_updated_date = current_timestamp()
-            model.revision          = request.json.get('revision', model.revision)
+            model.revision          = model.revision + 1
             model.revision_date     = current_timestamp()
 
             db.session.commit()

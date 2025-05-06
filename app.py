@@ -37,7 +37,10 @@ from executors.models import (
     DefTenantEnterpriseSetupV,
     DefAccessModel,
     DefAccessModelLogic,
-    DefAccessModelLogicAttribute
+    DefAccessModelLogicAttribute,
+    DefGlobalCondition,
+    DefGlobalConditionLogic,
+    DefGlobalConditionLogicAttribute
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -1952,6 +1955,9 @@ def view_requests(page, page_limit):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+
+
 #def_access_models
 @flask_app.route('/def_access_models', methods=['POST'])
 def create_def_access_models():
@@ -2039,6 +2045,9 @@ def delete_def_access_model(model_id):
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting DefAccessModel', 'error': str(e)}), 500)
 
+
+
+
 #def_access_model_logics
 @flask_app.route('/def_access_model_logics', methods=['POST'])
 def create_def_access_model_logic():
@@ -2066,6 +2075,54 @@ def create_def_access_model_logic():
         return make_response(jsonify({'message': 'DefAccessModelLogic created successfully!'}), 201)
     except Exception as e:
         return make_response(jsonify({'message': f'Error: {str(e)}'}), 500)
+
+
+@flask_app.route('/def_access_model_logics/upsert/<int:def_access_model_logic_id>', methods=['POST'])
+def create_update_def_access_model_logic(def_access_model_logic_id):
+    try:
+        def_access_model_id = request.json.get('def_access_model_id')
+        filter_text = request.json.get('filter')
+        object_text = request.json.get('object')
+        attribute = request.json.get('attribute')
+        condition = request.json.get('condition')
+        value = request.json.get('value')
+
+        existing_logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
+
+        if existing_logic:
+            existing_logic.def_access_model_id = def_access_model_id
+            existing_logic.filter = filter_text
+            existing_logic.object = object_text
+            existing_logic.attribute = attribute
+            existing_logic.condition = condition
+            existing_logic.value = value
+            message = "DefAccessModelLogic updated successfully"
+        else:
+            new_logic = DefAccessModelLogic(
+                def_access_model_logic_id=def_access_model_logic_id,
+                def_access_model_id=def_access_model_id,
+                filter=filter_text,
+                object=object_text,
+                attribute=attribute,
+                condition=condition,
+                value=value
+            )
+            db.session.add(new_logic)
+            message = "DefAccessModelLogic created successfully"
+
+        db.session.commit()
+        return make_response(jsonify({"message": message}), 200)
+
+    except IntegrityError:
+        return make_response(jsonify({
+            "message": "Error creating or updating DefAccessModelLogic",
+            "error": "Integrity error"
+        }), 409)
+    except Exception as e:
+        return make_response(jsonify({
+            "message": "Error creating or updating DefAccessModelLogic",
+            "error": str(e)
+        }), 500)
 
 
 @flask_app.route('/def_access_model_logics', methods=['GET'])
@@ -2122,6 +2179,10 @@ def delete_def_access_model_logic(logic_id):
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting logic', 'error': str(e)}), 500)
 
+
+
+
+
 #def_access_model_logic_attributes
 @flask_app.route('/def_access_model_logic_attributes', methods=['POST'])
 def create_def_access_model_logic_attribute():
@@ -2152,6 +2213,44 @@ def get_def_access_model_logic_attributes():
         return make_response(jsonify([attr.json() for attr in attributes]), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving attributes", "error": str(e)}), 500)
+
+@flask_app.route('/def_access_model_logic_attributes/upsert/<int:id>', methods=['POST'])
+def create_update_def_access_model_logic_attribute(id):
+    try:
+        def_access_model_logic_id = request.json.get('def_access_model_logic_id')
+        widget_position = request.json.get('widget_position')
+        widget_state = request.json.get('widget_state')
+
+        existing_attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
+
+        if existing_attribute:
+            existing_attribute.def_access_model_logic_id = def_access_model_logic_id
+            existing_attribute.widget_position = widget_position
+            existing_attribute.widget_state = widget_state
+            message = "DefAccessModelLogicAttribute updated successfully"
+        else:
+            new_attribute = DefAccessModelLogicAttribute(
+                id=id,
+                def_access_model_logic_id=def_access_model_logic_id,
+                widget_position=widget_position,
+                widget_state=widget_state
+            )
+            db.session.add(new_attribute)
+            message = "DefAccessModelLogicAttribute created successfully"
+
+        db.session.commit()
+        return make_response(jsonify({"message": message}), 200)
+
+    except IntegrityError:
+        return make_response(jsonify({
+            "message": "Error creating or updating DefAccessModelLogicAttribute",
+            "error": "Integrity error"
+        }), 409)
+    except Exception as e:
+        return make_response(jsonify({
+            "message": "Error creating or updating DefAccessModelLogicAttribute",
+            "error": str(e)
+        }), 500)
 
 
 @flask_app.route('/def_access_model_logic_attributes/<int:attr_id>', methods=['GET'])
@@ -2195,6 +2294,84 @@ def delete_def_access_model_logic_attribute(attr_id):
             return make_response(jsonify({'message': 'Attribute not found'}), 404)
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting attribute', 'error': str(e)}), 500)
+
+
+
+
+
+# def_global_conditions
+@flask_app.route('/def_global_conditions', methods=['POST'])
+def create_def_global_condition():
+    try:
+        name        = request.json.get('name')
+        datasource  = request.json.get('datasource')
+        description = request.json.get('description')
+        status      = request.json.get('status')
+
+        new_condition = DefGlobalCondition(
+            name        = name,
+            datasource  = datasource,
+            description = description,
+            status      = status
+        )
+
+        db.session.add(new_condition)
+        db.session.commit()
+
+        return make_response(jsonify({"message": "DefGlobalCondition created successfully!"}), 201)
+    except Exception as e:
+        return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
+
+@flask_app.route('/def_global_conditions', methods=['GET'])
+def get_def_global_conditions():
+    try:
+        conditions = DefGlobalCondition.query.order_by(DefGlobalCondition.def_global_condition_id.desc()).all()
+        return make_response(jsonify([condition.json() for condition in conditions]), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving DefGlobalConditions", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['GET'])
+def get_def_global_condition(def_global_condition_id):
+    try:
+        condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
+        if condition:
+            return make_response(jsonify(condition.json()), 200)
+        return make_response(jsonify({"message": "DefGlobalCondition not found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving DefGlobalCondition", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['PUT'])
+def update_def_global_condition(def_global_condition_id):
+    try:
+        condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
+        if condition:
+            condition.name        = request.json.get('name', condition.name)
+            condition.datasource  = request.json.get('datasource', condition.datasource)
+            condition.description = request.json.get('description', condition.description)
+            condition.status      = request.json.get('status', condition.status)
+
+            db.session.commit()
+            return make_response(jsonify({'message': 'DefGlobalCondition updated successfully'}), 200)
+        return make_response(jsonify({'message': 'DefGlobalCondition not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error updating DefGlobalCondition', 'error': str(e)}), 500)
+
+@flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['DELETE'])
+def delete_def_global_condition(def_global_condition_id):
+    try:
+        condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
+        if condition:
+            db.session.delete(condition)
+            db.session.commit()
+            return make_response(jsonify({'message': 'DefGlobalCondition deleted successfully'}), 200)
+        return make_response(jsonify({'message': 'DefGlobalCondition not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error deleting DefGlobalCondition', 'error': str(e)}), 500)
+
+
+
 
 if __name__ == "__main__":
     flask_app.run(debug=True)

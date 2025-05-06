@@ -561,3 +561,68 @@ class DefAccessModelLogicAttribute(db.Model):
             "widget_position": self.widget_position,
             "widget_state": self.widget_state
         }
+    
+
+class DefGlobalCondition(db.Model):
+    __tablename__  = 'def_global_conditions'
+    __table_args__ = {'schema': 'apps'}
+
+    def_global_condition_id = db.Column(db.Integer, primary_key=True)
+    name        = db.Column(db.Text)
+    datasource  = db.Column(db.Text)
+    description = db.Column(db.Text)
+    status      = db.Column(db.Text)
+
+    def json(self):
+        return {
+            'def_global_condition_id': self.def_global_condition_id,
+            'name'       : self.name,
+            'datasource' : self.datasource,
+            'description': self.description,
+            'status'     : self.status
+        }
+    
+# class DefGlobalConditionLogic(db.Model):
+#     __tablename__  = 'def_global_condition_logics'
+#     __table_args__ = {'schema': 'apps'}
+
+#     def_global_condition_logic_id = db.Column(db.Integer, primary_key=True)
+#     def_global_condition_id       = db.Column(db.Integer, db.ForeignKey('apps.def_global_conditions.def_global_condition_id'), nullable=False)
+#     object     = db.Column(db.Text)
+#     attribute  = db.Column(db.Text)
+#     condition  = db.Column(db.Text)
+#     value      = db.Column(db.Text)
+
+#     def json(self):
+#         return {
+#             'def_global_condition_logic_id': self.def_global_condition_logic_id,
+#             'def_global_condition_id'     : self.def_global_condition_id,
+#             'object'     : self.object,
+#             'attribute'  : self.attribute,
+#             'condition'  : self.condition,
+#             'value'      : self.value
+#         }
+    
+# class DefGlobalConditionLogicAttribute(db.Model):
+
+#     __tablename__  = 'def_global_condition_logic_attributes'
+#     __table_args__ = {'schema': 'apps'}
+
+#     def_global_condition_logic_attribute_id = db.Column(db.Integer, primary_key=True)
+#     def_global_condition_logic_id = db.Column(db.Integer, db.ForeignKey('apps.def_global_condition_logics.def_global_condition_logic_id'), nullable=False)
+#     widget_position = db.Column(db.Integer)
+#     widget_state    = db.Column(db.Integer)
+
+#     def json(self):
+#         return {
+#             'def_global_condition_logic_attribute_id': self.def_global_condition_logic_attribute_id,
+#             'def_global_condition_logic_id'          : self.def_global_condition_logic_id,
+#             'widget_position' : self.widget_position,
+#             'widget_state'    : self.widget_state
+#         }
+    
+
+
+
+
+

@@ -38,9 +38,9 @@ from executors.models import (
     DefAccessModel,
     DefAccessModelLogic,
     DefAccessModelLogicAttribute,
-    DefGlobalCondition,
-    DefGlobalConditionLogic,
-    DefGlobalConditionLogicAttribute
+    DefGlobalCondition
+    # DefGlobalConditionLogic,
+    # DefGlobalConditionLogicAttribute
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1

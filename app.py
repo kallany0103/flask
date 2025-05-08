@@ -10,7 +10,7 @@ from functools import wraps
 from flask_cors import CORS 
 from dotenv import load_dotenv            # To load environment variables from a .env file
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine, text, desc, cast, TIMESTAMP
+from sqlalchemy import create_engine, text, desc, cast, TIMESTAMP, func
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, make_response       # Flask utilities for handling requests and responses
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -2076,53 +2076,108 @@ def create_def_access_model_logic():
     except Exception as e:
         return make_response(jsonify({'message': f'Error: {str(e)}'}), 500)
 
-
-@flask_app.route('/def_access_model_logics/upsert/<int:def_access_model_logic_id>', methods=['POST'])
-def create_update_def_access_model_logic(def_access_model_logic_id):
+@flask_app.route('/def_access_model_logics/upsert', methods=['POST'])
+def upsert_def_access_model_logics():
     try:
-        def_access_model_id = request.json.get('def_access_model_id')
-        filter_text = request.json.get('filter')
-        object_text = request.json.get('object')
-        attribute = request.json.get('attribute')
-        condition = request.json.get('condition')
-        value = request.json.get('value')
+        data_list = request.get_json()
 
-        existing_logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
+        if not isinstance(data_list, list):
+            return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
 
-        if existing_logic:
-            existing_logic.def_access_model_id = def_access_model_id
-            existing_logic.filter = filter_text
-            existing_logic.object = object_text
-            existing_logic.attribute = attribute
-            existing_logic.condition = condition
-            existing_logic.value = value
-            message = "DefAccessModelLogic updated successfully"
-        else:
-            new_logic = DefAccessModelLogic(
-                def_access_model_logic_id=def_access_model_logic_id,
-                def_access_model_id=def_access_model_id,
-                filter=filter_text,
-                object=object_text,
-                attribute=attribute,
-                condition=condition,
-                value=value
-            )
-            db.session.add(new_logic)
-            message = "DefAccessModelLogic created successfully"
+        response = []
+
+        for data in data_list:
+            logic_id = data.get('def_access_model_logic_id')
+            model_id = data.get('def_access_model_id')
+            filter_ = data.get('filter')
+            object_ = data.get('object')
+            attribute = data.get('attribute')
+            condition = data.get('condition')
+            value = data.get('value')
+
+            if logic_id:
+                logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=logic_id).first()
+                if not logic:
+                    response.append({
+                        'def_access_model_logic_id': logic_id,
+                        'status': 'error',
+                        'message': f'DefAccessModelLogic with id {logic_id} not found'
+                    })
+                    continue
+
+                # Prevent changing foreign key
+                if model_id and model_id != logic.def_access_model_id:
+                    response.append({
+                        'def_access_model_logic_id': logic_id,
+                        'status': 'error',
+                        'message': 'Updating def_access_model_id is not allowed'
+                    })
+                    continue
+
+               
+                logic.filter = filter_
+                logic.object = object_
+                logic.attribute = attribute
+                logic.condition = condition
+                logic.value = value
+                db.session.add(logic)
+
+                response.append({
+                    'def_access_model_logic_id': logic.def_access_model_logic_id,
+                    'status': 'updated',
+                    'message': 'Logic updated successfully'
+                })
+
+            else:
+                if not model_id:
+                    response.append({
+                        'status': 'error',
+                        'message': 'def_access_model_id is required for new records'
+                    })
+                    continue
+
+                # Validate foreign key existence (optional; depends on enforcement at DB)
+                model_exists = db.session.query(
+                    db.exists().where(DefAccessModel.def_access_model_id == model_id)
+                ).scalar()
+
+                if not model_exists:
+                    response.append({
+                        'status': 'error',
+                        'message': f'def_access_model_id {model_id} does not exist'
+                    })
+                    continue
+
+                new_logic = DefAccessModelLogic(
+                    def_access_model_id=model_id,
+                    filter=filter_,
+                    object=object_,
+                    attribute=attribute,
+                    condition=condition,
+                    value=value
+                )
+                db.session.add(new_logic)
+                db.session.flush()
+
+                response.append({
+                    'def_access_model_logic_id': new_logic.def_access_model_logic_id,
+                    'status': 'created',
+                    'message': 'Logic created successfully'
+                })
 
         db.session.commit()
-        return make_response(jsonify({"message": message}), 200)
+        return make_response(jsonify(response), 200)
 
     except IntegrityError:
-        return make_response(jsonify({
-            "message": "Error creating or updating DefAccessModelLogic",
-            "error": "Integrity error"
-        }), 409)
+        db.session.rollback()
+        return make_response(jsonify({'message': 'Integrity error during upsert'}), 409)
     except Exception as e:
+        db.session.rollback()
         return make_response(jsonify({
-            "message": "Error creating or updating DefAccessModelLogic",
-            "error": str(e)
+            'message': 'Error during upsert',
+            'error': str(e)
         }), 500)
+
 
 
 @flask_app.route('/def_access_model_logics', methods=['GET'])
@@ -2214,43 +2269,104 @@ def get_def_access_model_logic_attributes():
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving attributes", "error": str(e)}), 500)
 
-@flask_app.route('/def_access_model_logic_attributes/upsert/<int:id>', methods=['POST'])
-def create_update_def_access_model_logic_attribute(id):
+@flask_app.route('/def_access_model_logic_attributes/upsert', methods=['POST'])
+def upsert_def_access_model_logic_attributes():
     try:
-        def_access_model_logic_id = request.json.get('def_access_model_logic_id')
-        widget_position = request.json.get('widget_position')
-        widget_state = request.json.get('widget_state')
+        data_list = request.get_json()
 
-        existing_attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
+        # Enforce list-only payload
+        if not isinstance(data_list, list):
+            return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
 
-        if existing_attribute:
-            existing_attribute.def_access_model_logic_id = def_access_model_logic_id
-            existing_attribute.widget_position = widget_position
-            existing_attribute.widget_state = widget_state
-            message = "DefAccessModelLogicAttribute updated successfully"
-        else:
-            new_attribute = DefAccessModelLogicAttribute(
-                id=id,
-                def_access_model_logic_id=def_access_model_logic_id,
-                widget_position=widget_position,
-                widget_state=widget_state
-            )
-            db.session.add(new_attribute)
-            message = "DefAccessModelLogicAttribute created successfully"
+        response = []
+
+        for data in data_list:
+            attr_id = data.get('id')
+            def_access_model_logic_id = data.get('def_access_model_logic_id')
+            widget_position = data.get('widget_position')
+            widget_state = data.get('widget_state')
+
+            if attr_id:
+                attribute = DefAccessModelLogicAttribute.query.filter_by(id=attr_id).first()
+                if not attribute:
+                    response.append({
+                        'id': attr_id,
+                        'status': 'error',
+                        'message': f'Attribute with id {attr_id} not found'
+                    })
+                    continue
+
+                # Disallow updating def_access_model_logic_id
+                if def_access_model_logic_id and def_access_model_logic_id != attribute.def_access_model_logic_id:
+                    response.append({
+                        'id': attr_id,
+                        'status': 'error',
+                        'message': 'Updating def_access_model_logic_id is not allowed'
+                    })
+                    continue
+
+                attribute.widget_position = widget_position
+                attribute.widget_state = widget_state
+                db.session.add(attribute)
+
+                response.append({
+                    'id': attribute.id,
+                    'status': 'updated',
+                    'message': 'Attribute updated successfully'
+                })
+
+            else:
+                # Always fetch the latest logic ID from the DB
+                def_access_model_logic_id = db.session.query(
+                    func.max(DefAccessModelLogic.def_access_model_logic_id)
+                ).scalar()
+
+                if def_access_model_logic_id is None:
+                    response.append({
+                        'status': 'error',
+                        'message': 'No DefAccessModelLogic entries exist to assign logic ID'
+                    })
+                    continue
+
+                # Validate def_access_model_logic_id exists
+                # logic_exists = db.session.query(
+                #     db.exists().where(DefAccessModelLogic.def_access_model_logic_id == def_access_model_logic_id)
+                #     ).scalar()
+
+                # if not logic_exists:
+                #     response.append({
+                #         'status': 'error',
+                #         'message': f'def_access_model_logic_id {def_access_model_logic_id} does not exist'
+                #     })
+                #     continue
+
+                new_attribute = DefAccessModelLogicAttribute(
+                    def_access_model_logic_id=def_access_model_logic_id,
+                    widget_position=widget_position,
+                    widget_state=widget_state
+                )
+                db.session.add(new_attribute)
+                db.session.flush()
+
+                response.append({
+                    'id': new_attribute.id,
+                    'status': 'created',
+                    'message': 'Attribute created successfully'
+                })
 
         db.session.commit()
-        return make_response(jsonify({"message": message}), 200)
+        return make_response(jsonify(response), 200)
 
     except IntegrityError:
-        return make_response(jsonify({
-            "message": "Error creating or updating DefAccessModelLogicAttribute",
-            "error": "Integrity error"
-        }), 409)
+        db.session.rollback()
+        return make_response(jsonify({'message': 'Integrity error during upsert'}), 409)
     except Exception as e:
+        db.session.rollback()
         return make_response(jsonify({
-            "message": "Error creating or updating DefAccessModelLogicAttribute",
-            "error": str(e)
+            'message': 'Error during upsert',
+            'error': str(e)
         }), 500)
+
 
 
 @flask_app.route('/def_access_model_logic_attributes/<int:attr_id>', methods=['GET'])

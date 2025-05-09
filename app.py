@@ -38,9 +38,11 @@ from executors.models import (
     DefAccessModel,
     DefAccessModelLogic,
     DefAccessModelLogicAttribute,
-    DefGlobalCondition
+    DefGlobalCondition,
     # DefGlobalConditionLogic,
-    # DefGlobalConditionLogicAttribute
+    # DefGlobalConditionLogicAttribute,
+    DefAccessPointElement,
+    DefDataSource
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -1651,7 +1653,10 @@ def Create_TaskSchedule():
 @flask_app.route('/Show_TaskSchedules', methods=['GET'])
 def Show_TaskSchedules():
     try:
-        schedules = DefAsyncTaskSchedulesV.query.filter( DefAsyncTaskSchedulesV.ready_for_redbeat != 'Y').all()
+        schedules = DefAsyncTaskSchedulesV.query \
+    .filter(DefAsyncTaskSchedulesV.ready_for_redbeat != 'Y') \
+    .order_by(desc(DefAsyncTaskSchedulesV.def_task_sche_id)) \
+    .all()
         # Return the schedules as a JSON response
         return jsonify([schedule.json() for schedule in schedules])
 
@@ -2000,6 +2005,23 @@ def get_def_access_models():
         return make_response(jsonify([model.json() for model in models]), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
+
+@flask_app.route('/def_access_models/<int:page>/<int:limit>', methods=['GET'])
+def get_paginated_def_access_models(page, limit):
+    try:
+        query = DefAccessModel.query.order_by(DefAccessModel.def_access_model_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [model.json() for model in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
+
     
 @flask_app.route('/def_access_models/<int:model_id>', methods=['GET'])
 def get_def_access_model(model_id):
@@ -2487,7 +2509,231 @@ def delete_def_global_condition(def_global_condition_id):
         return make_response(jsonify({'message': 'Error deleting DefGlobalCondition', 'error': str(e)}), 500)
 
 
+#Def_access_point_elements
+@flask_app.route('/def_access_point_elements', methods=['POST'])
+def create_def_access_point_element():
+    try:
+        def_data_source_id = request.json.get('def_data_source_id')
+        element_name = request.json.get('element_name')
+        description = request.json.get('description')
+        platform = request.json.get('platform')
+        element_type = request.json.get('element_type')
+        access_control = request.json.get('access_control')
+        change_control = request.json.get('change_control')
+        audit = request.json.get('audit')
+        created_by = request.json.get('created_by')
+        last_updated_by = request.json.get('last_updated_by')
 
+        if not def_data_source_id:
+            return make_response(jsonify({'message': 'def_data_source_id is required'}), 400)
+
+        data_source = DefDataSource.query.get(def_data_source_id)
+        if not data_source:
+            return make_response(jsonify({'message': 'Invalid def_data_source_id — referenced source not found'}), 404)
+
+        new_element = DefAccessPointElement(
+            def_data_source_id=def_data_source_id,
+            element_name=element_name,
+            description=description,
+            platform=platform,
+            element_type=element_type,
+            access_control=access_control,
+            change_control=change_control,
+            audit=audit,
+            created_by=created_by,
+            last_updated_by=last_updated_by
+        )
+
+        db.session.add(new_element)
+        db.session.commit()
+        return make_response(jsonify({"message": "DefAccessPointElement created successfully!"}), 201)
+    except Exception as e:
+        return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
+    
+
+@flask_app.route('/def_access_point_elements', methods=['GET'])
+def get_all_def_access_point_elements():
+    try:
+        elements = DefAccessPointElement.query.order_by(
+            desc(DefAccessPointElement.def_access_point_id)
+        ).all()
+        return jsonify([element.json() for element in elements])
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+    
+@flask_app.route('/def_access_point_elements/<int:dap_id>', methods=['GET'])
+def get_def_access_point_element_by_id(dap_id):
+    try:
+        element = DefAccessPointElement.query.get(dap_id)
+        
+        if element is None:
+            return jsonify({"error": "Element not found"}), 404
+
+        return jsonify(element.json())
+
+    except ValueError:
+        return jsonify({"error": "Invalid ID format. ID must be an integer."}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@flask_app.route('/def_access_point_elements/<int:page>/<int:limit>', methods=['GET'])
+def get_paginated_elements(page, limit):
+    try:
+        query = DefAccessPointElement.query.order_by(DefAccessPointElement.def_access_point_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+
+        # Return paginated data
+        return make_response(jsonify({
+            "items": [item.json() for item in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error fetching elements', 'error': str(e)}), 500)
+
+    
+@flask_app.route('/def_access_point_elements/<int:dap_id>', methods=['PUT'])
+def update_def_access_point_element(dap_id):
+    try:
+        element = DefAccessPointElement.query.filter_by(def_access_point_id=dap_id).first()
+        if not element:
+            return make_response(jsonify({'message': 'DefAccessPointElement not found'}), 404)
+
+        new_data_source_id = request.json.get('def_data_source_id')
+
+        # If a new def_data_source_id is provided, verify that it exists
+        if new_data_source_id is not None:
+            data_source_exists = DefDataSource.query.filter_by(def_data_source_id=new_data_source_id).first()
+            if not data_source_exists:
+                return make_response(jsonify({'message': 'Invalid def_data_source_id – no such data source exists'}), 400)
+            element.def_data_source_id = new_data_source_id
+
+        
+        element.element_name = request.json.get('element_name', element.element_name)
+        element.description = request.json.get('description', element.description)
+        element.platform = request.json.get('platform', element.platform)
+        element.element_type = request.json.get('element_type', element.element_type)
+        element.access_control = request.json.get('access_control', element.access_control)
+        element.change_control = request.json.get('change_control', element.change_control)
+        element.audit = request.json.get('audit', element.audit)
+        element.created_by = request.json.get('created_by', element.created_by)
+        element.last_updated_by = request.json.get('last_updated_by', element.last_updated_by)
+
+        db.session.commit()
+        return make_response(jsonify({'message': 'DefAccessPointElement updated successfully'}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({'message': 'Error updating DefAccessPointElement', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_point_elements/<int:dap_id>', methods=['DELETE'])
+def delete_element(dap_id):
+    try:
+        element = DefAccessPointElement.query.filter_by(def_access_point_id=dap_id).first()
+
+        if element:
+            db.session.delete(element)
+            db.session.commit()
+            return make_response(jsonify({'message': 'DefAccessPointElement deleted successfully'}), 200)
+        else:
+            return make_response(jsonify({'message': 'DefAccessPointElement not found'}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error deleting DefAccessPointElement', 'error': str(e)}), 500)
+
+#Def_Data_Sources
+@flask_app.route('/def_data_sources', methods=['POST'])
+def create_def_data_source():
+    try:
+        new_ds = DefDataSource(
+            datasource_name=request.json.get('datasource_name'),
+            description=request.json.get('description'),
+            application_type=request.json.get('application_type'),
+            application_type_version=request.json.get('application_type_version'),
+            last_access_synchronization_date=request.json.get('last_access_synchronization_date'),
+            last_access_synchronization_status=request.json.get('last_access_synchronization_status'),
+            last_transaction_synchronization_date=request.json.get('last_transaction_synchronization_date'),
+            last_transaction_synchronization_status=request.json.get('last_transaction_synchronization_status'),
+            default_datasource=request.json.get('default_datasource'),
+            created_by=request.json.get('created_by'),
+            last_updated_by=request.json.get('last_updated_by')
+        )
+        db.session.add(new_ds)
+        db.session.commit()
+        return make_response(jsonify({'message': 'Data source created successfully'}), 201)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error creating data source', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_data_sources', methods=['GET'])
+def get_all_def_data_sources():
+    try:
+        data_sources = DefDataSource.query.order_by(DefDataSource.def_data_source_id.desc()).all()
+        return make_response(jsonify([ds.json() for ds in data_sources]), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error fetching data sources', 'error': str(e)}), 500)
+
+@flask_app.route('/def_data_sources/<int:page>/<int:limit>', methods=['GET'])
+def get_paginated_def_data_sources(page, limit):
+    try:
+        paginated = DefDataSource.query.order_by(DefDataSource.def_data_source_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+        return make_response(jsonify({
+            'items': [ds.json() for ds in paginated.items],
+            'total': paginated.total,
+            'pages': paginated.pages,
+            'page': paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error fetching paginated data sources', 'error': str(e)}), 500)
+
+@flask_app.route('/def_data_sources/<int:id>', methods=['GET'])
+def get_def_data_source_by_id(id):
+    try:
+        ds = DefDataSource.query.filter_by(def_data_source_id=id).first()
+        if ds:
+            return make_response(jsonify(ds.json()), 200)
+        return make_response(jsonify({'message': 'Data source not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error fetching data source', 'error': str(e)}), 500)
+
+@flask_app.route('/def_data_sources/<int:id>', methods=['PUT'])
+def update_def_data_source(id):
+    try:
+        ds = DefDataSource.query.filter_by(def_data_source_id=id).first()
+        if ds:
+            ds.datasource_name = request.json.get('datasource_name', ds.datasource_name)
+            ds.description = request.json.get('description', ds.description)
+            ds.application_type = request.json.get('application_type', ds.application_type)
+            ds.application_type_version = request.json.get('application_type_version', ds.application_type_version)
+            ds.last_access_synchronization_date = request.json.get('last_access_synchronization_date', ds.last_access_synchronization_date)
+            ds.last_access_synchronization_status = request.json.get('last_access_synchronization_status', ds.last_access_synchronization_status)
+            ds.last_transaction_synchronization_date = request.json.get('last_transaction_synchronization_date', ds.last_transaction_synchronization_date)
+            ds.last_transaction_synchronization_status = request.json.get('last_transaction_synchronization_status', ds.last_transaction_synchronization_status)
+            ds.default_datasource = request.json.get('default_datasource', ds.default_datasource)
+            ds.created_by = request.json.get('created_by', ds.created_by)
+            ds.last_updated_by = request.json.get('last_updated_by', ds.last_updated_by)
+            db.session.commit()
+            return make_response(jsonify({'message': 'Data source updated successfully'}), 200)
+        return make_response(jsonify({'message': 'Data source not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error updating data source', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_data_sources/<int:id>', methods=['DELETE'])
+def delete_def_data_source(id):
+    try:
+        ds = DefDataSource.query.filter_by(def_data_source_id=id).first()
+        if ds:
+            db.session.delete(ds)
+            db.session.commit()
+            return make_response(jsonify({'message': 'Data source deleted successfully'}), 200)
+        return make_response(jsonify({'message': 'Data source not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error deleting data source', 'error': str(e)}), 500)
 
 if __name__ == "__main__":
     flask_app.run(debug=True)

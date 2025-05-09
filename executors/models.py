@@ -622,7 +622,77 @@ class DefGlobalCondition(db.Model):
 #         }
     
 
+class DefDataSource(db.Model):
+    __tablename__ = 'def_data_sources'
+    __table_args__ = {'schema': 'apps'}
 
+    def_data_source_id                     = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    datasource_name                       = db.Column(db.String(50))
+    description                           = db.Column(db.String(250))
+    application_type                      = db.Column(db.String(50))
+    application_type_version              = db.Column(db.String(50))
+    last_access_synchronization_date      = db.Column(db.DateTime)
+    last_access_synchronization_status    = db.Column(db.String(50))
+    last_transaction_synchronization_date = db.Column(db.DateTime)
+    last_transaction_synchronization_status = db.Column(db.String(50))
+    default_datasource                    = db.Column(db.String(50))
+    created_by                            = db.Column(db.String(50))
+    created_on                            = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by                       = db.Column(db.String(50))
+    last_updated_on                       = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            "def_data_source_id": self.def_data_source_id,
+            "datasource_name": self.datasource_name,
+            "description": self.description,
+            "application_type": self.application_type,
+            "application_type_version": self.application_type_version,
+            "last_access_synchronization_date": self.last_access_synchronization_date,
+            "last_access_synchronization_status": self.last_access_synchronization_status,
+            "last_transaction_synchronization_date": self.last_transaction_synchronization_date,
+            "last_transaction_synchronization_status": self.last_transaction_synchronization_status,
+            "default_datasource": self.default_datasource,
+            "created_by": self.created_by,
+            "created_on": self.created_on,
+            "last_updated_by": self.last_updated_by,
+            "last_updated_on": self.last_updated_on
+        }
+
+class DefAccessPointElement(db.Model):
+    __tablename__ = 'def_access_point_elements'
+    __table_args__ = {'schema': 'apps'}
+
+    def_access_point_id  = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    def_data_source_id   = db.Column(db.Integer, db.ForeignKey('apps.def_data_sources.def_data_source_id'), nullable=False)
+    element_name         = db.Column(db.String(150))
+    description          = db.Column(db.String(250))
+    platform             = db.Column(db.String(50))
+    element_type         = db.Column(db.String(50))
+    access_control       = db.Column(db.String(10))
+    change_control       = db.Column(db.String(10))
+    audit                = db.Column(db.String(50))
+    created_by           = db.Column(db.String(50))
+    created_on           = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by      = db.Column(db.String(50))
+    last_updated_on      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            "def_access_point_id": self.def_access_point_id,
+            "def_data_source_id": self.def_data_source_id,
+            "element_name": self.element_name,
+            "description": self.description,
+            "platform": self.platform,
+            "element_type": self.element_type,
+            "access_control": self.access_control,
+            "change_control": self.change_control,
+            "audit": self.audit,
+            "created_by": self.created_by,
+            "created_on": self.created_on,
+            "last_updated_by": self.last_updated_by,
+            "last_updated_on": self.last_updated_on
+        }
 
 
 

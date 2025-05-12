@@ -2074,6 +2074,7 @@ def delete_def_access_model(model_id):
 @flask_app.route('/def_access_model_logics', methods=['POST'])
 def create_def_access_model_logic():
     try:
+        # def_access_model_logic_id = request.json.get('def_access_model_logic_id')
         def_access_model_id = request.json.get('def_access_model_id')
         filter_text = request.json.get('filter')
         object_text = request.json.get('object')
@@ -2109,43 +2110,44 @@ def upsert_def_access_model_logics():
         response = []
 
         for data in data_list:
-            logic_id = data.get('def_access_model_logic_id')
+            def_access_model_logic_id = data.get('def_access_model_logic_id')
             model_id = data.get('def_access_model_id')
-            filter_ = data.get('filter')
-            object_ = data.get('object')
+            filter_text = data.get('filter')
+            object_text = data.get('object')
             attribute = data.get('attribute')
             condition = data.get('condition')
             value = data.get('value')
 
-            if logic_id:
-                logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=logic_id).first()
-                if not logic:
-                    response.append({
-                        'def_access_model_logic_id': logic_id,
-                        'status': 'error',
-                        'message': f'DefAccessModelLogic with id {logic_id} not found'
-                    })
-                    continue
+            existing_logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
+
+            if existing_logic:
+                # if not logic:
+                #     response.append({
+                #         'def_access_model_logic_id': logic_id,
+                #         'status': 'error',
+                #         'message': f'DefAccessModelLogic with id {logic_id} not found'
+                #     })
+                #     continue
 
                 # Prevent changing foreign key
-                if model_id and model_id != logic.def_access_model_id:
+                if model_id and model_id != existing_logic.def_access_model_id:
                     response.append({
-                        'def_access_model_logic_id': logic_id,
+                        'def_access_model_logic_id': def_access_model_logic_id,
                         'status': 'error',
                         'message': 'Updating def_access_model_id is not allowed'
                     })
                     continue
 
                
-                logic.filter = filter_
-                logic.object = object_
-                logic.attribute = attribute
-                logic.condition = condition
-                logic.value = value
-                db.session.add(logic)
+                existing_logic.filter = filter_text
+                existing_logic.object = object_text
+                existing_logic.attribute = attribute
+                existing_logic.condition = condition
+                existing_logic.value = value
+                db.session.add(existing_logic)
 
                 response.append({
-                    'def_access_model_logic_id': logic.def_access_model_logic_id,
+                    'def_access_model_logic_id': existing_logic.def_access_model_logic_id,
                     'status': 'updated',
                     'message': 'Logic updated successfully'
                 })
@@ -2171,9 +2173,10 @@ def upsert_def_access_model_logics():
                     continue
 
                 new_logic = DefAccessModelLogic(
+                    def_access_model_logic_id = def_access_model_logic_id,
                     def_access_model_id=model_id,
-                    filter=filter_,
-                    object=object_,
+                    filter=filter_text,
+                    object=object_text,
                     attribute=attribute,
                     condition=condition,
                     value=value
@@ -2303,66 +2306,67 @@ def upsert_def_access_model_logic_attributes():
         response = []
 
         for data in data_list:
-            attr_id = data.get('id')
+            attribute_id = data.get('attribute_id')
             def_access_model_logic_id = data.get('def_access_model_logic_id')
             widget_position = data.get('widget_position')
             widget_state = data.get('widget_state')
 
-            if attr_id:
-                attribute = DefAccessModelLogicAttribute.query.filter_by(id=attr_id).first()
-                if not attribute:
-                    response.append({
-                        'id': attr_id,
-                        'status': 'error',
-                        'message': f'Attribute with id {attr_id} not found'
-                    })
-                    continue
+            existing_attribute = DefAccessModelLogicAttribute.query.filter_by(id=attribute_id).first()
+            if existing_attribute:
+                # if not attribute:
+                #     response.append({
+                #         'id': attribute_id,
+                #         'status': 'error',
+                #         'message': f'Attribute with id {attribute_id} not found'
+                #     })
+                #     continue
 
                 # Disallow updating def_access_model_logic_id
-                if def_access_model_logic_id and def_access_model_logic_id != attribute.def_access_model_logic_id:
+                if def_access_model_logic_id and def_access_model_logic_id != existing_attribute.def_access_model_logic_id:
                     response.append({
-                        'id': attr_id,
+                        'id': attribute_id,
                         'status': 'error',
                         'message': 'Updating def_access_model_logic_id is not allowed'
                     })
                     continue
 
-                attribute.widget_position = widget_position
-                attribute.widget_state = widget_state
-                db.session.add(attribute)
+                existing_attribute.widget_position = widget_position
+                existing_attribute.widget_state = widget_state
+                db.session.add(existing_attribute)
 
                 response.append({
-                    'id': attribute.id,
+                    'id': existing_attribute.id,
                     'status': 'updated',
                     'message': 'Attribute updated successfully'
                 })
 
             else:
-                # Always fetch the latest logic ID from the DB
-                def_access_model_logic_id = db.session.query(
-                    func.max(DefAccessModelLogic.def_access_model_logic_id)
-                ).scalar()
+                # Take the maximum data of foreign-key from foreign table
+                # def_access_model_logic_id = db.session.query(
+                #     func.max(DefAccessModelLogic.def_access_model_logic_id)
+                # ).scalar()
 
-                if def_access_model_logic_id is None:
-                    response.append({
-                        'status': 'error',
-                        'message': 'No DefAccessModelLogic entries exist to assign logic ID'
-                    })
-                    continue
-
-                # Validate def_access_model_logic_id exists
-                # logic_exists = db.session.query(
-                #     db.exists().where(DefAccessModelLogic.def_access_model_logic_id == def_access_model_logic_id)
-                #     ).scalar()
-
-                # if not logic_exists:
+                # if def_access_model_logic_id is None:
                 #     response.append({
                 #         'status': 'error',
-                #         'message': f'def_access_model_logic_id {def_access_model_logic_id} does not exist'
+                #         'message': 'No DefAccessModelLogic entries exist to assign logic ID'
                 #     })
                 #     continue
 
+                # Validate def_access_model_logic_id exists
+                logic_exists = db.session.query(
+                    db.exists().where(DefAccessModelLogic.def_access_model_logic_id == def_access_model_logic_id)
+                    ).scalar()
+
+                if not logic_exists:
+                    response.append({
+                        'status': 'error',
+                        'message': f'def_access_model_logic_id {def_access_model_logic_id} does not exist'
+                    })
+                    continue
+
                 new_attribute = DefAccessModelLogicAttribute(
+                    id = attribute_id,
                     def_access_model_logic_id=def_access_model_logic_id,
                     widget_position=widget_position,
                     widget_state=widget_state

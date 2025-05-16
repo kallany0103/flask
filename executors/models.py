@@ -627,19 +627,19 @@ class DefDataSource(db.Model):
     __table_args__ = {'schema': 'apps'}
 
     def_data_source_id                     = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    datasource_name                       = db.Column(db.String(50))
-    description                           = db.Column(db.String(250))
-    application_type                      = db.Column(db.String(50))
-    application_type_version              = db.Column(db.String(50))
-    last_access_synchronization_date      = db.Column(db.DateTime)
-    last_access_synchronization_status    = db.Column(db.String(50))
-    last_transaction_synchronization_date = db.Column(db.DateTime)
-    last_transaction_synchronization_status = db.Column(db.String(50))
-    default_datasource                    = db.Column(db.String(50))
-    created_by                            = db.Column(db.String(50))
-    created_on                            = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by                       = db.Column(db.String(50))
-    last_updated_on                       = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    datasource_name                        = db.Column(db.Text)  
+    description                            = db.Column(db.Text)  
+    application_type                       = db.Column(db.Text)  
+    application_type_version               = db.Column(db.Text)  
+    last_access_synchronization_date       = db.Column(db.DateTime)
+    last_access_synchronization_status     = db.Column(db.Text)  
+    last_transaction_synchronization_date  = db.Column(db.DateTime)
+    last_transaction_synchronization_status= db.Column(db.Text)  
+    default_datasource                     = db.Column(db.Text)  
+    created_by                             = db.Column(db.Text)  
+    created_on                             = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by                        = db.Column(db.Text)  
+    last_updated_on                        = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
@@ -665,16 +665,16 @@ class DefAccessPointElement(db.Model):
 
     def_access_point_id  = db.Column(db.Integer, primary_key=True, autoincrement=True)
     def_data_source_id   = db.Column(db.Integer, db.ForeignKey('apps.def_data_sources.def_data_source_id'), nullable=False)
-    element_name         = db.Column(db.String(150))
-    description          = db.Column(db.String(250))
-    platform             = db.Column(db.String(50))
-    element_type         = db.Column(db.String(50))
-    access_control       = db.Column(db.String(10))
-    change_control       = db.Column(db.String(10))
-    audit                = db.Column(db.String(50))
-    created_by           = db.Column(db.String(50))
+    element_name         = db.Column(db.Text)  
+    description          = db.Column(db.Text)  
+    platform             = db.Column(db.Text)  
+    element_type         = db.Column(db.Text)  
+    access_control       = db.Column(db.Text)  
+    change_control       = db.Column(db.Text)  
+    audit                = db.Column(db.Text)  
+    created_by           = db.Column(db.Text)  
     created_on           = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by      = db.Column(db.String(50))
+    last_updated_by      = db.Column(db.Text)  
     last_updated_on      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
@@ -688,6 +688,39 @@ class DefAccessPointElement(db.Model):
             "access_control": self.access_control,
             "change_control": self.change_control,
             "audit": self.audit,
+            "created_by": self.created_by,
+            "created_on": self.created_on,
+            "last_updated_by": self.last_updated_by,
+            "last_updated_on": self.last_updated_on
+        }
+
+class DefAccessEntitlement(db.Model):
+    __tablename__ = 'def_access_entitlements'
+    __table_args__ = {'schema': 'apps'}
+
+    def_entitlement_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    entitlement_name = db.Column(db.Text, nullable=False)  
+    description = db.Column(db.Text)  
+    comments = db.Column(db.Text)  
+    status = db.Column(db.Text, nullable=False)  
+    effective_date = db.Column(db.Date, nullable=False)
+    revision = db.Column(db.Integer) 
+    revision_date = db.Column(db.Date)
+    created_by = db.Column(db.Text)  
+    created_on = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Text) 
+    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            "def_entitlement_id": self.def_entitlement_id,
+            "entitlement_name": self.entitlement_name,
+            "description": self.description,
+            "comments": self.comments,
+            "status": self.status,
+            "effective_date": self.effective_date,
+            "revision": self.revision,
+            "revision_date": self.revision_date,
             "created_by": self.created_by,
             "created_on": self.created_on,
             "last_updated_by": self.last_updated_by,

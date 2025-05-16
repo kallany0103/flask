@@ -42,7 +42,8 @@ from executors.models import (
     DefGlobalConditionLogic,
     DefGlobalConditionLogicAttribute,
     DefAccessPointElement,
-    DefDataSource
+    DefDataSource,
+    DefAccessEntitlement
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -882,8 +883,8 @@ def login():
     except Exception as e:
         return make_response(jsonify({"message": str(e)}), 500)
         
-    
 @flask_app.route('/users', methods=['GET'])
+@jwt_required()
 def defusers():
     try:
         defusers = DefUsersView.query.all()
@@ -893,6 +894,7 @@ def defusers():
     
     
 @flask_app.route('/users/<int:user_id>', methods=['GET'])
+@jwt_required()
 def get_specific_user(user_id):
     try:
         user = DefUsersView.query.filter_by(user_id=user_id).first()
@@ -1033,7 +1035,7 @@ def delete_access_profile(user_id, serial_number):
 
 
 @flask_app.route('/Create_ExecutionMethod', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def Create_ExecutionMethod():
     try:
         execution_method = request.json.get('execution_method')
@@ -1070,7 +1072,7 @@ def Create_ExecutionMethod():
 
 
 @flask_app.route('/Show_ExecutionMethods', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_ExecutionMethods():
     try:
         methods = DefAsyncExecutionMethods.query.all()
@@ -1082,7 +1084,7 @@ def Show_ExecutionMethods():
 
 
 @flask_app.route('/Show_ExecutionMethod/<string:internal_execution_method>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_ExecutionMethod(internal_execution_method):
     try:
         method = DefAsyncExecutionMethods.query.get(internal_execution_method)
@@ -1094,7 +1096,7 @@ def Show_ExecutionMethod(internal_execution_method):
 
 
 @flask_app.route('/Update_ExecutionMethod/<string:internal_execution_method>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Update_ExecutionMethod(internal_execution_method):
     try:
         execution_method = DefAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
@@ -1123,7 +1125,7 @@ def Update_ExecutionMethod(internal_execution_method):
 
 # Create a task definition
 @flask_app.route('/Create_Task', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def Create_Task():
     try:
         user_task_name = request.json.get('user_task_name')
@@ -1163,17 +1165,17 @@ def Create_Task():
 
 
 @flask_app.route('/Show_Tasks', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_Tasks():
     try:
-        tasks = DefAsyncTask.query.all()
+        tasks = DefAsyncTask.query.order_by(DefAsyncTask.def_task_id.desc()).all()
         return make_response(jsonify([task.json() for task in tasks]))
     except Exception as e:
         return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
 
 
 @flask_app.route('/Show_Task/<task_name>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_Task(task_name):
     try:
         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
@@ -1188,7 +1190,7 @@ def Show_Task(task_name):
 
 
 @flask_app.route('/Update_Task/<string:task_name>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Update_Task(task_name):
     try:
         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
@@ -1222,7 +1224,7 @@ def Update_Task(task_name):
 
 
 @flask_app.route('/Cancel_Task/<string:task_name>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Cancel_Task(task_name):
     try:
         # Find the task by task_name in the DEF_ASYNC_TASKS table
@@ -1244,7 +1246,7 @@ def Cancel_Task(task_name):
 
 
 @flask_app.route('/Add_TaskParams/<string:task_name>', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def Add_TaskParams(task_name):
     try:
         # Check if the task exists in the DEF_ASYNC_TASKS table
@@ -1292,7 +1294,7 @@ def Add_TaskParams(task_name):
 
 
 @flask_app.route('/Show_TaskParams/<string:task_name>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_Parameter(task_name):
     try:
         parameters = DefAsyncTaskParam.query.filter_by(task_name=task_name).all()
@@ -1307,7 +1309,7 @@ def Show_Parameter(task_name):
 
 
 @flask_app.route('/Update_TaskParams/<string:task_name>/<int:def_param_id>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Update_TaskParams(task_name, def_param_id):
     try:
         # Get the updated values from the request body
@@ -1344,7 +1346,7 @@ def Update_TaskParams(task_name, def_param_id):
 
 
 @flask_app.route('/Delete_TaskParams/<string:task_name>/<int:def_param_id>', methods=['DELETE'])
-# @jwt_required()
+@jwt_required()
 def Delete_TaskParams(task_name, def_param_id):
     try:
         # Find the task parameter by task_name and seq
@@ -1365,7 +1367,7 @@ def Delete_TaskParams(task_name, def_param_id):
 
 
 @flask_app.route('/Delete_ExecutionMethod/<string:internal_execution_method>', methods=['DELETE'])
-# @jwt_required()
+@jwt_required()
 def Delete_ExecutionMethod(internal_execution_method):
     try:
         # Find the execution method by internal_execution_method
@@ -1521,7 +1523,7 @@ def Delete_ExecutionMethod(internal_execution_method):
 
 
 @flask_app.route('/Create_TaskSchedule', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def Create_TaskSchedule():
     try:
         user_schedule_name = request.json.get('user_schedule_name', 'Immediate')
@@ -1667,7 +1669,7 @@ def Create_TaskSchedule():
 
 
 @flask_app.route('/Show_TaskSchedules', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_TaskSchedules():
     try:
         schedules = DefAsyncTaskSchedulesV.query \
@@ -1683,7 +1685,7 @@ def Show_TaskSchedules():
 
 
 @flask_app.route('/Show_TaskSchedule/<string:task_name>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_TaskSchedule(task_name):
     try:
         schedule = DefAsyncTaskSchedule.query.filter_by(task_name=task_name).first()
@@ -1745,7 +1747,7 @@ def Show_TaskSchedule(task_name):
 
 
 @flask_app.route('/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Update_TaskSchedule(task_name):
     try:
         redbeat_schedule_name = request.json.get('redbeat_schedule_name')
@@ -1833,7 +1835,7 @@ def Update_TaskSchedule(task_name):
 
 
 @flask_app.route('/Cancel_TaskSchedule/<string:task_name>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Cancel_TaskSchedule(task_name):
     try:
         # Extract redbeat_schedule_name from payload
@@ -1987,30 +1989,18 @@ def view_requests(page, page_limit):
 @flask_app.route('/def_access_models', methods=['POST'])
 def create_def_access_models():
     try:
-        model_name = request.json.get('model_name')
-        description = request.json.get('description')
-        type = request.json.get('type')
-        run_status = request.json.get('run_status')
-        state = request.json.get('state')
-        last_run_date = current_timestamp() #current_timestamp
-        created_by = request.json.get('created_by')
-        last_updated_by = request.json.get('last_updated_by')
-        last_updated_date = current_timestamp()
-        revision = 0
-        revision_date = current_timestamp()
-
         new_def_access_model = DefAccessModel(
-            model_name = model_name,
-            description = description,
-            type = type,
-            run_status = run_status,
-            state = state,
-            last_run_date = last_run_date,
-            created_by = created_by,
-            last_updated_by = last_updated_by,
-            last_updated_date = last_updated_date,
-            revision = revision,
-            revision_date = revision_date
+            model_name = request.json.get('model_name'),
+            description = request.json.get('description'),
+            type = request.json.get('type'),
+            run_status = request.json.get('run_status'),
+            state = request.json.get('state'),
+            last_run_date = current_timestamp(), #current_timestamp
+            created_by = request.json.get('created_by'),
+            last_updated_by = request.json.get('last_updated_by'),
+            last_updated_date = current_timestamp(),
+            revision = 0,
+            revision_date = current_timestamp()
         )
         db.session.add(new_def_access_model)
         db.session.commit()
@@ -2504,6 +2494,26 @@ def get_def_global_condition(def_global_condition_id):
         return make_response(jsonify({"message": "Error retrieving DefGlobalCondition", "error": str(e)}), 500)
 
 
+@flask_app.route('/def_global_conditions/<int:page>/<int:limit>', methods=['GET'])
+def get_paginated_def_global_conditions(page, limit):
+    try:
+        query = DefGlobalCondition.query.order_by(DefGlobalCondition.def_global_condition_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [item.json() for item in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            "message": "Error retrieving DefGlobalConditions",
+            "error": str(e)
+        }), 500)
+
+
 @flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['PUT'])
 def update_def_global_condition(def_global_condition_id):
     try:
@@ -2660,6 +2670,27 @@ def get_def_global_condition_logics():
         return make_response(jsonify({"message": "Error retrieving DefGlobalConditionLogics", "error": str(e)}), 500)
 
 
+@flask_app.route('/def_global_condition_logics/<int:page>/<int:limit>', methods=['GET'])
+def get_paginated_def_global_condition_logics(page, limit):
+    try:
+        query = DefGlobalConditionLogic.query.order_by(DefGlobalConditionLogic.def_global_condition_logic_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [item.json() for item in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            'message': 'Error fetching global condition logics',
+            'error': str(e)
+        }), 500)
+
+
+
 @flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['GET'])
 def get_def_global_condition_logic(def_global_condition_logic_id):
     try:
@@ -2689,10 +2720,10 @@ def update_def_global_condition_logic(def_global_condition_logic_id):
         return make_response(jsonify({'message': 'Error updating DefGlobalConditionLogic', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_global_condition_logics/<int:logic_id>', methods=['DELETE'])
-def delete_def_global_condition_logic(logic_id):
+@flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['DELETE'])
+def delete_def_global_condition_logic(def_global_condition_logic_id):
     try:
-        logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=logic_id).first()
+        logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
         if logic:
             db.session.delete(logic)
             db.session.commit()
@@ -2726,68 +2757,25 @@ def get_def_global_condition_logic_attribute(id):
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving condition logic attribute", "error": str(e)}), 500)
     
-# @flask_app.route('/def_global_condition_logic_attributes/upsert', methods=['POST'])
-# def upsert_def_global_condition_logic_attributes():
-#     try:
-#         data_list = request.get_json()
 
-#         if not isinstance(data_list, list):
-#             return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
+@flask_app.route('/def_global_condition_logic_attributes/<int:page>/<int:limit>', methods=['GET'])
+def get_paginated_def_global_condition_logic_attributes(page, limit):
+    try:
+        query = DefGlobalConditionLogicAttribute.query.order_by(DefGlobalConditionLogicAttribute.id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
 
-#         response = []
+        return make_response(jsonify({
+            "items": [item.json() for item in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
 
-#         for data in data_list:
-#             id = data.get('id')  
-#             def_global_condition_logic_id = data.get('def_global_condition_logic_id')
-#             widget_position = data.get('widget_position')
-#             widget_state = data.get('widget_state')
-
-#             existing_attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first() 
-
-#             if existing_attribute:
-#                 # Update the existing attribute
-#                 existing_attribute.widget_position = widget_position
-#                 existing_attribute.widget_state = widget_state
-#                 db.session.commit()
-
-#                 response.append({
-#                     'id': existing_attribute.id,  
-#                     'status': 'updated',
-#                     'message': 'Attribute updated successfully'
-#                 })
-
-#             else:
-#                 # Insert a new attribute
-#                 if not def_global_condition_logic_id:
-#                     response.append({
-#                         'status': 'error',
-#                         'message': 'def_global_condition_logic_id is required for new records'
-#                     })
-#                     continue
-
-#                 new_attribute = DefGlobalConditionLogicAttribute(
-#                     id=id,
-#                     def_global_condition_logic_id=def_global_condition_logic_id,
-#                     widget_position=widget_position,
-#                     widget_state=widget_state
-#                 )
-#                 db.session.add(new_attribute)
-#                 db.session.commit()
-
-#                 response.append({
-#                     'id': new_attribute.id,  
-#                     'status': 'created',
-#                     'message': 'Attribute created successfully'
-#                 })
-
-#         return make_response(jsonify(response), 200)
-
-#     except Exception as e:
-#         db.session.rollback()
-#         return make_response(jsonify({
-#             'message': 'Error during upsert',
-#             'error': str(e)
-#         }), 500)
+    except Exception as e:
+        return make_response(jsonify({
+            'message': 'Error fetching global condition logic attributes',
+            'error': str(e)
+        }), 500)
 
 
 @flask_app.route('/def_global_condition_logic_attributes/upsert', methods=['POST'])
@@ -3150,6 +3138,109 @@ def delete_def_data_source(id):
         return make_response(jsonify({'message': 'Data source not found'}), 404)
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting data source', 'error': str(e)}), 500)
+
+
+
+
+
+
+
+
+
+
+
+#def_access_entitlements
+@flask_app.route('/def_access_entitlements', methods=['GET'])
+def get_all_entitlements():
+    try:
+        entitlements = DefAccessEntitlement.query.order_by(DefAccessEntitlement.def_entitlement_id.desc()).all()
+        return make_response(jsonify([e.json() for e in entitlements]), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error fetching entitlements', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_entitlements/<int:page>/<int:limit>', methods=['GET'])
+def get_paginated_entitlements(page, limit):
+    try:
+        paginated = DefAccessEntitlement.query.order_by(DefAccessEntitlement.def_entitlement_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+        return make_response(jsonify({
+            'items': [e.json() for e in paginated.items],
+            'total': paginated.total,
+            'pages': paginated.pages,
+            'page': paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error fetching paginated entitlements', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_entitlements/<int:id>', methods=['GET'])
+def get_entitlement_by_id(id):
+    try:
+        e = DefAccessEntitlement.query.filter_by(def_entitlement_id=id).first()
+        if e:
+            return make_response(jsonify(e.json()), 200)
+        return make_response(jsonify({'message': 'Entitlement not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error fetching entitlement', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_entitlements', methods=['POST'])
+def create_entitlement():
+    try:
+        new_e = DefAccessEntitlement(
+            entitlement_name=request.json.get('entitlement_name'),
+            description=request.json.get('description'),
+            comments=request.json.get('comments'),
+            status=request.json.get('status'),
+            effective_date= datetime.utcnow().date(),
+            revision= 0,
+            revision_date= datetime.utcnow().date(),
+            created_by=request.json.get('created_by'),
+            last_updated_by=request.json.get('last_updated_by')
+        )
+        db.session.add(new_e)
+        db.session.commit()
+        return make_response(jsonify({'message': 'Entitlement created successfully'}), 201)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error creating entitlement', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_entitlements/<int:id>', methods=['PUT'])
+def update_entitlement(id):
+    try:
+        e = DefAccessEntitlement.query.filter_by(def_entitlement_id=id).first()
+        if e:
+            e.entitlement_name = request.json.get('entitlement_name', e.entitlement_name)
+            e.description = request.json.get('description', e.description)
+            e.comments = request.json.get('comments', e.comments)
+            e.status = request.json.get('status', e.status)
+            e.effective_date = datetime.utcnow().date()
+            e.revision =  e.revision + 1
+            e.revision_date = datetime.utcnow().date()
+            e.created_by = request.json.get('created_by', e.created_by)
+            e.last_updated_by = request.json.get('last_updated_by', e.last_updated_by)
+            db.session.commit()
+            return make_response(jsonify({'message': 'Entitlement updated successfully'}), 200)
+        return make_response(jsonify({'message': 'Entitlement not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error updating entitlement', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_entitlements/<int:id>', methods=['DELETE'])
+def delete_entitlement(id):
+    try:
+        e = DefAccessEntitlement.query.filter_by(def_entitlement_id=id).first()
+        if e:
+            db.session.delete(e)
+            db.session.commit()
+            return make_response(jsonify({'message': 'Entitlement deleted successfully'}), 200)
+        return make_response(jsonify({'message': 'Entitlement not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error deleting entitlement', 'error': str(e)}), 500)
+
+
+
+
 
 if __name__ == "__main__":
     flask_app.run(debug=True)

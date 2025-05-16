@@ -10,7 +10,7 @@ from functools import wraps
 from flask_cors import CORS 
 from dotenv import load_dotenv            # To load environment variables from a .env file
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine, text, desc, cast, TIMESTAMP, func
+from sqlalchemy import create_engine, Text, desc, cast, TIMESTAMP, func
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, make_response       # Flask utilities for handling requests and responses
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -39,8 +39,8 @@ from executors.models import (
     DefAccessModelLogic,
     DefAccessModelLogicAttribute,
     DefGlobalCondition,
-    # DefGlobalConditionLogic,
-    # DefGlobalConditionLogicAttribute,
+    DefGlobalConditionLogic,
+    DefGlobalConditionLogicAttribute,
     DefAccessPointElement,
     DefDataSource
 )
@@ -351,6 +351,7 @@ def create_update_enterprise(tenant_id):
 
 #Get all enterprise setups
 @flask_app.route('/get_enterprises', methods=['GET'])
+@jwt_required()
 def get_enterprises():
     try:
         setups = DefTenantEnterpriseSetup.query.order_by(DefTenantEnterpriseSetup.tenant_id.desc()).all()
@@ -871,7 +872,7 @@ def login():
             user_credentials = DefUserCredential.query.filter_by(user_id = user_profile.user_id).first()
 
             if user_credentials and check_password_hash(user_credentials.password, password):
-                access_token = create_access_token(identity = user_profile.user_id)
+                access_token = create_access_token(identity = str(user_profile.user_id))
                 return make_response(jsonify({"access_token": access_token}), 200)
             else:
                 return make_response(jsonify({"message": "Invalid email/username or password"}), 401)
@@ -1032,6 +1033,7 @@ def delete_access_profile(user_id, serial_number):
 
 
 @flask_app.route('/Create_ExecutionMethod', methods=['POST'])
+# @jwt_required()
 def Create_ExecutionMethod():
     try:
         execution_method = request.json.get('execution_method')
@@ -1068,6 +1070,7 @@ def Create_ExecutionMethod():
 
 
 @flask_app.route('/Show_ExecutionMethods', methods=['GET'])
+# @jwt_required()
 def Show_ExecutionMethods():
     try:
         methods = DefAsyncExecutionMethods.query.all()
@@ -1079,6 +1082,7 @@ def Show_ExecutionMethods():
 
 
 @flask_app.route('/Show_ExecutionMethod/<string:internal_execution_method>', methods=['GET'])
+# @jwt_required()
 def Show_ExecutionMethod(internal_execution_method):
     try:
         method = DefAsyncExecutionMethods.query.get(internal_execution_method)
@@ -1090,6 +1094,7 @@ def Show_ExecutionMethod(internal_execution_method):
 
 
 @flask_app.route('/Update_ExecutionMethod/<string:internal_execution_method>', methods=['PUT'])
+# @jwt_required()
 def Update_ExecutionMethod(internal_execution_method):
     try:
         execution_method = DefAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
@@ -1118,6 +1123,7 @@ def Update_ExecutionMethod(internal_execution_method):
 
 # Create a task definition
 @flask_app.route('/Create_Task', methods=['POST'])
+# @jwt_required()
 def Create_Task():
     try:
         user_task_name = request.json.get('user_task_name')
@@ -1157,6 +1163,7 @@ def Create_Task():
 
 
 @flask_app.route('/Show_Tasks', methods=['GET'])
+# @jwt_required()
 def Show_Tasks():
     try:
         tasks = DefAsyncTask.query.all()
@@ -1166,6 +1173,7 @@ def Show_Tasks():
 
 
 @flask_app.route('/Show_Task/<task_name>', methods=['GET'])
+# @jwt_required()
 def Show_Task(task_name):
     try:
         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
@@ -1180,6 +1188,7 @@ def Show_Task(task_name):
 
 
 @flask_app.route('/Update_Task/<string:task_name>', methods=['PUT'])
+# @jwt_required()
 def Update_Task(task_name):
     try:
         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
@@ -1213,6 +1222,7 @@ def Update_Task(task_name):
 
 
 @flask_app.route('/Cancel_Task/<string:task_name>', methods=['PUT'])
+# @jwt_required()
 def Cancel_Task(task_name):
     try:
         # Find the task by task_name in the DEF_ASYNC_TASKS table
@@ -1234,6 +1244,7 @@ def Cancel_Task(task_name):
 
 
 @flask_app.route('/Add_TaskParams/<string:task_name>', methods=['POST'])
+# @jwt_required()
 def Add_TaskParams(task_name):
     try:
         # Check if the task exists in the DEF_ASYNC_TASKS table
@@ -1281,6 +1292,7 @@ def Add_TaskParams(task_name):
 
 
 @flask_app.route('/Show_TaskParams/<string:task_name>', methods=['GET'])
+# @jwt_required()
 def Show_Parameter(task_name):
     try:
         parameters = DefAsyncTaskParam.query.filter_by(task_name=task_name).all()
@@ -1295,6 +1307,7 @@ def Show_Parameter(task_name):
 
 
 @flask_app.route('/Update_TaskParams/<string:task_name>/<int:def_param_id>', methods=['PUT'])
+# @jwt_required()
 def Update_TaskParams(task_name, def_param_id):
     try:
         # Get the updated values from the request body
@@ -1331,6 +1344,7 @@ def Update_TaskParams(task_name, def_param_id):
 
 
 @flask_app.route('/Delete_TaskParams/<string:task_name>/<int:def_param_id>', methods=['DELETE'])
+# @jwt_required()
 def Delete_TaskParams(task_name, def_param_id):
     try:
         # Find the task parameter by task_name and seq
@@ -1351,6 +1365,7 @@ def Delete_TaskParams(task_name, def_param_id):
 
 
 @flask_app.route('/Delete_ExecutionMethod/<string:internal_execution_method>', methods=['DELETE'])
+# @jwt_required()
 def Delete_ExecutionMethod(internal_execution_method):
     try:
         # Find the execution method by internal_execution_method
@@ -1506,6 +1521,7 @@ def Delete_ExecutionMethod(internal_execution_method):
 
 
 @flask_app.route('/Create_TaskSchedule', methods=['POST'])
+# @jwt_required()
 def Create_TaskSchedule():
     try:
         user_schedule_name = request.json.get('user_schedule_name', 'Immediate')
@@ -1651,6 +1667,7 @@ def Create_TaskSchedule():
 
 
 @flask_app.route('/Show_TaskSchedules', methods=['GET'])
+# @jwt_required()
 def Show_TaskSchedules():
     try:
         schedules = DefAsyncTaskSchedulesV.query \
@@ -1666,6 +1683,7 @@ def Show_TaskSchedules():
 
 
 @flask_app.route('/Show_TaskSchedule/<string:task_name>', methods=['GET'])
+# @jwt_required()
 def Show_TaskSchedule(task_name):
     try:
         schedule = DefAsyncTaskSchedule.query.filter_by(task_name=task_name).first()
@@ -1727,6 +1745,7 @@ def Show_TaskSchedule(task_name):
 
 
 @flask_app.route('/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
+# @jwt_required()
 def Update_TaskSchedule(task_name):
     try:
         redbeat_schedule_name = request.json.get('redbeat_schedule_name')
@@ -1814,6 +1833,7 @@ def Update_TaskSchedule(task_name):
 
 
 @flask_app.route('/Cancel_TaskSchedule/<string:task_name>', methods=['PUT'])
+# @jwt_required()
 def Cancel_TaskSchedule(task_name):
     try:
         # Extract redbeat_schedule_name from payload
@@ -2306,12 +2326,12 @@ def upsert_def_access_model_logic_attributes():
         response = []
 
         for data in data_list:
-            attribute_id = data.get('attribute_id')
+            id = data.get('id')
             def_access_model_logic_id = data.get('def_access_model_logic_id')
             widget_position = data.get('widget_position')
             widget_state = data.get('widget_state')
 
-            existing_attribute = DefAccessModelLogicAttribute.query.filter_by(id=attribute_id).first()
+            existing_attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
             if existing_attribute:
                 # if not attribute:
                 #     response.append({
@@ -2324,7 +2344,7 @@ def upsert_def_access_model_logic_attributes():
                 # Disallow updating def_access_model_logic_id
                 if def_access_model_logic_id and def_access_model_logic_id != existing_attribute.def_access_model_logic_id:
                     response.append({
-                        'id': attribute_id,
+                        'id': id,
                         'status': 'error',
                         'message': 'Updating def_access_model_logic_id is not allowed'
                     })
@@ -2366,7 +2386,7 @@ def upsert_def_access_model_logic_attributes():
                     continue
 
                 new_attribute = DefAccessModelLogicAttribute(
-                    id = attribute_id,
+                    id = id,
                     def_access_model_logic_id=def_access_model_logic_id,
                     widget_position=widget_position,
                     widget_state=widget_state
@@ -2513,6 +2533,387 @@ def delete_def_global_condition(def_global_condition_id):
         return make_response(jsonify({'message': 'Error deleting DefGlobalCondition', 'error': str(e)}), 500)
 
 
+
+
+# def_global_condition_logics
+@flask_app.route('/def_global_condition_logics', methods=['POST'])
+def create_def_global_condition_logic():
+    try:
+        def_global_condition_id = request.json.get('def_global_condition_id')
+        object = request.json.get('object')
+        attribute = request.json.get('attribute')
+        condition = request.json.get('condition')
+        value = request.json.get('value')
+
+        new_logic = DefGlobalConditionLogic(
+            def_global_condition_id = def_global_condition_id,
+            object = object,
+            attribute = attribute,
+            condition = condition,
+            value = value
+        )
+        db.session.add(new_logic)
+        db.session.commit()
+        return make_response(jsonify({"message": "DefGlobalConditionLogic created successfully!"}), 201)
+    except Exception as e:
+        return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
+
+@flask_app.route('/def_global_condition_logics/upsert', methods=['POST'])
+def upsert_def_global_condition_logics():
+    try:
+        data_list = request.get_json()
+
+        if not isinstance(data_list, list):
+            return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
+
+        response = []
+
+        for data in data_list:
+            def_global_condition_logic_id = data.get('def_global_condition_logic_id')
+            def_global_condition_id = data.get('def_global_condition_id')
+            object_text = data.get('object')
+            attribute = data.get('attribute')
+            condition = data.get('condition')
+            value = data.get('value')
+
+            existing_logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
+
+            if existing_logic:
+                # Prevent changing foreign key
+                if def_global_condition_id and def_global_condition_id != existing_logic.def_global_condition_id:
+                    response.append({
+                        'def_global_condition_logic_id': def_global_condition_logic_id,
+                        'status': 'error',
+                        'message': 'Updating def_global_condition_id is not allowed'
+                    })
+                    continue
+
+                existing_logic.object = object_text
+                existing_logic.attribute = attribute
+                existing_logic.condition = condition
+                existing_logic.value = value
+                db.session.add(existing_logic)
+
+                response.append({
+                    'def_global_condition_logic_id': existing_logic.def_global_condition_logic_id,
+                    'status': 'updated',
+                    'message': 'Logic updated successfully'
+                })
+
+            else:
+                if not def_global_condition_id:
+                    response.append({
+                        'status': 'error',
+                        'message': 'def_global_condition_id is required for new records'
+                    })
+                    continue
+
+                # Validate foreign key existence (optional; depends on enforcement at DB)
+                condition_exists = db.session.query(
+                    db.exists().where(DefGlobalCondition.def_global_condition_id == def_global_condition_id)
+                ).scalar()
+
+                if not condition_exists:
+                    response.append({
+                        'status': 'error',
+                        'message': f'def_global_condition_id {def_global_condition_id} does not exist'
+                    })
+                    continue
+
+                new_logic = DefGlobalConditionLogic(
+                    def_global_condition_logic_id=def_global_condition_logic_id,
+                    def_global_condition_id=def_global_condition_id,
+                    object=object_text,
+                    attribute=attribute,
+                    condition=condition,
+                    value=value
+                )
+                db.session.add(new_logic)
+                db.session.flush()
+
+                response.append({
+                    'def_global_condition_logic_id': new_logic.def_global_condition_logic_id,
+                    'status': 'created',
+                    'message': 'Logic created successfully'
+                })
+
+        db.session.commit()
+        return make_response(jsonify(response), 200)
+
+    except IntegrityError:
+        db.session.rollback()
+        return make_response(jsonify({'message': 'Integrity error during upsert'}), 409)
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            'message': 'Error during upsert',
+            'error': str(e)
+        }), 500)
+
+
+@flask_app.route('/def_global_condition_logics', methods=['GET'])
+def get_def_global_condition_logics():
+    try:
+        logics = DefGlobalConditionLogic.query.order_by(DefGlobalConditionLogic.def_global_condition_logic_id.desc()).all()
+        return make_response(jsonify([logic.json() for logic in logics]), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving DefGlobalConditionLogics", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['GET'])
+def get_def_global_condition_logic(def_global_condition_logic_id):
+    try:
+        logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
+        if logic:
+            return make_response(jsonify(logic.json()), 200)
+        return make_response(jsonify({"message": "DefGlobalConditionLogic not found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving DefGlobalConditionLogic", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['PUT'])
+def update_def_global_condition_logic(def_global_condition_logic_id):
+    try:
+        logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
+        if logic:
+            logic.def_global_condition_id = request.json.get('def_global_condition_id', logic.def_global_condition_id)
+            logic.object                  = request.json.get('object', logic.object)
+            logic.attribute               = request.json.get('attribute', logic.attribute)
+            logic.condition               = request.json.get('condition', logic.condition)
+            logic.value                   = request.json.get('value', logic.value)
+
+            db.session.commit()
+            return make_response(jsonify({'message': 'DefGlobalConditionLogic updated successfully'}), 200)
+        return make_response(jsonify({'message': 'DefGlobalConditionLogic not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error updating DefGlobalConditionLogic', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_global_condition_logics/<int:logic_id>', methods=['DELETE'])
+def delete_def_global_condition_logic(logic_id):
+    try:
+        logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=logic_id).first()
+        if logic:
+            db.session.delete(logic)
+            db.session.commit()
+            return make_response(jsonify({'message': 'DefGlobalConditionLogic deleted successfully'}), 200)
+        return make_response(jsonify({'message': 'DefGlobalConditionLogic not found'}), 404)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error deleting DefGlobalConditionLogic', 'error': str(e)}), 500)
+
+
+
+
+
+# def_global_condition_logics_attributes
+
+@flask_app.route('/def_global_condition_logic_attributes', methods=['GET'])
+def get_all_def_global_condition_logic_attributes():
+    try:
+        attributes = DefGlobalConditionLogicAttribute.query.order_by(DefGlobalConditionLogicAttribute.id.desc()).all()
+        return make_response(jsonify([attribute.json() for attribute in attributes]), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving condition logic attributes", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_global_condition_logic_attributes/<int:id>', methods=['GET'])
+def get_def_global_condition_logic_attribute(id):
+    try:
+        attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
+        if attribute:
+            return make_response(jsonify(attribute.json()), 200)
+        return make_response(jsonify({"message": "DefGlobalConditionLogicAttribute not found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving condition logic attribute", "error": str(e)}), 500)
+    
+# @flask_app.route('/def_global_condition_logic_attributes/upsert', methods=['POST'])
+# def upsert_def_global_condition_logic_attributes():
+#     try:
+#         data_list = request.get_json()
+
+#         if not isinstance(data_list, list):
+#             return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
+
+#         response = []
+
+#         for data in data_list:
+#             id = data.get('id')  
+#             def_global_condition_logic_id = data.get('def_global_condition_logic_id')
+#             widget_position = data.get('widget_position')
+#             widget_state = data.get('widget_state')
+
+#             existing_attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first() 
+
+#             if existing_attribute:
+#                 # Update the existing attribute
+#                 existing_attribute.widget_position = widget_position
+#                 existing_attribute.widget_state = widget_state
+#                 db.session.commit()
+
+#                 response.append({
+#                     'id': existing_attribute.id,  
+#                     'status': 'updated',
+#                     'message': 'Attribute updated successfully'
+#                 })
+
+#             else:
+#                 # Insert a new attribute
+#                 if not def_global_condition_logic_id:
+#                     response.append({
+#                         'status': 'error',
+#                         'message': 'def_global_condition_logic_id is required for new records'
+#                     })
+#                     continue
+
+#                 new_attribute = DefGlobalConditionLogicAttribute(
+#                     id=id,
+#                     def_global_condition_logic_id=def_global_condition_logic_id,
+#                     widget_position=widget_position,
+#                     widget_state=widget_state
+#                 )
+#                 db.session.add(new_attribute)
+#                 db.session.commit()
+
+#                 response.append({
+#                     'id': new_attribute.id,  
+#                     'status': 'created',
+#                     'message': 'Attribute created successfully'
+#                 })
+
+#         return make_response(jsonify(response), 200)
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return make_response(jsonify({
+#             'message': 'Error during upsert',
+#             'error': str(e)
+#         }), 500)
+
+
+@flask_app.route('/def_global_condition_logic_attributes/upsert', methods=['POST'])
+def upsert_def_global_condition_logic_attributes():
+    try:
+        data_list = request.get_json()
+
+        if not isinstance(data_list, list):
+            return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
+
+        response = []
+
+        for data in data_list:
+            id = data.get('id')
+            def_global_condition_logic_id = data.get('def_global_condition_logic_id')
+            widget_position = data.get('widget_position')
+            widget_state = data.get('widget_state')
+
+            existing_attr = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
+
+            if existing_attr:
+                # Prevent changing foreign key
+                if def_global_condition_logic_id and def_global_condition_logic_id != existing_attr.def_global_condition_logic_id:
+                    response.append({
+                        'id': id,
+                        'status': 'error',
+                        'message': 'Updating def_global_condition_logic_id is not allowed'
+                    })
+                    continue
+
+                existing_attr.widget_position = widget_position
+                existing_attr.widget_state = widget_state
+                db.session.add(existing_attr)
+
+                response.append({
+                    'id': existing_attr.id,
+                    'status': 'updated',
+                    'message': 'Attribute updated successfully'
+                })
+
+            else:
+                # Validate required FK
+                if not def_global_condition_logic_id:
+                    response.append({
+                        'status': 'error',
+                        'message': 'def_global_condition_logic_id is required for new records'
+                    })
+                    continue
+
+                # Check foreign key existence
+                logic_exists = db.session.query(
+                    db.exists().where(DefGlobalConditionLogic.def_global_condition_logic_id == def_global_condition_logic_id)
+                ).scalar()
+
+                if not logic_exists:
+                    response.append({
+                        'status': 'error',
+                        'message': f'def_global_condition_logic_id {def_global_condition_logic_id} does not exist'
+                    })
+                    continue
+
+                if not id:
+                    response.append({
+                        'status': 'error',
+                        'message': 'id is required for new records'
+                    })
+                    continue
+
+                new_attr = DefGlobalConditionLogicAttribute(
+                    id=id,
+                    def_global_condition_logic_id=def_global_condition_logic_id,
+                    widget_position=widget_position,
+                    widget_state=widget_state
+                )
+                db.session.add(new_attr)
+                db.session.flush()
+
+                response.append({
+                    'id': new_attr.id,
+                    'status': 'created',
+                    'message': 'Attribute created successfully'
+                })
+
+        db.session.commit()
+        return make_response(jsonify(response), 200)
+
+    except IntegrityError:
+        db.session.rollback()
+        return make_response(jsonify({'message': 'Integrity error during upsert'}), 409)
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            'message': 'Error during upsert',
+            'error': str(e)
+        }), 500)
+
+
+@flask_app.route('/def_global_condition_logic_attributes/<int:id>', methods=['DELETE'])
+def delete_def_global_condition_logic_attribute(id):
+    try:
+        attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
+
+        if not attribute:
+            return make_response(jsonify({'message': 'DefGlobalConditionLogicAttribute not found'}), 404)
+
+        db.session.delete(attribute)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'DefGlobalConditionLogicAttribute deleted successfully'}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            'message': 'Error deleting DefGlobalConditionLogicAttribute',
+            'error': str(e)
+        }), 500)
+
+
+
+
+
+
+
+
+
+
 #Def_access_point_elements
 @flask_app.route('/def_access_point_elements', methods=['POST'])
 def create_def_access_point_element():
@@ -2648,6 +3049,17 @@ def delete_element(dap_id):
 
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting DefAccessPointElement', 'error': str(e)}), 500)
+
+
+
+
+
+
+
+
+
+
+
 
 #Def_Data_Sources
 @flask_app.route('/def_data_sources', methods=['POST'])

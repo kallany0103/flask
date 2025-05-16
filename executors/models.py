@@ -582,44 +582,44 @@ class DefGlobalCondition(db.Model):
             'status'     : self.status
         }
     
-# class DefGlobalConditionLogic(db.Model):
-#     __tablename__  = 'def_global_condition_logics'
-#     __table_args__ = {'schema': 'apps'}
+class DefGlobalConditionLogic(db.Model):
+    __tablename__  = 'def_global_condition_logics'
+    __table_args__ = {'schema': 'apps'}
 
-#     def_global_condition_logic_id = db.Column(db.Integer, primary_key=True)
-#     def_global_condition_id       = db.Column(db.Integer, db.ForeignKey('apps.def_global_conditions.def_global_condition_id'), nullable=False)
-#     object     = db.Column(db.Text)
-#     attribute  = db.Column(db.Text)
-#     condition  = db.Column(db.Text)
-#     value      = db.Column(db.Text)
+    def_global_condition_logic_id = db.Column(db.Integer, primary_key=True)
+    def_global_condition_id       = db.Column(db.Integer, db.ForeignKey('apps.def_global_conditions.def_global_condition_id'), nullable=False)
+    object     = db.Column(db.Text)
+    attribute  = db.Column(db.Text)
+    condition  = db.Column(db.Text)
+    value      = db.Column(db.Text)
 
-#     def json(self):
-#         return {
-#             'def_global_condition_logic_id': self.def_global_condition_logic_id,
-#             'def_global_condition_id'     : self.def_global_condition_id,
-#             'object'     : self.object,
-#             'attribute'  : self.attribute,
-#             'condition'  : self.condition,
-#             'value'      : self.value
-#         }
+    def json(self):
+        return {
+            'def_global_condition_logic_id': self.def_global_condition_logic_id,
+            'def_global_condition_id'     : self.def_global_condition_id,
+            'object'     : self.object,
+            'attribute'  : self.attribute,
+            'condition'  : self.condition,
+            'value'      : self.value
+        }
     
-# class DefGlobalConditionLogicAttribute(db.Model):
+class DefGlobalConditionLogicAttribute(db.Model):
 
-#     __tablename__  = 'def_global_condition_logic_attributes'
-#     __table_args__ = {'schema': 'apps'}
+    __tablename__  = 'def_global_condition_logic_attributes'
+    __table_args__ = {'schema': 'apps'}
 
-#     def_global_condition_logic_attribute_id = db.Column(db.Integer, primary_key=True)
-#     def_global_condition_logic_id = db.Column(db.Integer, db.ForeignKey('apps.def_global_condition_logics.def_global_condition_logic_id'), nullable=False)
-#     widget_position = db.Column(db.Integer)
-#     widget_state    = db.Column(db.Integer)
+    id = db.Column(db.Integer, primary_key=True)
+    def_global_condition_logic_id = db.Column(db.Integer, db.ForeignKey('apps.def_global_condition_logics.def_global_condition_logic_id'), nullable=False)
+    widget_position = db.Column(db.Integer)
+    widget_state    = db.Column(db.Integer)
 
-#     def json(self):
-#         return {
-#             'def_global_condition_logic_attribute_id': self.def_global_condition_logic_attribute_id,
-#             'def_global_condition_logic_id'          : self.def_global_condition_logic_id,
-#             'widget_position' : self.widget_position,
-#             'widget_state'    : self.widget_state
-#         }
+    def json(self):
+        return {
+            'id': self.id,
+            'def_global_condition_logic_id' : self.def_global_condition_logic_id,
+            'widget_position' : self.widget_position,
+            'widget_state'    : self.widget_state
+        }
     
 
 class DefDataSource(db.Model):
@@ -672,9 +672,9 @@ class DefAccessPointElement(db.Model):
     access_control       = db.Column(db.String(10))
     change_control       = db.Column(db.String(10))
     audit                = db.Column(db.String(50))
-    created_by           = db.Column(db.String(50))
+    created_by           = db.Column(db.String(50))  
     created_on           = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by      = db.Column(db.String(50))
+    last_updated_by      = db.Column(db.String(50)) 
     last_updated_on      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
@@ -688,6 +688,39 @@ class DefAccessPointElement(db.Model):
             "access_control": self.access_control,
             "change_control": self.change_control,
             "audit": self.audit,
+            "created_by": self.created_by,
+            "created_on": self.created_on,
+            "last_updated_by": self.last_updated_by,
+            "last_updated_on": self.last_updated_on
+        }
+
+class DefAccessEntitlement(db.Model):
+    __tablename__ = 'def_access_entitlements'
+    __table_args__ = {'schema': 'apps'}
+
+    def_entitlement_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    entitlement_name = db.Column(db.String(150), nullable=False)  
+    description = db.Column(db.String(250))                        
+    comments = db.Column(db.String(200))                           
+    status = db.Column(db.String(50), nullable=False)              
+    effective_date = db.Column(db.Date, nullable=False)           
+    revision = db.Column(db.String(10))                            
+    revision_date = db.Column(db.Date)                            
+    created_by = db.Column(db.String(50))                          
+    created_on = db.Column(db.DateTime, default=datetime.utcnow)   
+    last_updated_by = db.Column(db.String(50))                     
+    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            "def_entitlement_id": self.def_entitlement_id,
+            "entitlement_name": self.entitlement_name,
+            "description": self.description,
+            "comments": self.comments,
+            "status": self.status,
+            "effective_date": self.effective_date,
+            "revision": self.revision,
+            "revision_date": self.revision_date,
             "created_by": self.created_by,
             "created_on": self.created_on,
             "last_updated_by": self.last_updated_by,

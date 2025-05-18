@@ -352,7 +352,7 @@ def create_update_enterprise(tenant_id):
 
 #Get all enterprise setups
 @flask_app.route('/get_enterprises', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def get_enterprises():
     try:
         setups = DefTenantEnterpriseSetup.query.order_by(DefTenantEnterpriseSetup.tenant_id.desc()).all()
@@ -870,7 +870,7 @@ def login():
         else:
             user_profile = DefUser.query.filter_by(user_name = email_or_username).first()
         if user_profile and user_profile.user_id:
-            user_credentials = DefUserCredential.query.filter_by(user_id = user_profile.user_id).first()
+            user_credentials = DefUserCredential.query.filter_by(user_id = user_profile.user_id ).first()
 
             if user_credentials and check_password_hash(user_credentials.password, password):
                 access_token = create_access_token(identity = str(user_profile.user_id))
@@ -884,7 +884,7 @@ def login():
         return make_response(jsonify({"message": str(e)}), 500)
         
 @flask_app.route('/users', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def defusers():
     try:
         defusers = DefUsersView.query.all()
@@ -894,7 +894,7 @@ def defusers():
     
     
 @flask_app.route('/users/<int:user_id>', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def get_specific_user(user_id):
     try:
         user = DefUsersView.query.filter_by(user_id=user_id).first()
@@ -1035,7 +1035,7 @@ def delete_access_profile(user_id, serial_number):
 
 
 @flask_app.route('/Create_ExecutionMethod', methods=['POST'])
-@jwt_required()
+# @jwt_required()
 def Create_ExecutionMethod():
     try:
         execution_method = request.json.get('execution_method')
@@ -1072,7 +1072,7 @@ def Create_ExecutionMethod():
 
 
 @flask_app.route('/Show_ExecutionMethods', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def Show_ExecutionMethods():
     try:
         methods = DefAsyncExecutionMethods.query.all()
@@ -1084,7 +1084,7 @@ def Show_ExecutionMethods():
 
 
 @flask_app.route('/Show_ExecutionMethod/<string:internal_execution_method>', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def Show_ExecutionMethod(internal_execution_method):
     try:
         method = DefAsyncExecutionMethods.query.get(internal_execution_method)
@@ -1096,7 +1096,7 @@ def Show_ExecutionMethod(internal_execution_method):
 
 
 @flask_app.route('/Update_ExecutionMethod/<string:internal_execution_method>', methods=['PUT'])
-@jwt_required()
+# @jwt_required()
 def Update_ExecutionMethod(internal_execution_method):
     try:
         execution_method = DefAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
@@ -1125,7 +1125,7 @@ def Update_ExecutionMethod(internal_execution_method):
 
 # Create a task definition
 @flask_app.route('/Create_Task', methods=['POST'])
-@jwt_required()
+# @jwt_required()
 def Create_Task():
     try:
         user_task_name = request.json.get('user_task_name')
@@ -1165,7 +1165,7 @@ def Create_Task():
 
 
 @flask_app.route('/Show_Tasks', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def Show_Tasks():
     try:
         tasks = DefAsyncTask.query.order_by(DefAsyncTask.def_task_id.desc()).all()
@@ -1175,7 +1175,7 @@ def Show_Tasks():
 
 
 @flask_app.route('/Show_Task/<task_name>', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def Show_Task(task_name):
     try:
         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
@@ -1190,7 +1190,7 @@ def Show_Task(task_name):
 
 
 @flask_app.route('/Update_Task/<string:task_name>', methods=['PUT'])
-@jwt_required()
+# @jwt_required()
 def Update_Task(task_name):
     try:
         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
@@ -1224,7 +1224,7 @@ def Update_Task(task_name):
 
 
 @flask_app.route('/Cancel_Task/<string:task_name>', methods=['PUT'])
-@jwt_required()
+# @jwt_required()
 def Cancel_Task(task_name):
     try:
         # Find the task by task_name in the DEF_ASYNC_TASKS table
@@ -1246,7 +1246,7 @@ def Cancel_Task(task_name):
 
 
 @flask_app.route('/Add_TaskParams/<string:task_name>', methods=['POST'])
-@jwt_required()
+# @jwt_required()
 def Add_TaskParams(task_name):
     try:
         # Check if the task exists in the DEF_ASYNC_TASKS table
@@ -1294,7 +1294,7 @@ def Add_TaskParams(task_name):
 
 
 @flask_app.route('/Show_TaskParams/<string:task_name>', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def Show_Parameter(task_name):
     try:
         parameters = DefAsyncTaskParam.query.filter_by(task_name=task_name).all()
@@ -1309,7 +1309,7 @@ def Show_Parameter(task_name):
 
 
 @flask_app.route('/Update_TaskParams/<string:task_name>/<int:def_param_id>', methods=['PUT'])
-@jwt_required()
+# @jwt_required()
 def Update_TaskParams(task_name, def_param_id):
     try:
         # Get the updated values from the request body
@@ -1346,7 +1346,7 @@ def Update_TaskParams(task_name, def_param_id):
 
 
 @flask_app.route('/Delete_TaskParams/<string:task_name>/<int:def_param_id>', methods=['DELETE'])
-@jwt_required()
+# @jwt_required()
 def Delete_TaskParams(task_name, def_param_id):
     try:
         # Find the task parameter by task_name and seq
@@ -1367,7 +1367,7 @@ def Delete_TaskParams(task_name, def_param_id):
 
 
 @flask_app.route('/Delete_ExecutionMethod/<string:internal_execution_method>', methods=['DELETE'])
-@jwt_required()
+# @jwt_required()
 def Delete_ExecutionMethod(internal_execution_method):
     try:
         # Find the execution method by internal_execution_method
@@ -1523,7 +1523,7 @@ def Delete_ExecutionMethod(internal_execution_method):
 
 
 @flask_app.route('/Create_TaskSchedule', methods=['POST'])
-@jwt_required()
+# @jwt_required()
 def Create_TaskSchedule():
     try:
         user_schedule_name = request.json.get('user_schedule_name', 'Immediate')
@@ -1669,7 +1669,7 @@ def Create_TaskSchedule():
 
 
 @flask_app.route('/Show_TaskSchedules', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def Show_TaskSchedules():
     try:
         schedules = DefAsyncTaskSchedulesV.query \
@@ -1685,7 +1685,7 @@ def Show_TaskSchedules():
 
 
 @flask_app.route('/Show_TaskSchedule/<string:task_name>', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def Show_TaskSchedule(task_name):
     try:
         schedule = DefAsyncTaskSchedule.query.filter_by(task_name=task_name).first()
@@ -1747,7 +1747,7 @@ def Show_TaskSchedule(task_name):
 
 
 @flask_app.route('/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
-@jwt_required()
+# @jwt_required()
 def Update_TaskSchedule(task_name):
     try:
         redbeat_schedule_name = request.json.get('redbeat_schedule_name')
@@ -1835,7 +1835,7 @@ def Update_TaskSchedule(task_name):
 
 
 @flask_app.route('/Cancel_TaskSchedule/<string:task_name>', methods=['PUT'])
-@jwt_required()
+# @jwt_required()
 def Cancel_TaskSchedule(task_name):
     try:
         # Extract redbeat_schedule_name from payload
@@ -1954,6 +1954,7 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
 #         return jsonify({"error": str(e)}), 500
 
 @flask_app.route('/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
+# @jwt_required()
 def view_requests(page, page_limit):
     try:
         fourteen_days = datetime.utcnow() - timedelta(days=14)
@@ -2759,6 +2760,7 @@ def get_def_global_condition_logic_attribute(id):
     
 
 @flask_app.route('/def_global_condition_logic_attributes/<int:page>/<int:limit>', methods=['GET'])
+# @jwt_required()
 def get_paginated_def_global_condition_logic_attributes(page, limit):
     try:
         query = DefGlobalConditionLogicAttribute.query.order_by(DefGlobalConditionLogicAttribute.id.desc())

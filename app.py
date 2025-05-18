@@ -1954,7 +1954,7 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
 #         return jsonify({"error": str(e)}), 500
 
 @flask_app.route('/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def view_requests(page, page_limit):
     try:
         fourteen_days = datetime.utcnow() - timedelta(days=14)

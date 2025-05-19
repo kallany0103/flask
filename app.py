@@ -2139,7 +2139,7 @@ def delete_def_access_model(model_id):
 @flask_app.route('/def_access_model_logics', methods=['POST'])
 def create_def_access_model_logic():
     try:
-        # def_access_model_logic_id = request.json.get('def_access_model_logic_id')
+        def_access_model_logic_id = request.json.get('def_access_model_logic_id')
         def_access_model_id = request.json.get('def_access_model_id')
         filter_text = request.json.get('filter')
         object_text = request.json.get('object')
@@ -2149,8 +2149,19 @@ def create_def_access_model_logic():
 
         if not def_access_model_id:
             return make_response(jsonify({'message': 'def_access_model_id is required'}), 400)
+        
+        if DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first():
+            return make_response(jsonify({'message': f'def_access_model_logic_id {def_access_model_logic_id} already exists'}), 409)
+
+        # Check if def_access_model_id exists in DefAccessModel table
+        model_id_exists = db.session.query(
+            db.exists().where(DefAccessModel.def_access_model_id == def_access_model_id)
+        ).scalar()
+        if not model_id_exists:
+            return make_response(jsonify({'message': f'def_access_model_id {def_access_model_id} does not exist'}), 400)
 
         new_logic = DefAccessModelLogic(
+            def_access_model_logic_id=def_access_model_logic_id,
             def_access_model_id=def_access_model_id,
             filter=filter_text,
             object=object_text,
@@ -2296,7 +2307,7 @@ def update_def_access_model_logic(logic_id):
     try:
         logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=logic_id).first()
         if logic:
-            logic.def_access_model_id = request.json.get('def_access_model_id', logic.def_access_model_id)
+            # logic.def_access_model_id = request.json.get('def_access_model_id', logic.def_access_model_id)
             logic.filter = request.json.get('filter', logic.filter)
             logic.object = request.json.get('object', logic.object)
             logic.attribute = request.json.get('attribute', logic.attribute)
@@ -2332,14 +2343,25 @@ def delete_def_access_model_logic(logic_id):
 @flask_app.route('/def_access_model_logic_attributes', methods=['POST'])
 def create_def_access_model_logic_attribute():
     try:
+        id = request.json.get('id')
         def_access_model_logic_id = request.json.get('def_access_model_logic_id')
         widget_position = request.json.get('widget_position')
         widget_state = request.json.get('widget_state')
 
         if not def_access_model_logic_id:
             return make_response(jsonify({'message': 'def_access_model_logic_id is required'}), 400)
-
+        if DefAccessModelLogicAttribute.query.filter_by(id=id).first():
+            return make_response(jsonify({'message': f'id {id} already exists'}), 409)
+        # Check if def_access_model_logic_id exists in DefAccessModelLogic table
+        logic_id_exists = db.session.query(
+            db.exists().where(DefAccessModelLogic.def_access_model_logic_id == def_access_model_logic_id)
+        ).scalar()
+        if not logic_id_exists:
+            return make_response(jsonify({'message': f'def_access_model_logic_id {def_access_model_logic_id} does not exist'}), 400)
+        
+        
         new_attribute = DefAccessModelLogicAttribute(
+            id = id,
             def_access_model_logic_id=def_access_model_logic_id,
             widget_position=widget_position,
             widget_state=widget_state
@@ -2477,7 +2499,7 @@ def update_def_access_model_logic_attribute(attr_id):
     try:
         attribute = DefAccessModelLogicAttribute.query.filter_by(id=attr_id).first()
         if attribute:
-            attribute.def_access_model_logic_id = request.json.get('def_access_model_logic_id', attribute.def_access_model_logic_id)
+            # attribute.def_access_model_logic_id = request.json.get('def_access_model_logic_id', attribute.def_access_model_logic_id)
             attribute.widget_position = request.json.get('widget_position', attribute.widget_position)
             attribute.widget_state = request.json.get('widget_state', attribute.widget_state)
 

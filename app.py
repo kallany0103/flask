@@ -1173,8 +1173,8 @@ def Show_Tasks():
     except Exception as e:
         return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
 
-@flask_app.route('/Show_Tasks/v2/<int:page>/<int:limit>', methods=['GET'])
-def Show_Tasks_v2(page, limit):
+@flask_app.route('/def_async_tasks/Show_Tasks/<int:page>/<int:limit>', methods=['GET'])
+def def_async_tasks_show_tasks(page, limit):
     try:
         search_query = request.args.get('q', '').strip().lower()
         search_underscore = search_query.replace(' ', '_')
@@ -2009,8 +2009,8 @@ def view_requests(page, page_limit):
         return jsonify({"error": str(e)}), 500
 
 
-@flask_app.route('/view_requests/v1/<int:page>/<int:limit>', methods=['GET'])
-def view_requests_v1(page, limit):
+@flask_app.route('/def_async_task_requests/view_requests/<int:page>/<int:limit>', methods=['GET'])
+def def_async_task_requests_view_requests(page, limit):
     try:
         search_query = request.args.get('q', '').strip().lower()
         search_underscore = search_query.replace(' ', '_')

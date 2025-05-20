@@ -274,6 +274,7 @@ class DefAsyncTask(db.Model):
             "execution_method": self.execution_method,
             "executor": self.executor,
             "script_name": self.script_name,
+            "script_path" : self.script_path,
             "description": self.description,
             "cancelled_yn": self.cancelled_yn,
             "srs": self.srs,

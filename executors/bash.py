@@ -28,11 +28,15 @@ def execute(self, *args, **kwargs):
     try:
         # Execute the shell script and capture output
         result = subprocess.run(
-            [full_script_path, *args[6:]],  # Pass additional arguments to the script
+            [full_script_path] + [str(arg) for arg in args[6:]],  # Pass additional arguments to the script
             text=True,
             capture_output=True,
             check=True
         )
+
+
+
+
 
         # Try parsing the output as JSON
         try:

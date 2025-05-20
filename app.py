@@ -1570,7 +1570,11 @@ def Create_TaskSchedule():
         script_name = task.script_name
 
         schedule_name = str(uuid.uuid4())
-        redbeat_schedule_name = f"{user_schedule_name}_{schedule_name}"
+        # redbeat_schedule_name = f"{user_schedule_name}_{schedule_name}"
+        redbeat_schedule_name = None
+        if schedule_type != "IMMEDIATE":
+            redbeat_schedule_name = f"{user_schedule_name}_{schedule_name}"
+
         args = [script_name, user_task_name, task_name, user_schedule_name, redbeat_schedule_name, schedule_type, schedule_data]
         kwargs = {}
 
@@ -1665,6 +1669,7 @@ def Create_TaskSchedule():
         except Exception as e:
             return jsonify({"error": "Failed to create RedBeat schedule", "details": str(e)}), 500
 
+        # if schedule_type != "IMMEDIATE":
         # Store schedule in DB
         new_schedule = DefAsyncTaskScheduleNew(
             user_schedule_name=user_schedule_name,

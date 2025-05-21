@@ -1034,7 +1034,7 @@ def delete_access_profile(user_id, serial_number):
 
 
 
-@flask_app.route('/def_async_execution_methods', methods=['POST'])
+@flask_app.route('/Create_ExecutionMethod', methods=['POST'])
 # @jwt_required()
 def Create_ExecutionMethod():
     try:

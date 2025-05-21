@@ -1034,7 +1034,7 @@ def delete_access_profile(user_id, serial_number):
 
 
 
-@flask_app.route('/Create_ExecutionMethod', methods=['POST'])
+@flask_app.route('/def_async_execution_methods', methods=['POST'])
 # @jwt_required()
 def Create_ExecutionMethod():
     try:
@@ -1123,6 +1123,28 @@ def Update_ExecutionMethod(internal_execution_method):
     except Exception as e:
         return make_response(jsonify({"message": "Error updating execution method", "error": str(e)}), 500)
 
+
+@flask_app.route('/Delete_ExecutionMethod/<string:internal_execution_method>', methods=['DELETE'])
+# @jwt_required()
+def Delete_ExecutionMethod(internal_execution_method):
+    try:
+        # Find the execution method by internal_execution_method
+        execution_method = DefAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
+
+        # If the execution method does not exist, return a 404 response
+        if not execution_method:
+            return jsonify({"message": f"Execution method with internal_execution_method '{internal_execution_method}' not found"}), 404
+
+        # Delete the execution method from the database
+        db.session.delete(execution_method)
+        db.session.commit()
+
+        return jsonify({"message": f"Execution method with internal_execution_method '{internal_execution_method}' successfully deleted"}), 200
+
+    except Exception as e:
+        return jsonify({"error": "Failed to delete execution method", "details": str(e)}), 500
+
+
 # Create a task definition
 @flask_app.route('/Create_Task', methods=['POST'])
 # @jwt_required()
@@ -1164,7 +1186,7 @@ def Create_Task():
         return {"message": "Error creating Task", "error": str(e)}, 500
 
 
-@flask_app.route('/Show_Tasks', methods=['GET'])
+@flask_app.route('/def_async_tasks', methods=['GET'])
 # @jwt_required()
 def Show_Tasks():
     try:
@@ -1173,19 +1195,37 @@ def Show_Tasks():
     except Exception as e:
         return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
 
-@flask_app.route('/def_async_tasks/Show_Tasks/<int:page>/<int:limit>', methods=['GET'])
+
+@flask_app.route('/def_async_tasks/<int:page>/<int:limit>', methods=['GET'])
+# @jwt_required()
+def Show_Tasks_Paginated(page, limit):
+    try:
+        tasks = DefAsyncTask.query.order_by(DefAsyncTask.creation_date.desc())
+        paginated = tasks.paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [model.json() for model in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_async_tasks/search/<int:page>/<int:limit>', methods=['GET'])
 def def_async_tasks_show_tasks(page, limit):
     try:
-        search_query = request.args.get('q', '').strip().lower()
+        search_query = request.args.get('user_task_name', '').strip().lower()
         search_underscore = search_query.replace(' ', '_')
         search_space = search_query.replace('_', ' ')
         query = DefAsyncTask.query
         if search_query:
             
             query = query.filter(or_(
-                DefAsyncTask.task_name.ilike(f'%{search_query}%'),
-                DefAsyncTask.task_name.ilike(f'%{search_underscore}%'),
-                DefAsyncTask.task_name.ilike(f'%{search_space}%')
+                DefAsyncTask.user_task_name.ilike(f'%{search_query}%'),
+                DefAsyncTask.user_task_name.ilike(f'%{search_underscore}%'),
+                DefAsyncTask.user_task_name.ilike(f'%{search_space}%')
             ))
         paginated = query.order_by(DefAsyncTask.def_task_id.desc()).paginate(page=page, per_page=limit, error_out=False)
         return make_response(jsonify({
@@ -1390,26 +1430,6 @@ def Delete_TaskParams(task_name, def_param_id):
     except Exception as e:
         return jsonify({"error": "Failed to delete task parameter", "details": str(e)}), 500
 
-
-@flask_app.route('/Delete_ExecutionMethod/<string:internal_execution_method>', methods=['DELETE'])
-# @jwt_required()
-def Delete_ExecutionMethod(internal_execution_method):
-    try:
-        # Find the execution method by internal_execution_method
-        execution_method = DefAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
-
-        # If the execution method does not exist, return a 404 response
-        if not execution_method:
-            return jsonify({"message": f"Execution method with internal_execution_method '{internal_execution_method}' not found"}), 404
-
-        # Delete the execution method from the database
-        db.session.delete(execution_method)
-        db.session.commit()
-
-        return jsonify({"message": f"Execution method with internal_execution_method '{internal_execution_method}' successfully deleted"}), 200
-
-    except Exception as e:
-        return jsonify({"error": "Failed to delete execution method", "details": str(e)}), 500
 
 
 
@@ -1983,41 +2003,66 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
 #     except Exception as e:
 #         return jsonify({"error": str(e)}), 500
 
-@flask_app.route('/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
-# @jwt_required()
+# @flask_app.route('/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
+# # @jwt_required()
+# def view_requests(page, page_limit):
+#     try:
+#         fourteen_days = datetime.utcnow() - timedelta(days=14)
+#         # Filter by date
+#         query = DefAsyncTaskRequest.query.filter(
+#             DefAsyncTaskRequest.creation_date >= fourteen_days
+#         )
+        
+#         # Total number of matching tasks
+#         total = query.count()
+#         total_pages = (total + page_limit - 1) // page_limit
+
+#         # Paginate using offset and limit
+#         requests = query.order_by(DefAsyncTaskRequest.creation_date.desc())\
+#                      .offset((page - 1) * page_limit).limit(page_limit).all()
+
+#         if not requests:
+#             return jsonify({"message": "No tasks found"}), 404
+
+#         return make_response(jsonify({
+#             "items": [req.json() for req in requests],
+#             "total": requests.total,
+#             "pages": requests.pages,
+#             "page": requests.page
+#         }), 200)
+
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+@flask_app.route('/def_async_task_requests/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
 def view_requests(page, page_limit):
     try:
-        fourteen_days = datetime.utcnow() - timedelta(days=14)
-        # Filter by date
+        cutoff_date = datetime.utcnow() - timedelta(days=14)
+
         query = DefAsyncTaskRequest.query.filter(
-            DefAsyncTaskRequest.creation_date >= fourteen_days
-        )
-        
-        # Total number of matching tasks
-        total = query.count()
-        total_pages = (total + page_limit - 1) // page_limit
+            DefAsyncTaskRequest.creation_date >= cutoff_date
+        ).order_by(DefAsyncTaskRequest.creation_date.desc())
 
-        # Paginate using offset and limit
-        requests = query.order_by(DefAsyncTaskRequest.creation_date.desc())\
-                     .offset((page - 1) * page_limit).limit(page_limit) \
-                     .all()
+        paginated = query.paginate(page=page, per_page=page_limit, error_out=False)
 
-        if not requests:
+        if not paginated.items:
             return jsonify({"message": "No tasks found"}), 404
 
-        return jsonify({"total_records": total,
-                        "total_pages": total_pages,
-                        "requests": [request.json() for request in requests]
+        return jsonify({
+            "items": [task.json() for task in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
         }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@flask_app.route('/def_async_task_requests/view_requests/<int:page>/<int:limit>', methods=['GET'])
+@flask_app.route('/def_async_task_requests/view_requests/search/<int:page>/<int:limit>', methods=['GET'])
 def def_async_task_requests_view_requests(page, limit):
     try:
-        search_query = request.args.get('q', '').strip().lower()
+        search_query = request.args.get('user_schedule_name', '').strip().lower()
         search_underscore = search_query.replace(' ', '_')
         search_space = search_query.replace('_', ' ')
         day_limit = datetime.utcnow() - timedelta(days=30)

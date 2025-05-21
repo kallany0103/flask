@@ -352,7 +352,7 @@ def create_update_enterprise(tenant_id):
 
 #Get all enterprise setups
 @flask_app.route('/get_enterprises', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def get_enterprises():
     try:
         setups = DefTenantEnterpriseSetup.query.order_by(DefTenantEnterpriseSetup.tenant_id.desc()).all()

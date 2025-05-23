@@ -1719,13 +1719,14 @@ def Create_TaskSchedule():
 
 
 @flask_app.route('/Show_TaskSchedules', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_TaskSchedules():
     try:
         schedules = DefAsyncTaskSchedulesV.query \
     .filter(DefAsyncTaskSchedulesV.ready_for_redbeat != 'Y') \
     .order_by(desc(DefAsyncTaskSchedulesV.def_task_sche_id)) \
     .all()
+        # schedules = DefAsyncTaskSchedulesV.query.order_by(DefAsyncTaskSchedulesV.def_task_sche_id.desc()).all()
         # Return the schedules as a JSON response
         return jsonify([schedule.json() for schedule in schedules])
 
@@ -3294,6 +3295,7 @@ def create_def_data_source():
 
 
 @flask_app.route('/def_data_sources', methods=['GET'])
+@jwt_required()
 def get_all_def_data_sources():
     try:
         data_sources = DefDataSource.query.order_by(DefDataSource.def_data_source_id.desc()).all()

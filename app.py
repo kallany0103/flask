@@ -5,13 +5,14 @@ import uuid
 import requests
 import traceback
 import logging
+import redis
 from itertools import count
 from functools import wraps
 from flask_cors import CORS 
 from dotenv import load_dotenv            # To load environment variables from a .env file
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine, Text, desc, cast, TIMESTAMP, func, or_
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, make_response       # Flask utilities for handling requests and responses
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -50,7 +51,14 @@ from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
 from celery.schedules import crontab
 from celery.result import AsyncResult      # For checking the status of tasks
 from redbeat import RedBeatSchedulerEntry
+from config import redis_url
+from redis import Redis
+from zoneinfo import ZoneInfo
+import time
+import re
 
+
+redis_client = Redis.from_url(redis_url, decode_responses=True)
 
 jwt = JWTManager(flask_app)
 CORS(flask_app)
@@ -1035,7 +1043,7 @@ def delete_access_profile(user_id, serial_number):
 
 
 @flask_app.route('/Create_ExecutionMethod', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def Create_ExecutionMethod():
     try:
         execution_method = request.json.get('execution_method')
@@ -1072,7 +1080,7 @@ def Create_ExecutionMethod():
 
 
 @flask_app.route('/Show_ExecutionMethods', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_ExecutionMethods():
     try:
         methods = DefAsyncExecutionMethods.query.all()
@@ -1083,8 +1091,32 @@ def Show_ExecutionMethods():
         return jsonify({"message": "Error retrieving execution methods", "error": str(e)}), 500
 
 
+@flask_app.route('/Show_ExecutionMethods/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def paginated_execution_methods(page, limit):
+    try:
+        paginated = DefAsyncExecutionMethods.query.paginate(page=page, per_page=limit, error_out=False)
+
+        if not paginated.items:
+            return jsonify({"message": "No execution methods found"}), 404
+
+        return jsonify({
+            "items": [method.json() for method in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200
+
+    except Exception as e:
+        return jsonify({"message": "Error retrieving execution methods", "error": str(e)}), 500
+
+
+
+
+
+
 @flask_app.route('/Show_ExecutionMethod/<string:internal_execution_method>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_ExecutionMethod(internal_execution_method):
     try:
         method = DefAsyncExecutionMethods.query.get(internal_execution_method)
@@ -1096,7 +1128,7 @@ def Show_ExecutionMethod(internal_execution_method):
 
 
 @flask_app.route('/Update_ExecutionMethod/<string:internal_execution_method>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Update_ExecutionMethod(internal_execution_method):
     try:
         execution_method = DefAsyncExecutionMethods.query.filter_by(internal_execution_method=internal_execution_method).first()
@@ -1125,7 +1157,7 @@ def Update_ExecutionMethod(internal_execution_method):
 
 
 @flask_app.route('/Delete_ExecutionMethod/<string:internal_execution_method>', methods=['DELETE'])
-# @jwt_required()
+@jwt_required()
 def Delete_ExecutionMethod(internal_execution_method):
     try:
         # Find the execution method by internal_execution_method
@@ -1147,7 +1179,7 @@ def Delete_ExecutionMethod(internal_execution_method):
 
 # Create a task definition
 @flask_app.route('/Create_Task', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def Create_Task():
     try:
         user_task_name = request.json.get('user_task_name')
@@ -1187,7 +1219,7 @@ def Create_Task():
 
 
 @flask_app.route('/def_async_tasks', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_Tasks():
     try:
         tasks = DefAsyncTask.query.order_by(DefAsyncTask.def_task_id.desc()).all()
@@ -1197,7 +1229,7 @@ def Show_Tasks():
 
 
 @flask_app.route('/def_async_tasks/<int:page>/<int:limit>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_Tasks_Paginated(page, limit):
     try:
         tasks = DefAsyncTask.query.order_by(DefAsyncTask.creation_date.desc())
@@ -1214,6 +1246,7 @@ def Show_Tasks_Paginated(page, limit):
 
 
 @flask_app.route('/def_async_tasks/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
 def def_async_tasks_show_tasks(page, limit):
     try:
         search_query = request.args.get('user_task_name', '').strip().lower()
@@ -1240,7 +1273,7 @@ def def_async_tasks_show_tasks(page, limit):
 
 
 @flask_app.route('/Show_Task/<task_name>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_Task(task_name):
     try:
         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
@@ -1255,7 +1288,7 @@ def Show_Task(task_name):
 
 
 @flask_app.route('/Update_Task/<string:task_name>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Update_Task(task_name):
     try:
         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
@@ -1289,7 +1322,7 @@ def Update_Task(task_name):
 
 
 @flask_app.route('/Cancel_Task/<string:task_name>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Cancel_Task(task_name):
     try:
         # Find the task by task_name in the DEF_ASYNC_TASKS table
@@ -1311,7 +1344,7 @@ def Cancel_Task(task_name):
 
 
 @flask_app.route('/Add_TaskParams/<string:task_name>', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def Add_TaskParams(task_name):
     try:
         # Check if the task exists in the DEF_ASYNC_TASKS table
@@ -1359,7 +1392,7 @@ def Add_TaskParams(task_name):
 
 
 @flask_app.route('/Show_TaskParams/<string:task_name>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_Parameter(task_name):
     try:
         parameters = DefAsyncTaskParam.query.filter_by(task_name=task_name).all()
@@ -1374,7 +1407,7 @@ def Show_Parameter(task_name):
 
 
 @flask_app.route('/Update_TaskParams/<string:task_name>/<int:def_param_id>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Update_TaskParams(task_name, def_param_id):
     try:
         # Get the updated values from the request body
@@ -1411,7 +1444,7 @@ def Update_TaskParams(task_name, def_param_id):
 
 
 @flask_app.route('/Delete_TaskParams/<string:task_name>/<int:def_param_id>', methods=['DELETE'])
-# @jwt_required()
+@jwt_required()
 def Delete_TaskParams(task_name, def_param_id):
     try:
         # Find the task parameter by task_name and seq
@@ -1429,7 +1462,6 @@ def Delete_TaskParams(task_name, def_param_id):
 
     except Exception as e:
         return jsonify({"error": "Failed to delete task parameter", "details": str(e)}), 500
-
 
 
 
@@ -1566,9 +1598,8 @@ def Delete_TaskParams(task_name, def_param_id):
 #         db.session.rollback()
 #         return jsonify({"error": "Failed to create task schedule", "details": str(e)}), 500
 
-
 @flask_app.route('/Create_TaskSchedule', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def Create_TaskSchedule():
     try:
         user_schedule_name = request.json.get('user_schedule_name', 'Immediate')
@@ -1736,7 +1767,7 @@ def Show_TaskSchedules():
 
 
 @flask_app.route('/Show_TaskSchedule/<string:task_name>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def Show_TaskSchedule(task_name):
     try:
         schedule = DefAsyncTaskSchedule.query.filter_by(task_name=task_name).first()
@@ -1798,7 +1829,7 @@ def Show_TaskSchedule(task_name):
 
 
 @flask_app.route('/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Update_TaskSchedule(task_name):
     try:
         redbeat_schedule_name = request.json.get('redbeat_schedule_name')
@@ -1886,7 +1917,7 @@ def Update_TaskSchedule(task_name):
 
 
 @flask_app.route('/Cancel_TaskSchedule/<string:task_name>', methods=['PUT'])
-# @jwt_required()
+@jwt_required()
 def Cancel_TaskSchedule(task_name):
     try:
         # Extract redbeat_schedule_name from payload
@@ -2035,7 +2066,13 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
 #     except Exception as e:
 #         return jsonify({"error": str(e)}), 500
 
+
+
+
+
+#def_async_task_requests
 @flask_app.route('/def_async_task_requests/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
+@jwt_required()
 def view_requests(page, page_limit):
     try:
         cutoff_date = datetime.utcnow() - timedelta(days=14)
@@ -2061,6 +2098,7 @@ def view_requests(page, page_limit):
 
 
 @flask_app.route('/def_async_task_requests/view_requests/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
 def def_async_task_requests_view_requests(page, limit):
     try:
         search_query = request.args.get('user_schedule_name', '').strip().lower()
@@ -3460,6 +3498,255 @@ def delete_entitlement(id):
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting entitlement', 'error': str(e)}), 500)
 
+
+
+
+
+#redis
+
+@flask_app.route('/scheduled_tasks', methods=['GET'])
+def get_redbeat_scheduled_tasks():
+    try:
+        tasks_output = []
+        local_tz = ZoneInfo("Asia/Dhaka")
+
+        def get_next_run_from_redis(redis_client, key_str, local_tz):
+            score = redis_client.zscore("redbeat::schedule", key_str)
+            if score is None:
+                return None
+            dt_utc = datetime.fromtimestamp(score, timezone.utc)
+            dt_local = dt_utc.astimezone(local_tz)
+            return {
+                # "utc": dt_utc.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                # "local": dt_local.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "utc": dt_utc.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "local": dt_local.strftime("%A, %d %B %Y, %I:%M %p %Z (%z)")
+            }
+
+        for key_str in redis_client.scan_iter("redbeat:*"):
+            if key_str == "redbeat::schedule":
+                continue  # skip internal RedBeat key
+            key_type = redis_client.type(key_str)
+            if key_type != "hash":
+                continue  # skip non-hash keys
+
+            task_data = redis_client.hgetall(key_str)
+            if not task_data:
+                continue
+
+            # task_data is dict[str, str] due to decode_responses=True
+
+            definition_raw = task_data.get("definition", "{}")
+            try:
+                definition = json.loads(definition_raw)
+            except json.JSONDecodeError:
+                definition = {}
+
+
+
+            # try:
+            #     definition = json.loads(task_data.get("definition", "{}"))
+            # except json.JSONDecodeError:
+            #     definition = {}
+
+            # task_name = definition.get("name") or key_str.split(":", 1)[-1]
+            def clean_task_name(name):
+                # Remove trailing underscore + UUID pattern, e.g. _e43d6b82-5ad3-47e0-b215-ff9912a7f6d8
+                return re.sub(r'_[0-9a-fA-F-]{36}$', '', name)
+
+            raw_name = definition.get("name") or key_str.split(":", 1)[-1]
+            task_name = clean_task_name(raw_name)
+    
+
+            # Exclude tasks starting with celery.
+            task_full_name = definition.get("task", "")
+            if task_full_name.startswith("celery."):
+                continue
+
+            # Parse meta info
+            try:
+                meta_raw = json.loads(task_data.get('meta', '{}')) or {}
+                last_run_at = meta_raw.get("last_run_at", {})
+                total_run_count = meta_raw.get("total_run_count", 0)
+                
+
+                
+
+                if all(k in last_run_at for k in ("year", "month", "day", "hour", "minute", "second")):
+                    dt_utc = datetime(
+                        year=last_run_at["year"],
+                        month=last_run_at["month"],
+                        day=last_run_at["day"],
+                        hour=last_run_at["hour"],
+                        minute=last_run_at["minute"],
+                        second=last_run_at["second"],
+                        microsecond=last_run_at.get("microsecond", 0),
+                        tzinfo=timezone.utc
+                    )
+                    dt_local = dt_utc.astimezone(local_tz)
+                    last_run = {
+                        # "utc": dt_utc.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                        # "local": dt_local.strftime("%Y-%m-%d %H:%M:%S %Z")
+                        "utc": dt_utc.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                        "local": dt_local.strftime("%A, %d %B %Y, %I:%M %p %Z (%z)")
+                    }
+                else:
+                    last_run = None
+
+            except Exception:
+                last_run = None
+                total_run_count = 0
+
+            # Get next run from Redis sorted set score
+            next_run = get_next_run_from_redis(redis_client, key_str, local_tz)
+
+            # Identify interval or cron schedule
+            schedule_info = {}
+            if "schedule" in definition:
+                schedule = definition["schedule"]
+                # if "every" in schedule:
+                if isinstance(schedule, dict) and "every" in schedule:
+                    schedule_info["type"] = "interval"
+                    schedule_info["every"] = schedule["every"]
+                elif any(k in schedule for k in ["minute", "hour", "day_of_week", "day_of_month", "month_of_year"]):
+                    schedule_info["type"] = "crontab"
+                    schedule_info["expression"] = schedule
+                else:
+                    schedule_info["type"] = "unknown"
+            else:
+                schedule_info["type"] = "immediate"
+
+            if next_run is None:
+                schedule_info["status"] = "inactive"
+            else:
+                schedule_info["status"] = "active"
+
+            tasks_output.append({
+                "task_key": key_str,
+                "task_name": task_name,
+                "schedule_type": schedule_info["type"],
+                "schedule_status": schedule_info.get("status"),
+                "schedule_details": schedule_info.get("expression") or {"every": schedule_info.get("every")},
+                "next_run": next_run,
+                "last_run": last_run,
+                "total_run_count": total_run_count,
+            })
+
+        return jsonify({
+            "total_tasks": len(tasks_output),
+            "tasks": tasks_output
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+@flask_app.route('/scheduled_tasks/<path:task_key>', methods=['GET'])
+def get_redbeat_scheduled_task(task_key):
+    try:
+        local_tz = ZoneInfo("Asia/Dhaka")
+        redis_key = task_key if task_key.startswith("redbeat:") else f"redbeat:{task_key}"
+
+        if redis_key == "redbeat::schedule":
+            return jsonify({"error": "Invalid task key"}), 400
+
+        if not redis_client.exists(redis_key):
+            return jsonify({"error": "Task not found"}), 404
+
+        task_type = redis_client.type(redis_key)
+        if task_type != "hash":
+            return jsonify({"error": "Invalid task format"}), 400
+
+        task_data = redis_client.hgetall(redis_key)
+        if not task_data:
+            return jsonify({"error": "Task data missing or empty"}), 404
+
+        try:
+            definition = json.loads(task_data.get("definition", "{}"))
+        except json.JSONDecodeError:
+            definition = {}
+
+        def clean_task_name(name):
+            return re.sub(r'_[0-9a-fA-F-]{36}$', '', name)
+
+        raw_name = definition.get("name") or redis_key.split(":", 1)[-1]
+        task_name = clean_task_name(raw_name)
+
+        if definition.get("task", "").startswith("celery."):
+            return jsonify({"error": "Internal Celery task, not user-defined"}), 400
+
+        # Parse meta info
+        try:
+            meta_raw = json.loads(task_data.get("meta", '{}')) or {}
+            last_run_at = meta_raw.get("last_run_at", {})
+            total_run_count = meta_raw.get("total_run_count", 0)
+
+            if all(k in last_run_at for k in ("year", "month", "day", "hour", "minute", "second")):
+                dt_utc = datetime(
+                    year=last_run_at["year"],
+                    month=last_run_at["month"],
+                    day=last_run_at["day"],
+                    hour=last_run_at["hour"],
+                    minute=last_run_at["minute"],
+                    second=last_run_at["second"],
+                    microsecond=last_run_at.get("microsecond", 0),
+                    tzinfo=timezone.utc
+                )
+                dt_local = dt_utc.astimezone(local_tz)
+                last_run = {
+                    "utc": dt_utc.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "local": dt_local.strftime("%A, %d %B %Y, %I:%M %p %Z (%z)")
+                }
+            else:
+                last_run = None
+
+        except Exception:
+            last_run = None
+            total_run_count = 0
+
+        # Get next run
+        def get_next_run_from_redis(redis_client, key_str, local_tz):
+            score = redis_client.zscore("redbeat::schedule", key_str)
+            if score is None:
+                return None
+            dt_utc = datetime.fromtimestamp(score, timezone.utc)
+            dt_local = dt_utc.astimezone(local_tz)
+            return {
+                "utc": dt_utc.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "local": dt_local.strftime("%A, %d %B %Y, %I:%M %p %Z (%z)")
+            }
+
+        next_run = get_next_run_from_redis(redis_client, redis_key, local_tz)
+
+        schedule_info = {}
+        if "schedule" in definition:
+            schedule = definition["schedule"]
+            if isinstance(schedule, dict) and "every" in schedule:
+                schedule_info["type"] = "interval"
+                schedule_info["every"] = schedule["every"]
+            elif any(k in schedule for k in ["minute", "hour", "day_of_week", "day_of_month", "month_of_year"]):
+                schedule_info["type"] = "crontab"
+                schedule_info["expression"] = schedule
+            else:
+                schedule_info["type"] = "unknown"
+        else:
+            schedule_info["type"] = "immediate"
+
+        schedule_info["status"] = "active" if next_run else "inactive"
+
+        return jsonify({
+            "task_key": redis_key,
+            "task_name": task_name,
+            "schedule_type": schedule_info["type"],
+            "schedule_status": schedule_info.get("status"),
+            "schedule_details": schedule_info.get("expression") or {"every": schedule_info.get("every")},
+            "next_run": next_run,
+            "last_run": last_run,
+            "total_run_count": total_run_count,
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 

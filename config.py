@@ -41,6 +41,11 @@ def celery_init_app(app: Flask) -> Celery:
     
     # Configure Celery using the Flask app's configuration
     celery_app.config_from_object(app.config["CELERY"])
+
+    # Manually apply SSL config if needed
+    if "broker_use_ssl" in app.config["CELERY"]:
+        celery_app.conf.broker_use_ssl = app.config["CELERY"]["broker_use_ssl"]
+
     
     # Set the created Celery app as the default instance
     celery_app.set_default()

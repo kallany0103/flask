@@ -56,6 +56,17 @@ def create_app() -> Flask:
     app = Flask(__name__)
     
     # Configure the app with Celery settings using a dictionary
+    # app.config.from_mapping(
+    #     CELERY=dict(
+    #         broker_url=redis_url,                      # Redis as the message broker
+    #         result_backend="db+"+database_url,              # PostgreSQL as the result backend
+    #         #result_backend=database_url,              # PostgreSQL as the result backend
+    #         beat_scheduler='redbeat.RedBeatScheduler',# RedBeat scheduler for periodic tasks
+    #         redbeat_redis_url=redis_url,              # Redis URL for RedBeat configuration
+    #         timezone='UTC',                           # Use UTC timezone for tasks
+    #         enable_utc=True                          # Enable UTC mode
+    #     ),
+    # )
     app.config.from_mapping(
         CELERY=dict(
             broker_url=redis_url,                      # Redis as the message broker
@@ -63,11 +74,11 @@ def create_app() -> Flask:
             #result_backend=database_url,              # PostgreSQL as the result backend
             beat_scheduler='redbeat.RedBeatScheduler',# RedBeat scheduler for periodic tasks
             redbeat_redis_url=redis_url,              # Redis URL for RedBeat configuration
+            redbeat_lock_timeout=300,
             timezone='UTC',                           # Use UTC timezone for tasks
             enable_utc=True                          # Enable UTC mode
         ),
     )
-    
     # Load additional configuration from environment variables with a prefix
     app.config.from_prefixed_env()
     

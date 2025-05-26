@@ -5,6 +5,8 @@ import redis                     # Import Redis library for broker communication
 import psycopg2                  # Import psycopg2 to connect with PostgreSQL database
 import os                        # Import os for environment variable handling
 from dotenv import load_dotenv   # Import load_dotenv to load environment variables from a .env file
+import ssl
+
 
 # Load environment variables from the .env file
 # load_dotenv()  # This loads the variables defined in the .env file into the environment
@@ -75,6 +77,9 @@ def create_app() -> Flask:
             beat_scheduler='redbeat.RedBeatScheduler',# RedBeat scheduler for periodic tasks
             redbeat_redis_url=redis_url,              # Redis URL for RedBeat configuration
             redbeat_lock_timeout=300,
+            broker_use_ssl = {
+                'ssl_cert_reqs': ssl.CERT_NONE  # or ssl.CERT_REQUIRED if you have proper certs
+            },
             timezone='UTC',                           # Use UTC timezone for tasks
             enable_utc=True                          # Enable UTC mode
         ),

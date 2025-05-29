@@ -230,6 +230,7 @@ def delete_message(id):
 
 # Create a tenant
 @flask_app.route('/tenants', methods=['POST'])
+@jwt_required()
 def create_tenant():
     try:
        data = request.get_json()
@@ -249,6 +250,7 @@ def create_tenant():
 
 # Get all tenants
 @flask_app.route('/tenants', methods=['GET'])
+@jwt_required()
 def get_tenants():
     try:
         tenants = DefTenant.query.order_by(DefTenant.tenant_id.desc()).all()
@@ -258,6 +260,7 @@ def get_tenants():
 
 
 @flask_app.route('/tenants/<int:tenant_id>', methods=['GET'])
+@jwt_required()
 def get_tenant(tenant_id):
     try:
         tenant = DefTenant.query.filter_by(tenant_id=tenant_id).first()
@@ -271,6 +274,7 @@ def get_tenant(tenant_id):
 
 # Update a tenant
 @flask_app.route('/tenants/<int:tenant_id>', methods=['PUT'])
+@jwt_required()
 def update_tenant(tenant_id):
     try:
         tenant = DefTenant.query.filter_by(tenant_id=tenant_id).first()
@@ -286,6 +290,7 @@ def update_tenant(tenant_id):
 
 # Delete a tenant
 @flask_app.route('/tenants/<int:tenant_id>', methods=['DELETE'])
+@jwt_required()
 def delete_tenant(tenant_id):
     try:
         user = DefTenant.query.filter_by(tenant_id=tenant_id).first()
@@ -300,6 +305,7 @@ def delete_tenant(tenant_id):
 
 # Create enterprise setup
 @flask_app.route('/create_enterpriseV1/<int:tenant_id>', methods=['POST'])
+@jwt_required()
 def create_enterprise(tenant_id):
     try:
         data = request.get_json()
@@ -324,6 +330,7 @@ def create_enterprise(tenant_id):
 
 # Create or update enterprise setup
 @flask_app.route('/create_enterprise/<int:tenant_id>', methods=['POST'])
+@jwt_required()
 def create_update_enterprise(tenant_id):
     try:
         data = request.get_json()
@@ -371,6 +378,7 @@ def get_enterprises():
 
 # Get one enterprise setup by tenant_id
 @flask_app.route('/get_enterprise/<int:tenant_id>', methods=['GET'])
+@jwt_required()
 def get_enterprise(tenant_id):
     try:
         setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
@@ -383,6 +391,7 @@ def get_enterprise(tenant_id):
 
 # Update enterprise setup
 @flask_app.route('/update_enterprise/<int:tenant_id>', methods=['PUT'])
+@jwt_required()
 def update_enterprise(tenant_id):
     try:
         setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
@@ -399,6 +408,7 @@ def update_enterprise(tenant_id):
 
 # Delete enterprise setup
 @flask_app.route('/delete_enterprise/<int:tenant_id>', methods=['DELETE'])
+@jwt_required()
 def delete_enterprise(tenant_id):
     try:
         setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
@@ -418,6 +428,7 @@ def delete_enterprise(tenant_id):
 
 #get all tenants enterprise setups
 @flask_app.route('/enterprises', methods=['GET'])
+@jwt_required()
 def enterprises():
     try:
         # results = db.session.query(DefTenantEnterpriseSetupV).all()
@@ -1955,6 +1966,101 @@ def Cancel_TaskSchedule(task_name):
     except Exception as e:
         db.session.rollback()  # Rollback on failure
         return make_response(jsonify({"message": "Error cancelling task periodic schedule", "error": str(e)}), 500)
+
+
+@flask_app.route('/Reschedule_TaskSchedule/<string:task_name>', methods=['PUT'])
+@jwt_required()
+def Reschedule_TaskSchedule(task_name):
+    try:
+        data = request.get_json()
+        redbeat_schedule_name = data.get('redbeat_schedule_name')
+        if not redbeat_schedule_name:
+            return make_response(jsonify({'error': 'redbeat_schedule_name is required'}), 400)
+
+        # Find the cancelled schedule in DB
+        schedule = DefAsyncTaskScheduleNew.query.filter_by(
+            task_name=task_name,
+            redbeat_schedule_name=redbeat_schedule_name,
+            cancelled_yn='Y'
+        ).first()
+
+        if not schedule:
+            return make_response(jsonify({'error': 'Cancelled schedule not found'}), 404)
+
+        # Determine cron or periodic schedule
+        cron_schedule = None
+        schedule_minutes = None
+        schedule_data = schedule.schedule
+        schedule_type = schedule.schedule_type
+
+        if schedule_type == "WEEKLY_SPECIFIC_DAYS":
+            values = schedule_data.get('VALUES', [])
+            day_map = {
+                "SUN": 0, "MON": 1, "TUE": 2, "WED": 3,
+                "THU": 4, "FRI": 5, "SAT": 6
+            }
+            days_of_week = ",".join(str(day_map[day.upper()]) for day in values if day.upper() in day_map)
+            cron_schedule = crontab(minute=0, hour=0, day_of_week=days_of_week)
+
+        elif schedule_type == "MONTHLY_SPECIFIC_DATES":
+            values = schedule_data.get('VALUES', [])
+            dates_of_month = ",".join(values)
+            cron_schedule = crontab(minute=0, hour=0, day_of_month=dates_of_month)
+
+        elif schedule_type == "ONCE":
+            one_time_date = schedule_data.get('VALUES')
+            dt = datetime.strptime(one_time_date, "%Y-%m-%d %H:%M")
+            cron_schedule = crontab(minute=dt.minute, hour=dt.hour, day_of_month=dt.day, month_of_year=dt.month)
+
+        elif schedule_type == "PERIODIC":
+            frequency_type = schedule_data.get('FREQUENCY_TYPE', '').upper()
+            frequency = schedule_data.get('FREQUENCY', 1)
+            if frequency_type == 'MONTHS':
+                schedule_minutes = frequency * 30 * 24 * 60
+            elif frequency_type == 'WEEKS':
+                schedule_minutes = frequency * 7 * 24 * 60
+            elif frequency_type == 'DAYS':
+                schedule_minutes = frequency * 24 * 60
+            elif frequency_type == 'HOURS':
+                schedule_minutes = frequency * 60
+            elif frequency_type == 'MINUTES':
+                schedule_minutes = frequency
+            else:
+                return make_response(jsonify({'error': f'Invalid frequency type: {frequency_type}'}), 400)
+
+        else:
+            return make_response(jsonify({'error': f'Cannot reschedule type: {schedule_type}'}), 400)
+        
+        executor = DefAsyncTask.query.filter_by(task_name=task_name).first()
+        if not executor:
+            return make_response(jsonify({'error': f'Executor not found for task {task_name}'}),404)
+        # Restore schedule in Redis
+        try:
+            create_redbeat_schedule(
+                schedule_name=redbeat_schedule_name,
+                executor=executor.executor,     
+                schedule_minutes=schedule_minutes,
+                cron_schedule=cron_schedule,
+                args=schedule.args,
+                kwargs=schedule.kwargs,
+                celery_app=celery
+            )
+            print(executor)
+            
+        except Exception as e:
+            return make_response(jsonify({'error': 'Failed to recreate RedBeat schedule', 'details': str(e)}), 500)
+
+        # Update DB
+        schedule.cancelled_yn = 'N'
+        schedule.last_updated_by = get_jwt_identity()
+        schedule.last_update_date = datetime.utcnow()
+        db.session.commit()
+
+        return make_response(jsonify({'message': f"Schedule '{redbeat_schedule_name}' has been rescheduled."}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({'error': 'Failed to reschedule task', 'details': str(e)}), 500)
 
 
 

@@ -82,9 +82,9 @@ def create_app() -> Flask:
             beat_scheduler='redbeat.RedBeatScheduler',# RedBeat scheduler for periodic tasks
             redbeat_redis_url=redis_url,              # Redis URL for RedBeat configuration
             redbeat_lock_timeout=300,
-            # broker_use_ssl = {
-            #     'ssl_cert_reqs': ssl.CERT_NONE  # or ssl.CERT_REQUIRED if you have proper certs
-            # },
+            broker_use_ssl = {
+                'ssl_cert_reqs': ssl.CERT_NONE  # or ssl.CERT_REQUIRED if you have proper certs
+            },
             timezone='UTC',                           # Use UTC timezone for tasks
             enable_utc=True                          # Enable UTC mode
         ),

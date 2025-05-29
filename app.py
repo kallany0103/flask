@@ -1731,7 +1731,7 @@ def Create_TaskSchedule():
             parameters=kwargs,
             schedule_type=schedule_type,
             schedule=schedule_data,
-            ready_for_redbeat="N",
+            # ready_for_redbeat="N",
             cancelled_yn='N',
             created_by=101
         )
@@ -1753,11 +1753,11 @@ def Create_TaskSchedule():
 @jwt_required()
 def Show_TaskSchedules():
     try:
-        schedules = DefAsyncTaskSchedulesV.query \
-    .filter(DefAsyncTaskSchedulesV.ready_for_redbeat != 'Y') \
-    .order_by(desc(DefAsyncTaskSchedulesV.def_task_sche_id)) \
-    .all()
-        # schedules = DefAsyncTaskSchedulesV.query.order_by(DefAsyncTaskSchedulesV.def_task_sche_id.desc()).all()
+    #     schedules = DefAsyncTaskSchedulesV.query \
+    # .filter(DefAsyncTaskSchedulesV.ready_for_redbeat != 'Y') \
+    # .order_by(desc(DefAsyncTaskSchedulesV.def_task_sche_id)) \
+    # .all()
+        schedules = DefAsyncTaskSchedulesV.query.order_by(DefAsyncTaskSchedulesV.def_task_sche_id.desc()).all()
         # Return the schedules as a JSON response
         return jsonify([schedule.json() for schedule in schedules])
 
@@ -1844,10 +1844,10 @@ def Update_TaskSchedule(task_name):
         if not schedule:
             return jsonify({"message": f"Task Periodic Schedule for {redbeat_schedule_name} not found"}), 404
 
-        if schedule.ready_for_redbeat != 'N':
-            return jsonify({
-                "message": f"Task Periodic Schedule for {redbeat_schedule_name} is not marked as 'N'. Update is not allowed."
-            }), 400
+        # if schedule.ready_for_redbeat != 'N':
+        #     return jsonify({
+        #         "message": f"Task Periodic Schedule for {redbeat_schedule_name} is not marked as 'N'. Update is not allowed."
+        #     }), 400
 
         # Update fields
         schedule.parameters = request.json.get('parameters', schedule.parameters)
@@ -1932,8 +1932,8 @@ def Cancel_TaskSchedule(task_name):
             return make_response(jsonify({"message": f"Task periodic schedule for {redbeat_schedule_name} not found"}), 404)
 
         # Check if ready_for_redbeat is 'N' (only then cancellation is allowed)
-        if schedule.ready_for_redbeat != 'N':
-            return make_response(jsonify({"message": f"Cancellation not allowed. Task periodic schedule for {redbeat_schedule_name} is already processed in Redis"}), 400)
+        # if schedule.ready_for_redbeat != 'N':
+        #     return make_response(jsonify({"message": f"Cancellation not allowed. Task periodic schedule for {redbeat_schedule_name} is already processed in Redis"}), 400)
 
         # Update the `cancelled_yn` field to 'Y' (marking it as cancelled)
         schedule.cancelled_yn = 'Y'

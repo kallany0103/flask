@@ -360,7 +360,7 @@ class DefAsyncTaskScheduleNew(db.Model):
     schedule_type = db.Column(db.String(50))
     parameters = db.Column(db.JSON)
     schedule = db.Column(JSONB)  # Schedule info (optional)
-    ready_for_redbeat = db.Column(db.String(1))
+    # ready_for_redbeat = db.Column(db.String(1))
     cancelled_yn = db.Column(db.String(1), default='N')  # Default 'N'
     created_by = db.Column(db.Integer)  # User who created the record (optional)
     creation_date = db.Column(db.TIMESTAMP, default=datetime.utcnow)  # Timestamp of creation
@@ -378,7 +378,7 @@ class DefAsyncTaskScheduleNew(db.Model):
             "parameters": self.parameters,
             "schedule_type": self.schedule_type,
             "schedule": self.schedule,
-            "ready_for_redbeat": self.ready_for_redbeat,
+            # "ready_for_redbeat": self.ready_for_redbeat,
             "cancelled_yn": self.cancelled_yn,
             "created_by": self.created_by,
             "creation_date": self.creation_date,
@@ -451,7 +451,7 @@ class DefAsyncTaskSchedulesV(db.Model):
     parameters = db.Column(db.JSON)
     schedule_type = db.Column(db.String(255))
     schedule = db.Column(db.Integer)  # Schedule interval
-    ready_for_redbeat = db.Column(db.String(1), default='N')
+    # ready_for_redbeat = db.Column(db.String(1), default='N')
     cancelled_yn = db.Column(db.String(1), default='N')  # 'Y' or 'N' for cancellation status
     created_by = db.Column(db.Integer)  # User who created the task
     creation_date = db.Column(db.DateTime, default=datetime.utcnow)  # Timestamp of creation
@@ -471,7 +471,7 @@ class DefAsyncTaskSchedulesV(db.Model):
             "parameters": self.parameters,
             "schedule_type": self.schedule_type,
             "schedule": self.schedule,
-            "ready_for_redbeat": self.ready_for_redbeat,
+            # "ready_for_redbeat": self.ready_for_redbeat,
             "cancelled_yn": self.cancelled_yn,
             "created_by": self.created_by,
             "creation_date": self.creation_date,

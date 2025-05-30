@@ -1968,7 +1968,7 @@ def Cancel_TaskSchedule(task_name):
         return make_response(jsonify({"message": "Error cancelling task periodic schedule", "error": str(e)}), 500)
 
 
-@flask_app.route('/Reschedule_TaskSchedule/<string:task_name>', methods=['PUT'])
+@flask_app.route('/Reschedule_Task/<string:task_name>', methods=['PUT'])
 @jwt_required()
 def Reschedule_TaskSchedule(task_name):
     try:

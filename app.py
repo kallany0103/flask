@@ -259,6 +259,53 @@ def get_tenants():
         return make_response(jsonify({"message": "Error getting Tenants", "error": str(e)}), 500)
 
 
+@flask_app.route('/def_tenants/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def get_paginated_tenants(page, limit):
+    try:
+        query = DefTenant.query.order_by(DefTenant.tenant_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+        return make_response(jsonify({
+            "items": [tenant.json() for tenant in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error fetching paginated tenants", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_tenants/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_tenants(page, limit):
+    try:
+        search_query = request.args.get('tenant_name', '').strip()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefTenant.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefTenant.tenant_name.ilike(f'%{search_query}%'),
+                    DefTenant.tenant_name.ilike(f'%{search_underscore}%'),
+                    DefTenant.tenant_name.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefTenant.tenant_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [tenant.json() for tenant in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error searching tenants", "error": str(e)}), 500)
+
+
+
 @flask_app.route('/tenants/<int:tenant_id>', methods=['GET'])
 @jwt_required()
 def get_tenant(tenant_id):
@@ -389,6 +436,21 @@ def get_enterprise(tenant_id):
         return make_response(jsonify({"message": "Error retrieving enterprise setup", "error": str(e)}), 500)
 
 
+@flask_app.route('/def_tenant_enterprise_setup/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def get_paginated_enterprises(page, limit):
+    try:
+        query = db.session.query(DefTenantEnterpriseSetup).order_by(DefTenantEnterpriseSetup.tenant_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+        return jsonify({
+            "items": [row.json() for row in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200
+    except Exception as e:
+        return jsonify({"message": "Error fetching paginated enterprises", "error": str(e)}), 500
+
 # Update enterprise setup
 @flask_app.route('/update_enterprise/<int:tenant_id>', methods=['PUT'])
 @jwt_required()
@@ -447,6 +509,37 @@ def enterprises():
         return jsonify({"error": str(e)}), 500
 
 
+
+@flask_app.route('/def_tenant_enterprise_setup/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_enterprises(page, limit):
+    try:
+        search_query = request.args.get('enterprise_name', '').strip().lower()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = db.session.query(DefTenantEnterpriseSetupV)
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefTenantEnterpriseSetupV.enterprise_name.ilike(f'%{search_query}%'),
+                    DefTenantEnterpriseSetupV.enterprise_name.ilike(f'%{search_underscore}%'),
+                    DefTenantEnterpriseSetupV.enterprise_name.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefTenantEnterpriseSetupV.tenant_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [row.json() for row in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error searching enterprises", "error": str(e)}), 500)
+
+
 @flask_app.route('/defusers', methods=['POST'])
 def create_def_user():
     try:
@@ -499,7 +592,55 @@ def get_users():
     except Exception as e:
         return make_response(jsonify({'message': 'error getting users', 'error': str(e)}), 500)
     
-    
+
+@flask_app.route('/defusers/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def get_paginated_def_users(page, limit):
+    try:
+        query = DefUser.query.order_by(DefUser.user_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [user.json() for user in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error getting paginated users', 'error': str(e)}), 500)
+
+
+
+@flask_app.route('/defusers/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_def_users(page, limit):
+    try:
+        search_query = request.args.get('user_name', '').strip().lower()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefUser.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefUser.user_name.ilike(f'%{search_query}%'),
+                    DefUser.user_name.ilike(f'%{search_underscore}%'),
+                    DefUser.user_name.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefUser.user_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [user.json() for user in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error searching users", "error": str(e)}), 500)
+
+
 # get a user by id
 @flask_app.route('/defusers/<int:user_id>', methods=['GET'])
 def get_user(user_id):
@@ -585,6 +726,57 @@ def get_persons():
     except Exception as e:
         return make_response(jsonify({'message': 'error getting persons', 'error': str(e)}), 500)
     
+
+
+
+@flask_app.route('/defpersons/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def get_paginated_persons(page, limit):
+    try:
+        query = DefPerson.query.order_by(DefPerson.user_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [person.json() for person in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error getting paginated persons', 'error': str(e)}), 500)
+
+@flask_app.route('/defpersons/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_def_persons(page, limit):
+    try:
+        search_query = request.args.get('name', '').strip().lower()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefPerson.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    func.lower(DefPerson.first_name).ilike(f'%{search_query}%'),
+                    func.lower(DefPerson.first_name).ilike(f'%{search_underscore}%'),
+                    func.lower(DefPerson.first_name).ilike(f'%{search_space}%'),
+                    func.lower(DefPerson.last_name).ilike(f'%{search_query}%'),
+                    func.lower(DefPerson.last_name).ilike(f'%{search_underscore}%'),
+                    func.lower(DefPerson.last_name).ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefPerson.user_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [person.json() for person in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error searching persons", "error": str(e)}), 500)
+
 
 @flask_app.route('/defpersons/<int:user_id>', methods=['GET'])
 def get_person(user_id):
@@ -1094,7 +1286,7 @@ def Create_ExecutionMethod():
 @jwt_required()
 def Show_ExecutionMethods():
     try:
-        methods = DefAsyncExecutionMethods.query.all()
+        methods = DefAsyncExecutionMethods.query.order_by(DefAsyncExecutionMethods.internal_execution_method.desc()).all()
         if not methods:
             return jsonify({"message": "No execution methods found"}), 404
         return jsonify([method.json() for method in methods]), 200
@@ -1106,7 +1298,7 @@ def Show_ExecutionMethods():
 @jwt_required()
 def paginated_execution_methods(page, limit):
     try:
-        paginated = DefAsyncExecutionMethods.query.paginate(page=page, per_page=limit, error_out=False)
+        paginated = DefAsyncExecutionMethods.query.order_by(DefAsyncExecutionMethods.creation_date.desc()).paginate(page=page, per_page=limit, error_out=False)
 
         if not paginated.items:
             return jsonify({"message": "No execution methods found"}), 404
@@ -1123,6 +1315,40 @@ def paginated_execution_methods(page, limit):
 
 
 
+@flask_app.route('/def_async_execution_methods/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_execution_methods(page, limit):
+    try:
+        search_query = request.args.get('internal_execution_method', '').strip().lower()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefAsyncExecutionMethods.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefAsyncExecutionMethods.internal_execution_method.ilike(f'%{search_query}%'),
+                    DefAsyncExecutionMethods.internal_execution_method.ilike(f'%{search_underscore}%'),
+                    DefAsyncExecutionMethods.internal_execution_method.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefAsyncExecutionMethods.creation_date.desc()).paginate(
+            page=page, per_page=limit, error_out=False
+        )
+
+        if not paginated.items:
+            return jsonify({"message": "No execution methods found"}), 404
+
+        return jsonify({
+            "items": [method.json() for method in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200
+
+    except Exception as e:
+        return jsonify({"message": "Error searching execution methods", "error": str(e)}), 500
 
 
 
@@ -1354,6 +1580,9 @@ def Cancel_Task(task_name):
 
 
 
+
+
+
 @flask_app.route('/Add_TaskParams/<string:task_name>', methods=['POST'])
 @jwt_required()
 def Add_TaskParams(task_name):
@@ -1415,6 +1644,41 @@ def Show_Parameter(task_name):
 
     except Exception as e:
         return make_response(jsonify({"message": "Error getting Task Parameters", "error": str(e)}), 500)
+
+
+# @flask_app.route('/def_async_task_params/search/<int:page>/<int:limit>', methods=['GET'])
+# # @jwt_required()
+# def search_all_task_params(page, limit):
+#     try:
+#         task_query = request.args.get('task_name', '').strip().lower()
+#         task_underscore = task_query.replace(' ', '_')
+#         task_space = task_query.replace('_', ' ')
+#         query = DefAsyncTaskParam.query
+
+#         filters = []
+#         if task_query:
+#             filters.append(
+#                 or_(
+#                     DefAsyncTaskParam.task_name.ilike(f'%{task_query}%'),
+#                     DefAsyncTaskParam.task_name.ilike(f'%{task_underscore}%'),
+#                     DefAsyncTaskParam.task_name.ilike(f'%{task_space}%')
+#                 )
+#             )
+#         if filters:
+#             query = query.filter(*filters)
+
+#         paginated = query.order_by(DefAsyncTaskParam.def_param_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+#         return make_response(jsonify({
+#             "items": [param.json() for param in paginated.items],
+#             "total": paginated.total,
+#             "pages": paginated.pages,
+#             "page": paginated.page
+#         }), 200)
+#     except Exception as e:
+#         return make_response(jsonify({"message": "Error searching task parameters", "error": str(e)}), 500)
+
+
 
 
 @flask_app.route('/Update_TaskParams/<string:task_name>/<int:def_param_id>', methods=['PUT'])
@@ -1777,6 +2041,60 @@ def Show_TaskSchedules():
         return jsonify({"error": str(e)}), 500
 
 
+
+@flask_app.route('/def_async_task_schedules/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def paginated_task_schedules(page, limit):
+    try:
+        paginated = DefAsyncTaskSchedulesV.query.order_by(
+            DefAsyncTaskSchedulesV.def_task_sche_id.desc()
+        ).paginate(page=page, per_page=limit, error_out=False)
+
+        return jsonify({
+            "items": [schedule.json() for schedule in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200
+    except Exception as e:
+        return jsonify({"message": "Error fetching task schedules", "error": str(e)}), 500
+
+
+@flask_app.route('/def_async_task_schedules/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_task_schedules(page, limit):
+    try:
+        search_query = request.args.get('task_name', '').strip().lower()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefAsyncTaskSchedulesV.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefAsyncTaskSchedulesV.task_name.ilike(f'%{search_query}%'),
+                    DefAsyncTaskSchedulesV.task_name.ilike(f'%{search_underscore}%'),
+                    DefAsyncTaskSchedulesV.task_name.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefAsyncTaskSchedulesV.def_task_sche_id.desc()).paginate(
+            page=page, per_page=limit, error_out=False
+        )
+
+        return jsonify({
+            "items": [schedule.json() for schedule in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200
+    except Exception as e:
+        return jsonify({"message": "Error searching task schedules", "error": str(e)}), 500
+
+
+
+
+
 @flask_app.route('/Show_TaskSchedule/<string:task_name>', methods=['GET'])
 @jwt_required()
 def Show_TaskSchedule(task_name):
@@ -2064,9 +2382,6 @@ def Reschedule_TaskSchedule(task_name):
 
 
 
-
-
-
 @flask_app.route('/Cancel_AdHoc_Task/<string:task_name>/<string:user_schedule_name>/<string:schedule_id>/<string:task_id>', methods=['PUT'])
 def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
     """
@@ -2207,7 +2522,7 @@ def view_requests(page, page_limit):
 @jwt_required()
 def def_async_task_requests_view_requests(page, limit):
     try:
-        search_query = request.args.get('user_schedule_name', '').strip().lower()
+        search_query = request.args.get('task_name', '').strip().lower()
         search_underscore = search_query.replace(' ', '_')
         search_space = search_query.replace('_', ' ')
         day_limit = datetime.utcnow() - timedelta(days=30)
@@ -2215,9 +2530,9 @@ def def_async_task_requests_view_requests(page, limit):
 
         if search_query:
             query = query.filter(or_(
-                DefAsyncTaskRequest.user_schedule_name.ilike(f'%{search_query}%'),
-                DefAsyncTaskRequest.user_schedule_name.ilike(f'%{search_underscore}%'),
-                DefAsyncTaskRequest.user_schedule_name.ilike(f'%{search_space}%')
+                DefAsyncTaskRequest.task_name.ilike(f'%{search_query}%'),
+                DefAsyncTaskRequest.task_name.ilike(f'%{search_underscore}%'),
+                DefAsyncTaskRequest.task_name.ilike(f'%{search_space}%')
             ))
 
         paginated = query.order_by(DefAsyncTaskRequest.creation_date.desc()) \
@@ -2282,7 +2597,37 @@ def get_paginated_def_access_models(page, limit):
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
 
-    
+
+@flask_app.route('/def_access_models/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_def_access_models(page, limit):
+    try:
+        search_query = request.args.get('model_name', '').strip()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefAccessModel.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefAccessModel.model_name.ilike(f'%{search_query}%'),
+                    DefAccessModel.model_name.ilike(f'%{search_underscore}%'),
+                    DefAccessModel.model_name.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefAccessModel.def_access_model_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [model.json() for model in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error searching access models", "error": str(e)}), 500)
+
+
 @flask_app.route('/def_access_models/<int:model_id>', methods=['GET'])
 def get_def_access_model(model_id):
     try:
@@ -2576,6 +2921,8 @@ def get_def_access_model_logic_attributes():
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving attributes", "error": str(e)}), 500)
 
+
+
 @flask_app.route('/def_access_model_logic_attributes/upsert', methods=['POST'])
 def upsert_def_access_model_logic_attributes():
     try:
@@ -2753,6 +3100,39 @@ def get_def_global_conditions():
         return make_response(jsonify([condition.json() for condition in conditions]), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving DefGlobalConditions", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_global_conditions/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_def_global_conditions(page, limit):
+    try:
+        search_query = request.args.get('name', '').strip()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefGlobalCondition.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefGlobalCondition.name.ilike(f'%{search_query}%'),
+                    DefGlobalCondition.name.ilike(f'%{search_underscore}%'),
+                    DefGlobalCondition.name.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefGlobalCondition.def_global_condition_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [item.json() for item in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({
+            "message": "Error searching DefGlobalConditions",
+            "error": str(e)
+        }), 500)
 
 
 @flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['GET'])
@@ -2957,26 +3337,6 @@ def get_def_global_condition_logics():
         return make_response(jsonify({"message": "Error retrieving DefGlobalConditionLogics", "error": str(e)}), 500)
 
 
-@flask_app.route('/def_global_condition_logics/<int:page>/<int:limit>', methods=['GET'])
-def get_paginated_def_global_condition_logics(page, limit):
-    try:
-        query = DefGlobalConditionLogic.query.order_by(DefGlobalConditionLogic.def_global_condition_logic_id.desc())
-        paginated = query.paginate(page=page, per_page=limit, error_out=False)
-
-        return make_response(jsonify({
-            "items": [item.json() for item in paginated.items],
-            "total": paginated.total,
-            "pages": paginated.pages,
-            "page": paginated.page
-        }), 200)
-
-    except Exception as e:
-        return make_response(jsonify({
-            'message': 'Error fetching global condition logics',
-            'error': str(e)
-        }), 500)
-
-
 
 @flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['GET'])
 def get_def_global_condition_logic(def_global_condition_logic_id):
@@ -3095,9 +3455,9 @@ def get_def_global_condition_logic_attribute(id):
         return make_response(jsonify({"message": "Error retrieving condition logic attribute", "error": str(e)}), 500)
     
 
-@flask_app.route('/def_global_condition_logic_attributes/<int:page>/<int:limit>', methods=['GET'])
-# @jwt_required()
-def get_paginated_def_global_condition_logic_attributes(page, limit):
+# @flask_app.route('/def_global_condition_logic_attributes/<int:page>/<int:limit>', methods=['GET'])
+# # @jwt_required()
+# def get_paginated_def_global_condition_logic_attributes(page, limit):
     try:
         query = DefGlobalConditionLogicAttribute.query.order_by(DefGlobalConditionLogicAttribute.id.desc())
         paginated = query.paginate(page=page, per_page=limit, error_out=False)
@@ -3334,7 +3694,39 @@ def get_def_access_point_element_by_id(dap_id):
         return jsonify({"error": "Invalid ID format. ID must be an integer."}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
+
+@flask_app.route('/def_access_point_elements/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_def_access_point_elements(page, limit):
+    try:
+        search_query = request.args.get('element_name', '').strip()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefAccessPointElement.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefAccessPointElement.element_name.ilike(f'%{search_query}%'),
+                    DefAccessPointElement.element_name.ilike(f'%{search_underscore}%'),
+                    DefAccessPointElement.element_name.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefAccessPointElement.def_access_point_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [element.json() for element in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error searching access point elements', 'error': str(e)}), 500)
+
+
+
 @flask_app.route('/def_access_point_elements/<int:page>/<int:limit>', methods=['GET'])
 def get_paginated_elements(page, limit):
     try:
@@ -3447,6 +3839,35 @@ def get_all_def_data_sources():
     except Exception as e:
         return make_response(jsonify({'message': 'Error fetching data sources', 'error': str(e)}), 500)
 
+@flask_app.route('/def_data_sources/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_def_data_sources(page, limit):
+    try:
+        search_query = request.args.get('datasource_name', '').strip()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefDataSource.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefDataSource.datasource_name.ilike(f'%{search_query}%'),
+                    DefDataSource.datasource_name.ilike(f'%{search_underscore}%'),
+                    DefDataSource.datasource_name.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefDataSource.def_data_source_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [ds.json() for ds in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error searching data sources', 'error': str(e)}), 500)
+
 @flask_app.route('/def_data_sources/<int:page>/<int:limit>', methods=['GET'])
 def get_paginated_def_data_sources(page, limit):
     try:
@@ -3524,6 +3945,35 @@ def get_all_entitlements():
     except Exception as e:
         return make_response(jsonify({'message': 'Error fetching entitlements', 'error': str(e)}), 500)
 
+
+@flask_app.route('/def_access_entitlements/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_def_access_entitlements(page, limit):
+    try:
+        search_query = request.args.get('entitlement_name', '').strip()
+        search_underscore = search_query.replace(' ', '_')
+        search_space = search_query.replace('_', ' ')
+        query = DefAccessEntitlement.query
+
+        if search_query:
+            query = query.filter(
+                or_(
+                    DefAccessEntitlement.entitlement_name.ilike(f'%{search_query}%'),
+                    DefAccessEntitlement.entitlement_name.ilike(f'%{search_underscore}%'),
+                    DefAccessEntitlement.entitlement_name.ilike(f'%{search_space}%')
+                )
+            )
+
+        paginated = query.order_by(DefAccessEntitlement.def_entitlement_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [e.json() for e in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error searching entitlements', 'error': str(e)}), 500)
 
 @flask_app.route('/def_access_entitlements/<int:page>/<int:limit>', methods=['GET'])
 def get_paginated_entitlements(page, limit):
@@ -3633,8 +4083,17 @@ def get_redbeat_scheduled_tasks():
             if key_str == "redbeat::schedule":
                 continue  # skip internal RedBeat key
             key_type = redis_client.type(key_str)
+            # if key_type != "hash":
+            #     continue  # skip non-hash keys
+
+
             if key_type != "hash":
-                continue  # skip non-hash keys
+                print(f"Skipping key (not hash): {key_str} -> type: {key_type}")
+                continue
+
+            # ttl = redis_client.ttl(key_str)
+            # if ttl == -2:
+            #     continue  # key has expired
 
             task_data = redis_client.hgetall(key_str)
             if not task_data:
@@ -3725,7 +4184,17 @@ def get_redbeat_scheduled_tasks():
             if next_run is None:
                 schedule_info["status"] = "inactive"
             else:
-                schedule_info["status"] = "active"
+            # Parse the UTC datetime string
+                try:
+                    next_run_utc = datetime.strptime(next_run["utc"], "%Y-%m-%d %H:%M:%S UTC").replace(tzinfo=timezone.utc)
+                    now_utc = datetime.now(timezone.utc)
+
+                    if next_run_utc <= now_utc:
+                        schedule_info["status"] = "expired"
+                    else:
+                        schedule_info["status"] = "active"
+                except Exception:
+                    schedule_info["status"] = "unknown"
 
             tasks_output.append({
                 "task_key": key_str,

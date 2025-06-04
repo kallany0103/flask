@@ -312,7 +312,7 @@ def get_tenant(tenant_id):
     try:
         tenant = DefTenant.query.filter_by(tenant_id=tenant_id).first()
         if tenant:
-            return make_response(jsonify(tenant.json()),201)
+            return make_response(jsonify(tenant.json()),200)
         else:
             return make_response(jsonify({"message": "Tenant not found"}), 404)
     except Exception as e:
@@ -440,7 +440,7 @@ def get_enterprise(tenant_id):
 @jwt_required()
 def get_paginated_enterprises(page, limit):
     try:
-        query = db.session.query(DefTenantEnterpriseSetup).order_by(DefTenantEnterpriseSetup.tenant_id.desc())
+        query = db.session.query(DefTenantEnterpriseSetupV).order_by(DefTenantEnterpriseSetupV.tenant_id.desc())
         paginated = query.paginate(page=page, per_page=limit, error_out=False)
         return jsonify({
             "items": [row.json() for row in paginated.items],
@@ -686,8 +686,44 @@ def delete_user(user_id):
     except:
         return make_response(jsonify({'message': 'error deleting user'}), 500)
 
+
+
+@flask_app.route('/def_combined_user/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def get_paginated_combined_users(page, limit):
+    try:
+        query = DefUsersView.query.order_by(DefUsersView.user_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+        return make_response(jsonify({
+            "items": [user.json() for user in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error fetching combined users', 'error': str(e)}), 500)
         
-    
+
+@flask_app.route('/def_combined_user/search/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def search_combined_users(page, limit):
+    user_name = request.args.get('user_name', '').strip()
+    try:
+        query = DefUsersView.query
+        if user_name:
+            query = query.filter(DefUsersView.user_name.ilike(f'%{user_name}%'))
+        query = query.order_by(DefUsersView.user_id.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+        return make_response(jsonify({
+            "items": [user.json() for user in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error searching combined users', 'error': str(e)}), 500)
+
+
 @flask_app.route('/defpersons', methods=['POST'])
 def create_arc_person():
     try:
@@ -1646,38 +1682,25 @@ def Show_Parameter(task_name):
         return make_response(jsonify({"message": "Error getting Task Parameters", "error": str(e)}), 500)
 
 
-# @flask_app.route('/def_async_task_params/search/<int:page>/<int:limit>', methods=['GET'])
-# # @jwt_required()
-# def search_all_task_params(page, limit):
-#     try:
-#         task_query = request.args.get('task_name', '').strip().lower()
-#         task_underscore = task_query.replace(' ', '_')
-#         task_space = task_query.replace('_', ' ')
-#         query = DefAsyncTaskParam.query
 
-#         filters = []
-#         if task_query:
-#             filters.append(
-#                 or_(
-#                     DefAsyncTaskParam.task_name.ilike(f'%{task_query}%'),
-#                     DefAsyncTaskParam.task_name.ilike(f'%{task_underscore}%'),
-#                     DefAsyncTaskParam.task_name.ilike(f'%{task_space}%')
-#                 )
-#             )
-#         if filters:
-#             query = query.filter(*filters)
+@flask_app.route('/Show_TaskParams/<string:task_name>/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def Show_TaskParams_Paginated(task_name, page, limit):
+    try:
+        query = DefAsyncTaskParam.query.filter_by(task_name=task_name)
+        paginated = query.order_by(DefAsyncTaskParam.def_param_id.desc()).paginate(page=page, per_page=limit, error_out=False)
 
-#         paginated = query.order_by(DefAsyncTaskParam.def_param_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+        if not paginated.items:
+            return make_response(jsonify({"message": f"No parameters found for task '{task_name}'"}), 404)
 
-#         return make_response(jsonify({
-#             "items": [param.json() for param in paginated.items],
-#             "total": paginated.total,
-#             "pages": paginated.pages,
-#             "page": paginated.page
-#         }), 200)
-#     except Exception as e:
-#         return make_response(jsonify({"message": "Error searching task parameters", "error": str(e)}), 500)
-
+        return make_response(jsonify({
+            "items": [param.json() for param in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error getting Task Parameters", "error": str(e)}), 500)
 
 
 
@@ -1891,6 +1914,10 @@ def Create_TaskSchedule():
         if not task:
             return jsonify({'error': f'No task found with task_name: {task_name}'}), 400
 
+        # Prevent scheduling if the task is cancelled
+        if getattr(task, 'cancelled_yn', 'N') == 'Y':
+            return jsonify({'error': f"Task '{task_name}' is cancelled and cannot be scheduled."}), 400
+
         user_task_name = task.user_task_name
         executor = task.executor
         script_name = task.script_name
@@ -1962,6 +1989,92 @@ def Create_TaskSchedule():
             else:
                return jsonify({'error': f'Invalid frequency type: {frequency_type}'}), 400
 
+        # elif schedule_type == "MONTHLY_LAST_DAY":
+
+        #     try:
+        #         today = datetime.today()
+        #         start_year = today.year
+        #         start_month = today.month
+
+        #         # Calculate how many months left in the year including current month
+        #         months_left = 12 - start_month + 1  # +1 to include the current month itself
+
+        #         for i in range(months_left):
+        #             # Calculate the target year and month
+        #             year = start_year  # same year, no spanning next year
+        #             month = start_month + i
+
+        #             # Find the first day of the next month
+        #             if month == 12:
+        #                 next_month = datetime(year + 1, 1, 1)
+        #             else:
+        #                 next_month = datetime(year, month + 1, 1)
+
+        #             # Calculate the last day of the current month
+        #             last_day_dt = next_month - timedelta(days=1)
+        #             last_day = last_day_dt.day
+
+        #             # Create a cron schedule for the last day of this month at midnight
+        #             cron_schedule = crontab(
+        #                 minute=0,
+        #                 hour=0,
+        #                 day_of_month=last_day,
+        #                 month_of_year=month
+        #             )
+
+        #             redbeat_schedule_name = f"{user_schedule_name}_{uuid.uuid4()}"
+
+        #             args_with_schedule = [
+        #                 script_name,
+        #                 user_task_name,
+        #                 task_name,
+        #                 user_schedule_name,
+        #                 redbeat_schedule_name,
+        #                 schedule_type,
+        #                 schedule_data
+        #             ]
+
+        #             # Create Redis schedule entry via RedBeat
+        #             create_redbeat_schedule(
+        #                 schedule_name=redbeat_schedule_name,
+        #                 executor=executor,
+        #                 cron_schedule=cron_schedule,
+        #                 args=args_with_schedule,
+        #                 kwargs=kwargs,
+        #                 celery_app=celery
+        #             )
+
+        #             # Create database record for the schedule
+        #             new_schedule = DefAsyncTaskScheduleNew(
+        #                 user_schedule_name=user_schedule_name,
+        #                 redbeat_schedule_name=redbeat_schedule_name,
+        #                 task_name=task_name,
+        #                 args=args_with_schedule,
+        #                 kwargs=kwargs,
+        #                 parameters=kwargs,
+        #                 schedule_type=schedule_type,
+        #                 schedule={"scheduled_for": f"{year}-{month:02}-{last_day} 00:00"},
+        #                 cancelled_yn='N',
+        #                 created_by=101
+        #             )
+
+        #             db.session.add(new_schedule)
+
+        #         db.session.commit()
+
+        #         return jsonify({
+        #             "message": f"Monthly last-day tasks scheduled for the remaining {months_left} months of {start_year}"
+        #         }), 201
+
+        #     except Exception as e:
+        #         db.session.rollback()
+        #         return jsonify({
+        #             "error": "Failed to schedule monthly last-day tasks",
+        #             "details": str(e)
+        #         }), 500
+
+
+        
         # Handle Ad-hoc Requests
         elif schedule_type == "IMMEDIATE":
             try:

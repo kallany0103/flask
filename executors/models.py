@@ -152,6 +152,7 @@ class DefUsersView(db.Model):
     last_updated_by = db.Column(db.Integer())
     last_updated_on = db.Column(db.String(50))
     tenant_id       = db.Column(db.Integer())
+    profile_picture = db.Column(JSONB)
 
     def json(self):
         return {
@@ -166,7 +167,8 @@ class DefUsersView(db.Model):
             'created_on'     : self.created_on,
             'last_updated_by': self.last_updated_by,
             'last_updated_on': self.last_updated_on,
-            'tenant_id'      : self.tenant_id
+            'tenant_id'      : self.tenant_id,
+            'profile_picture': self.profile_picture
     }
         
         

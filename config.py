@@ -6,6 +6,7 @@ import psycopg2                  # Import psycopg2 to connect with PostgreSQL da
 import os                        # Import os for environment variable handling
 from dotenv import load_dotenv   # Import load_dotenv to load environment variables from a .env file
 import ssl
+from datetime import timedelta
 
 
 # Load environment variables from the .env file
@@ -25,6 +26,24 @@ else:
 # Fetch Redis and database URLs from environment variables
 redis_url = os.environ.get("MESSAGE_BROKER")         # Redis URL for Celery's message broker
 database_url = os.environ.get("DATABASE_URL")   # PostgreSQL URL for Celery's result backend
+
+
+def parse_expiry(value):
+    try:
+        value = value.strip().lower()
+        if value.endswith('d'):
+            return timedelta(days=int(value[:-1]))
+        elif value.endswith('h'):
+            return timedelta(hours=int(value[:-1]))
+        elif value.endswith('m'):
+            return timedelta(minutes=int(value[:-1]))
+        elif value.isdigit():
+            return timedelta(seconds=int(value))
+        else:
+            raise ValueError(f"Invalid time format: {value}")
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Could not parse expiry value '{value}': {e}")
+
 
 
 # Function to initialize and configure Celery with Flask
@@ -82,12 +101,16 @@ def create_app() -> Flask:
             beat_scheduler='redbeat.RedBeatScheduler',# RedBeat scheduler for periodic tasks
             redbeat_redis_url=redis_url,              # Redis URL for RedBeat configuration
             redbeat_lock_timeout=300,
-            broker_use_ssl = {
-                'ssl_cert_reqs': ssl.CERT_NONE  # or ssl.CERT_REQUIRED if you have proper certs
-            },
+            # broker_use_ssl = {
+            #     'ssl_cert_reqs': ssl.CERT_NONE  # or ssl.CERT_REQUIRED if you have proper certs
+            # },
             timezone='UTC',                           # Use UTC timezone for tasks
             enable_utc=True                          # Enable UTC mode
         ),
+        # JWT config from .env
+        JWT_SECRET_KEY = os.getenv('JWT_SECRET_ACCESS_TOKEN'),
+        JWT_ACCESS_TOKEN_EXPIRES = parse_expiry(os.getenv('ACCESS_TOKEN_EXPIRED_TIME', '15m')),
+        JWT_REFRESH_TOKEN_EXPIRES = parse_expiry(os.getenv('REFRESH_TOKEN_EXPIRED_TIME', '30d')),
     )
     # Load additional configuration from environment variables with a prefix
     app.config.from_prefixed_env()

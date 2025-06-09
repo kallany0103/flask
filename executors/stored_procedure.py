@@ -33,11 +33,27 @@ def execute(self, *args, **kwargs):
         cursor = conn.cursor()
 
         # Add a placeholder for the OUT parameter
-        call_query = f"CALL {stored_procedure_name}(%s);"
-        out_param = None  # This will hold the output value
+        # call_query = f"CALL {stored_procedure_name}(%s);"
+        # out_param = None  # This will hold the output value
 
-        cursor.execute(call_query, (out_param,))  # Execute the stored procedure
-        output = cursor.fetchone()  # Fetch the output
+        # cursor.execute(call_query, (out_param,))  # Execute the stored procedure
+        # output = cursor.fetchone()  # Fetch the output
+
+        param_values = list(params.values()) if params else []
+        placeholders = ', '.join(['%s'] * len(param_values))
+        if placeholders:
+            call_query = f"CALL {stored_procedure_name}({placeholders});"
+            cursor.execute(call_query, param_values)
+        else:
+            call_query = f"CALL {stored_procedure_name}();"
+            cursor.execute(call_query)
+
+        # If your procedure returns something, fetch it here (optional)
+        output = None
+        try:
+            output = cursor.fetchone()
+        except Exception:
+            output = None
 
         conn.commit()
 
@@ -47,7 +63,7 @@ def execute(self, *args, **kwargs):
             "executor": self.name,
             "user_schedule_name": user_schedule_name,
             "redbeat_schedule_name": redbeat_schedule_name,
-            "schedule_type":schedule_type,
+            "schedule_type": schedule_type,
             "schedule": schedule,
             "args": args,
             "kwargs": params,

@@ -1,15 +1,23 @@
 #app.py
 import os 
+import time
+import re
 import json
 import uuid
 import requests
 import traceback
 import logging
-import redis
+import time
+import re
+from redis import Redis
+from zoneinfo import ZoneInfo
 from itertools import count
 from functools import wraps
 from flask_cors import CORS 
 from dotenv import load_dotenv            # To load environment variables from a .env file
+from celery.schedules import crontab
+from celery.result import AsyncResult      # For checking the status of tasks
+from redbeat import RedBeatSchedulerEntry
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine, Text, desc, cast, TIMESTAMP, func, or_
 from datetime import datetime, timedelta, timezone
@@ -48,20 +56,13 @@ from executors.models import (
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
-from celery.schedules import crontab
-from celery.result import AsyncResult      # For checking the status of tasks
-from redbeat import RedBeatSchedulerEntry
 from config import redis_url
-from redis import Redis
-from zoneinfo import ZoneInfo
-import time
-import re
 
 
 redis_client = Redis.from_url(redis_url, decode_responses=True)
 
 jwt = JWTManager(flask_app)
-CORS(flask_app)
+CORS(flask_app, resources={r"/*": {"origins": "http://localhost:5173"}})
 # Set up the logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -258,6 +259,15 @@ def get_tenants():
     except Exception as e:
         return make_response(jsonify({"message": "Error getting Tenants", "error": str(e)}), 500)
 
+@flask_app.route('/tenants/v1', methods=['GET'])
+def get_tenants_v1():
+    try:
+        tenants = DefTenant.query.order_by(DefTenant.tenant_id.desc()).all()
+        return make_response(jsonify([tenant.json() for tenant in tenants]))
+    except Exception as e:
+        return make_response(jsonify({"message": "Error getting Tenants", "error": str(e)}), 500)
+
+
 
 @flask_app.route('/def_tenants/<int:page>/<int:limit>', methods=['GET'])
 @jwt_required()
@@ -422,6 +432,14 @@ def get_enterprises():
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving enterprise setups", "error": str(e)}), 500)
 
+@flask_app.route('/get_enterprises/v1', methods=['GET'])
+def get_enterprises_v1():
+    try:
+        setups = DefTenantEnterpriseSetup.query.order_by(DefTenantEnterpriseSetup.tenant_id.desc()).all()
+        return make_response(jsonify([setup.json() for setup in setups]), 200)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving enterprise setups", "error": str(e)}), 500)
+
 
 # Get one enterprise setup by tenant_id
 @flask_app.route('/get_enterprise/<int:tenant_id>', methods=['GET'])
@@ -554,6 +572,10 @@ def create_def_user():
         last_updated_by = data['last_updated_by']
         last_updated_on = current_timestamp()
         tenant_id       = data['tenant_id']
+        profile_picture = data.get('profile_picture') or {
+            "original": "uploads/profiles/default/profile.jpg",
+            "thumbnail": "uploads/profiles/default/thumbnail.jpg"
+        }
         
 
        # Convert the list of email addresses to a JSON-formatted string
@@ -569,7 +591,8 @@ def create_def_user():
           created_on      = created_on,
           last_updated_by = last_updated_by,
           last_updated_on = last_updated_on,
-          tenant_id       = tenant_id
+          tenant_id       = tenant_id,
+          profile_picture = profile_picture
         )
         # Add the new user to the database session
         db.session.add(new_user)
@@ -577,7 +600,8 @@ def create_def_user():
         db.session.commit()
 
         # Return a success response
-        return make_response(jsonify({"message": "Def USER created successfully!"}), 201)
+        return make_response(jsonify({"message": "Def USER created successfully!",
+                                       "User Id": user_id}), 201)
 
     except Exception as e:
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
@@ -927,48 +951,162 @@ def delete_user_credentials(user_id):
         return make_response(jsonify({'message': 'Error deleting user credentials'}), 500)
   
     
+# @flask_app.route('/users', methods=['POST'])
+# #@jwt_required()
+# #@role_required('/users', 'POST')
+# def create_user():
+#     try:
+#         data = request.get_json()
+#         user_id         = generate_user_id()
+#         user_name       = data['user_name']
+#         user_type       = data['user_type']
+#         email_addresses = data['email_addresses']
+#         first_name      = data['first_name']
+#         middle_name     = data['middle_name']
+#         last_name       = data['last_name']
+#         job_title       = data['job_title']
+#         # Get user information from the JWT token
+#         #created_by      = get_jwt_identity()
+#         #last_updated_by = get_jwt_identity()
+#         created_by      = data['created_by']
+#         last_updated_by = data['last_updated_by']
+#         # created_on      = data['created_on']
+#         # last_updated_on = data['last_updated_on']
+#         tenant_id       = data['tenant_id']
+#         password        = data['password']
+#         # privilege_names = data.get('privilege_names', [])
+#         # role_names      = data.get('role_names', [])
+
+#         existing_user  = DefUser.query.filter(DefUser.user_name == user_name).first()
+#         # existing_user = ArcPerson.query.filter((ArcPerson.user_id == user_id) | (ArcPerson.username == username)).first()
+#         existing_email = DefUser.query.filter(DefUser.email_addresses == email_addresses).first()
+
+#         if existing_user:
+#             if existing_user.user_name == user_name:
+#                 return make_response(jsonify({"message": "Username already exists"}), 400)
+        
+#         if existing_email:
+#             return make_response(jsonify({"message": "Email address already exists"}), 409)
+            
+#         hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
+        
+#         #current_timestamp = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+#         # Create a user record for the new user
+#         def_user = DefUser(
+#             user_id         = user_id,
+#             user_name       = user_name,
+#             user_type       = user_type,
+#             email_addresses = email_addresses,
+#             created_by      = created_by,
+#             created_on      = current_timestamp(),
+#             last_updated_by = last_updated_by,
+#             last_updated_on = current_timestamp(),
+#             tenant_id       = tenant_id
+            
+#         )
+
+#         # Add the person record for the new user
+#         db.session.add(def_user)
+#         db.session.commit()
+
+#         # Check if user_type is "person" before creating ArcPerson record
+#         if user_type.lower() == "person":
+#             def_person_data = {
+#                 "user_id"    : user_id,
+#                 "first_name" : first_name,
+#                 "middle_name": middle_name,
+#                 "last_name"  : last_name,
+#                 "job_title"  : job_title
+#             }
+
+#             def_person_response = requests.post("http://localhost:5000/defpersons", json=def_person_data)
+
+#             # Check the response from create_arc_user API
+#             if def_person_response.status_code != 201:
+#                 return jsonify({"message": "Def person's record creation failed"}), 500
+
+    
+#         # Create user credentials
+#         user_credentials_data = {
+#             "user_id" : user_id,
+#             "password": hashed_password
+#         }
+#         user_credentials_response = requests.post("http://localhost:5000/def_user_credentials", json=user_credentials_data)
+
+#         if user_credentials_response.status_code != 201:
+#             # Handle the case where user credentials creation failed
+#             return make_response(jsonify({"message": "User credentials creation failed"}), 500)
+
+
+#     #    # Assign privileges to the user
+#     #     user_privileges_data = {
+#     #         "user_id": user_id,
+#     #         "privilege_names": privilege_names
+#     #     }
+#     #     user_privileges_response = requests.post("http://localhost:5000/user_granted_privileges", json=user_privileges_data)
+
+#     #     if user_privileges_response.status_code != 201:
+#     #         return jsonify({'message': 'User privileges assignment failed'}), 500
+
+#     #     # Assign roles to the user
+#     #     user_roles_data = {
+#     #         "user_id": user_id,
+#     #         "role_names": role_names
+#     #     }
+#     #     user_roles_response = requests.post("http://localhost:5000/user_granted_roles", json=user_roles_data)
+
+#     #     if user_roles_response.status_code != 201:
+#     #         return jsonify({'message': 'User roles assignment failed'}), 500
+
+#     #     db.session.commit()
+
+#         return jsonify({"message": "User created successfully"}), 201
+    
+#     except IntegrityError as e:
+#         return jsonify({"message": "User id already exists"}), 400  # 400 Bad Request for unique constraint violation
+   
+#     except Exception as e:
+#         return jsonify({"message": str(e)}), 500
+#         traceback.print_exc()
+
+
+
+
 @flask_app.route('/users', methods=['POST'])
-#@jwt_required()
-#@role_required('/users', 'POST')
-def create_user():
+def register_user():
     try:
         data = request.get_json()
+        # Extract user fields
         user_id         = generate_user_id()
         user_name       = data['user_name']
         user_type       = data['user_type']
         email_addresses = data['email_addresses']
-        first_name      = data['first_name']
-        middle_name     = data['middle_name']
-        last_name       = data['last_name']
-        job_title       = data['job_title']
-        # Get user information from the JWT token
-        #created_by      = get_jwt_identity()
-        #last_updated_by = get_jwt_identity()
         created_by      = data['created_by']
         last_updated_by = data['last_updated_by']
-        # created_on      = data['created_on']
-        # last_updated_on = data['last_updated_on']
         tenant_id       = data['tenant_id']
+        # Extract person fields
+        first_name      = data.get('first_name')
+        middle_name     = data.get('middle_name')
+        last_name       = data.get('last_name')
+        job_title       = data.get('job_title')
+        # Extract credentials
         password        = data['password']
-        # privilege_names = data.get('privilege_names', [])
-        # role_names      = data.get('role_names', [])
 
-        existing_user  = DefUser.query.filter(DefUser.user_name == user_name).first()
-        # existing_user = ArcPerson.query.filter((ArcPerson.user_id == user_id) | (ArcPerson.username == username)).first()
-        existing_email = DefUser.query.filter(DefUser.email_addresses == email_addresses).first()
+        # Set default profile picture if not provided
+        profile_picture = data.get('profile_picture') or {
+            "original": "uploads/profiles/default/profile.jpg",
+            "thumbnail": "uploads/profiles/default/thumbnail.jpg"
+        }
 
-        if existing_user:
-            if existing_user.user_name == user_name:
-                return make_response(jsonify({"message": "Username already exists"}), 400)
-        
-        if existing_email:
-            return make_response(jsonify({"message": "Email address already exists"}), 409)
-            
-        hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
-        
-        #current_timestamp = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
-        # Create a user record for the new user
-        def_user = DefUser(
+        # Check for existing user/email
+        if DefUser.query.filter_by(user_name=user_name).first():
+            return jsonify({"message": "Username already exists"}), 409
+        for email in email_addresses:
+            if DefUser.query.filter(DefUser.email_addresses.contains    ([email])).first():
+                return jsonify({"message": "Email already exists"}), 409
+
+        # Create user
+        new_user = DefUser(
             user_id         = user_id,
             user_name       = user_name,
             user_type       = user_type,
@@ -977,164 +1115,42 @@ def create_user():
             created_on      = current_timestamp(),
             last_updated_by = last_updated_by,
             last_updated_on = current_timestamp(),
-            tenant_id       = tenant_id
-            
+            tenant_id       = tenant_id,
+            profile_picture = profile_picture
         )
+        db.session.add(new_user)
 
-        # Add the person record for the new user
-        db.session.add(def_user)
-        db.session.commit()
-
-        # Check if user_type is "person" before creating ArcPerson record
+        # Create person if user_type is person
         if user_type.lower() == "person":
-            def_person_data = {
-                "user_id"    : user_id,
-                "first_name" : first_name,
-                "middle_name": middle_name,
-                "last_name"  : last_name,
-                "job_title"  : job_title
-            }
+            new_person = DefPerson(
+                user_id     = user_id,
+                first_name  = first_name,
+                middle_name = middle_name,
+                last_name   = last_name,
+                job_title   = job_title
+            )
+            db.session.add(new_person)
 
-            def_person_response = requests.post("http://localhost:5000/defpersons", json=def_person_data)
+        # Create credentials
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
+        new_cred = DefUserCredential(
+            user_id  = user_id,
+            password = hashed_password
+        )
+        db.session.add(new_cred)
 
-            # Check the response from create_arc_user API
-            if def_person_response.status_code != 201:
-                return jsonify({"message": "Def person's record creation failed"}), 500
-
-    
-        # Create user credentials
-        user_credentials_data = {
-            "user_id" : user_id,
-            "password": hashed_password
-        }
-        user_credentials_response = requests.post("http://localhost:5000/def_user_credentials", json=user_credentials_data)
-
-        if user_credentials_response.status_code != 201:
-            # Handle the case where user credentials creation failed
-            return make_response(jsonify({"message": "User credentials creation failed"}), 500)
-
-
-    #    # Assign privileges to the user
-    #     user_privileges_data = {
-    #         "user_id": user_id,
-    #         "privilege_names": privilege_names
-    #     }
-    #     user_privileges_response = requests.post("http://localhost:5000/user_granted_privileges", json=user_privileges_data)
-
-    #     if user_privileges_response.status_code != 201:
-    #         return jsonify({'message': 'User privileges assignment failed'}), 500
-
-    #     # Assign roles to the user
-    #     user_roles_data = {
-    #         "user_id": user_id,
-    #         "role_names": role_names
-    #     }
-    #     user_roles_response = requests.post("http://localhost:5000/user_granted_roles", json=user_roles_data)
-
-    #     if user_roles_response.status_code != 201:
-    #         return jsonify({'message': 'User roles assignment failed'}), 500
-
-    #     db.session.commit()
-
-        return jsonify({"message": "User created successfully"}), 201
-    
-    except IntegrityError as e:
-        return jsonify({"message": "User id already exists"}), 400  # 400 Bad Request for unique constraint violation
-   
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-        traceback.print_exc()
-
-
-
-@flask_app.route('/users/<int:user_id>', methods=['PUT'])
-def update_specific_user(user_id):
-    try:
-        # Retrieve the user record from the DefUser table
-        user = DefUser.query.filter_by(user_id=user_id).first()
-        if user:
-            data = request.get_json()
-            
-            # Update fields in DefUser table
-            if 'user_name' in data:
-                user.user_name = data['user_name']
-            if 'user_type' in data:
-                user.user_type = data['user_type']
-            if 'email_addresses' in data:
-                user.email_addresses = data['email_addresses']
-            if 'last_updated_by' in data:
-                user.last_updated_by = data['last_updated_by']
-            user.last_updated_on = current_timestamp()  # Update last updated timestamp
-
-            # Commit changes to DefUser
-            db.session.commit()
-
-            # If user_type is "person", update fields in DefPerson table
-            if user.user_type.lower() == "person":
-                person = DefPerson.query.filter_by(user_id=user_id).first()
-                if person:
-                    # Update fields in DefPerson table
-                    if 'first_name' in data:
-                        person.first_name = data['first_name']
-                    if 'middle_name' in data:
-                        person.middle_name = data['middle_name']
-                    if 'last_name' in data:
-                        person.last_name = data['last_name']
-                    if 'job_title' in data:
-                        person.job_title = data['job_title']
-                    
-                    # Commit changes to DefPerson
-                    db.session.commit()
-                    return make_response(jsonify({'message': 'User and person updated successfully'}), 200)
-                return make_response(jsonify({'message': 'Person not found'}), 404)
-
-            return make_response(jsonify({'message': 'User updated successfully'}), 200)
-
-        return make_response(jsonify({'message': 'User not found'}), 404)
+        db.session.commit()
+        return jsonify({"message": "User registered successfully", "user_id": user_id}), 201
 
     except Exception as e:
-        db.session.rollback()  # Rollback in case of an error
-        return make_response(jsonify({'message': 'Error updating user', 'error': str(e)}), 500)
+        db.session.rollback()
+        return jsonify({"message": "Registration failed", "error": str(e)}), 500
 
-
-@flask_app.route('/login', methods=['POST'])
-def login():
-    try:
-        data = request.get_json()
-        email_or_username = data['email_or_username']
-        password          = data['password']
-        
-        if not email_or_username or not password:
-            return make_response(jsonify({"message": "Invalid request. Please provide both email/username and password."}), 400)
-
-        # Set a default value for user_profile
-        user_profile = None
-
-        # Check if the input is an email address or a username
-        if '@' in email_or_username:
-        # Cast JSON column to TEXT and use LIKE
-            user_profile = DefUser.query.filter(cast(DefUser.email_addresses, Text).ilike(f"%{email_or_username}%")).first()
-        else:
-            user_profile = DefUser.query.filter_by(user_name = email_or_username).first()
-        if user_profile and user_profile.user_id:
-            user_credentials = DefUserCredential.query.filter_by(user_id = user_profile.user_id ).first()
-
-            if user_credentials and check_password_hash(user_credentials.password, password):
-                access_token = create_access_token(identity = str(user_profile.user_id))
-                return make_response(jsonify({"access_token": access_token}), 200)
-            else:
-                return make_response(jsonify({"message": "Invalid email/username or password"}), 401)
-        else:
-            return make_response(jsonify({"message": "User not found"}), 404)
-
-    except Exception as e:
-        return make_response(jsonify({"message": str(e)}), 500)
-        
 @flask_app.route('/users', methods=['GET'])
 # @jwt_required()
 def defusers():
     try:
-        defusers = DefUsersView.query.all()
+        defusers = DefUsersView.query.order_by(DefUsersView.user_id.desc()).all()
         return make_response(jsonify([defuser.json() for defuser in defusers]), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error getting users', 'error': str(e)}), 500)
@@ -1151,7 +1167,52 @@ def get_specific_user(user_id):
     except Exception as e:
         return make_response(jsonify({'message': 'Error getting User', 'error': str(e)}), 500)  
     
-    
+
+@flask_app.route('/users/<int:user_id>', methods=['PUT'])
+def update_specific_user(user_id):
+    try:
+        data = request.get_json()
+        if not data:
+            return make_response(jsonify({'message': 'No input data provided'}), 400)
+
+        user = DefUser.query.filter_by(user_id=user_id).first()
+        if not user:
+            return make_response(jsonify({'message': 'User not found'}), 404)
+
+        # Update DefUser fields
+        user.user_name = data.get('user_name', user.user_name)
+        user.email_addresses = data.get('email_addresses', user.email_addresses)
+        user.last_updated_on = current_timestamp()
+
+        # Update DefPerson fields if user_type is "person"
+        if user.user_type and user.user_type.lower() == "person":
+            person = DefPerson.query.filter_by(user_id=user_id).first()
+            if not person:
+                return make_response(jsonify({'message': 'Person not found'}), 404)
+
+            person.first_name = data.get('first_name', person.first_name)
+            person.middle_name = data.get('middle_name', person.middle_name)
+            person.last_name = data.get('last_name', person.last_name)
+            person.job_title = data.get('job_title', person.job_title)
+
+        # Password update logic
+        password = data.get('password')
+        if password:
+            user_cred = DefUserCredential.query.filter_by(user_id=user_id).first()
+            if not user_cred:
+                return make_response(jsonify({'message': 'User credentials not found'}), 404)
+
+            user_cred.password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
+
+        db.session.commit()
+        return make_response(jsonify({'message': 'User updated successfully'}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({'message': 'Error updating user', 'error': str(e)}), 500)
+
+
+
 @flask_app.route('/users/<int:user_id>', methods=['DELETE'])
 def delete_specific_user(user_id):
     try:
@@ -1180,6 +1241,52 @@ def delete_specific_user(user_id):
     except Exception as e:
         db.session.rollback()  # Rollback in case of any error
         return make_response(jsonify({'message': 'Error deleting user', 'error': str(e)}), 500)
+
+
+@flask_app.route('/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        email_or_username = data['email_or_username']
+        password          = data['password']
+        
+        if not email_or_username or not password:
+            return make_response(jsonify({"message": "Invalid request. Please provide both email/username and password."}), 400)
+
+        # Set a default value for user_profile
+        user_profile = None
+
+        # Check if the input is an email address or a username
+        # if '@' in email_or_username:
+        # # Cast JSON column to TEXT and use LIKE
+        #     user_profile = DefUser.query.filter(cast(DefUser.email_addresses, Text).ilike(f"%{email_or_username}%")).first()
+        # else:
+        #     user_profile = DefUser.query.filter_by(user_name = email_or_username).first()
+
+        # Use JSONB contains for email lookup
+        if '@' in email_or_username:
+            user_profile = DefUser.query.filter(
+                DefUser.email_addresses.contains([email_or_username])
+            ).first()
+        else:
+            user_profile = DefUser.query.filter_by(user_name=email_or_username).first()
+
+
+
+        if user_profile and user_profile.user_id:
+            user_credentials = DefUserCredential.query.filter_by(user_id = user_profile.user_id ).first()
+
+            if user_credentials and check_password_hash(user_credentials.password, password):
+                access_token = create_access_token(identity = str(user_profile.user_id))
+                return make_response(jsonify({"access_token": access_token}), 200)
+            else:
+                return make_response(jsonify({"message": "Invalid email/username or password"}), 401)
+        else:
+            return make_response(jsonify({"message": "User not found"}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({"message": str(e)}), 500)
+
   
 
 @flask_app.route('/access_profiles/<int:user_id>', methods=['POST'])
@@ -1321,6 +1428,17 @@ def Create_ExecutionMethod():
 @flask_app.route('/Show_ExecutionMethods', methods=['GET'])
 @jwt_required()
 def Show_ExecutionMethods():
+    try:
+        methods = DefAsyncExecutionMethods.query.order_by(DefAsyncExecutionMethods.internal_execution_method.desc()).all()
+        if not methods:
+            return jsonify({"message": "No execution methods found"}), 404
+        return jsonify([method.json() for method in methods]), 200
+    except Exception as e:
+        return jsonify({"message": "Error retrieving execution methods", "error": str(e)}), 500
+
+
+@flask_app.route('/Show_ExecutionMethods/v1', methods=['GET'])
+def Show_ExecutionMethods_v1():
     try:
         methods = DefAsyncExecutionMethods.query.order_by(DefAsyncExecutionMethods.internal_execution_method.desc()).all()
         if not methods:
@@ -1501,6 +1619,15 @@ def Show_Tasks():
         return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
 
 
+@flask_app.route('/def_async_tasks/v1', methods=['GET'])
+def Show_Tasks_v1():
+    try:
+        tasks = DefAsyncTask.query.order_by(DefAsyncTask.def_task_id.desc()).all()
+        return make_response(jsonify([task.json() for task in tasks]))
+    except Exception as e:
+        return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
+
+
 @flask_app.route('/def_async_tasks/<int:page>/<int:limit>', methods=['GET'])
 @jwt_required()
 def Show_Tasks_Paginated(page, limit):
@@ -1661,7 +1788,7 @@ def Add_TaskParams(task_name):
         db.session.add_all(new_params)
         db.session.commit()
 
-        return make_response(jsonify([param.json() for param in new_params])), 200
+        return make_response(jsonify([param.json() for param in new_params])), 201
     except Exception as e:
         return jsonify({"error": "Failed to create task parameters", "details": str(e)}), 500
 
@@ -2667,18 +2794,26 @@ def def_async_task_requests_view_requests(page, limit):
 @flask_app.route('/def_access_models', methods=['POST'])
 def create_def_access_models():
     try:
+        datasource_name = request.json.get('datasource_name', None)
+        # Only validate foreign key if datasource_name is provided and not null/empty
+        if datasource_name:
+            datasource = DefDataSource.query.filter_by(datasource_name=datasource_name).first()
+            if not datasource:
+                return make_response(jsonify({"message": f"Datasource '{datasource_name}' does not exist"}), 400)
+
         new_def_access_model = DefAccessModel(
             model_name = request.json.get('model_name'),
             description = request.json.get('description'),
             type = request.json.get('type'),
             run_status = request.json.get('run_status'),
             state = request.json.get('state'),
-            last_run_date = current_timestamp(), #current_timestamp
+            last_run_date = current_timestamp(),
             created_by = request.json.get('created_by'),
             last_updated_by = request.json.get('last_updated_by'),
             last_updated_date = current_timestamp(),
             revision = 0,
-            revision_date = current_timestamp()
+            revision_date = current_timestamp(),
+            datasource_name = datasource_name  # FK assignment
         )
         db.session.add(new_def_access_model)
         db.session.commit()
@@ -2749,18 +2884,31 @@ def get_def_access_model(model_id):
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
 
+
 @flask_app.route('/def_access_models/<int:model_id>', methods=['PUT'])
 def update_def_access_model(model_id):
     try:
         model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
         if model:
-            model.model_name        = request.json.get('model_name', model.model_name)
-            model.description       = request.json.get('description', model.description)
-            model.type              = request.json.get('type', model.type)
-            model.run_status        = request.json.get('run_status', model.run_status)
-            model.state             = request.json.get('state', model.state)
-            model.last_run_date     = current_timestamp() #current_timestamp()
-            model.last_updated_by   = request.json.get('last_updated_by', model.last_updated_by)
+            data = request.get_json()
+            # Handle datasource_name FK update with case-insensitive and space-insensitive matching
+            if 'datasource_name' in data:
+                # Normalize input: strip, lower, remove underscores and spaces for matching
+                input_ds = data['datasource_name'].strip().lower().replace('_', '').replace(' ', '')
+                datasource = DefDataSource.query.filter(
+                    func.replace(func.replace(func.lower(DefDataSource.datasource_name), '_', ''), ' ', '') == input_ds
+                ).first()
+                if not datasource:
+                    return make_response(jsonify({"message": f"Datasource '{data['datasource_name']}' does not exist"}), 404)
+                model.datasource_name = datasource.datasource_name  # Use the canonical name from DB
+
+            model.model_name        = data.get('model_name', model.model_name)
+            model.description       = data.get('description', model.description)
+            model.type              = data.get('type', model.type)
+            model.run_status        = data.get('run_status', model.run_status)
+            model.state             = data.get('state', model.state)
+            model.last_run_date     = current_timestamp()
+            model.last_updated_by   = data.get('last_updated_by', model.last_updated_by)
             model.last_updated_date = current_timestamp()
             model.revision          = model.revision + 1
             model.revision_date     = current_timestamp()

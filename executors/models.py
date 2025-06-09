@@ -2,7 +2,6 @@
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB
 from .extensions import db
-from sqlalchemy import Text
 from sqlalchemy import Text, TIMESTAMP
 
 
@@ -61,13 +60,19 @@ class DefUser(db.Model):
     user_id         = db.Column(db.Integer, primary_key=True)
     user_name       = db.Column(db.String(40), unique=True, nullable=True)
     user_type       = db.Column(db.String(50))
-    email_addresses = db.Column(db.JSON, nullable=False )
+    email_addresses = db.Column(JSONB, nullable=False )
     created_by      = db.Column(db.Integer, nullable=False)
     created_on      = db.Column(db.String(30))
     last_updated_by = db.Column(db.Integer)
     last_updated_on = db.Column(db.String(50), unique=True, nullable=False)
     tenant_id       = db.Column(db.Integer, db.ForeignKey('apps.def_tenants.tenant_id'), nullable=False) 
-    profile_picture = db.Column(JSONB)
+    profile_picture = db.Column(
+    JSONB,
+    default=lambda: {
+        "original": "uploads/profiles/default/profile.jpg",
+        "thumbnail": "uploads/profiles/default/thumbnail.jpg"
+    }
+)
 
     def json(self):
         return {
@@ -507,7 +512,8 @@ class DefAccessModel(db.Model):
     last_updated_by    = db.Column(db.Text)                       
     last_updated_date  = db.Column(db.Text)                       
     revision           = db.Column(db.Integer)                    
-    revision_date      = db.Column(db.Text)                       
+    revision_date      = db.Column(db.Text)
+    datasource_name = db.Column(db.Text, db.ForeignKey('apps.def_data_sources.datasource_name', name='datasource_name'), nullable=True)                       
 
 
     # logics = db.relationship("DefAccessModelLogic", back_populates="model")
@@ -525,7 +531,8 @@ class DefAccessModel(db.Model):
             "last_updated_by": self.last_updated_by,
             "last_updated_date": self.last_updated_date,
             "revision": self.revision,
-            "revision_date": self.revision_date
+            "revision_date": self.revision_date,
+            "datasource_name": self.datasource_name
         }
 
 class DefAccessModelLogic(db.Model):

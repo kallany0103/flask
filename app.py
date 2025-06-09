@@ -62,7 +62,14 @@ from config import redis_url
 redis_client = Redis.from_url(redis_url, decode_responses=True)
 
 jwt = JWTManager(flask_app)
-CORS(flask_app, resources={r"/*": {"origins": "http://localhost:5173"}})
+CORS(
+    flask_app,
+    resources={r"/*": {"origins": "http://localhost:5173"}},
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE"]
+)
 # Set up the logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

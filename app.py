@@ -52,7 +52,8 @@ from executors.models import (
     DefGlobalConditionLogicAttribute,
     DefAccessPointElement,
     DefDataSource,
-    DefAccessEntitlement
+    DefAccessEntitlement,
+    DefControl
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -2694,7 +2695,7 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
 @flask_app.route('/view_requests', methods=['GET'])
 def get_all_tasks():
     try:
-        fourteen_days = datetime.utcnow() - timedelta(days=14)
+        fourteen_days = datetime.utcnow() - timedelta(days=7)
         tasks = DefAsyncTaskRequest.query.filter(DefAsyncTaskRequest.creation_date >= fourteen_days).order_by(DefAsyncTaskRequest.creation_date.desc())
         #tasks = DefAsyncTaskRequest.query.limit(100000).all()
         if not tasks:
@@ -4591,8 +4592,6 @@ def get_redbeat_scheduled_task(task_key):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
 
 
 if __name__ == "__main__":

@@ -747,5 +747,47 @@ class DefAccessEntitlement(db.Model):
             "last_updated_on": self.last_updated_on
         }
 
+class DefControl(db.Model):
+    __tablename__ = 'def_controls'
+    __table_args__ = {'schema': 'apps'}
+
+    def_control_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    control_name         = db.Column(db.Text)
+    description          = db.Column(db.Text)
+    pending_results_count = db.Column(db.Integer)
+    control_type         = db.Column(db.Text)
+    priority             = db.Column(db.Integer)
+    datasources          = db.Column(db.Text)
+    control_last_run     = db.Column(db.Text)
+    control_last_updated = db.Column(db.Text)
+    status               = db.Column(db.Text)
+    state                = db.Column(db.Text)
+    result_investigator  = db.Column(db.Text)
+    authorized_data      = db.Column(db.Text)
+    revision             = db.Column(db.Integer)
+    revision_date        = db.Column(db.Text)
+    created_by           = db.Column(db.Text)
+    created_date         = db.Column(db.Text)
+
+    def json(self):
+        return {
+            "def_control_id": self.def_control_id,
+            "control_name": self.control_name,
+            "description": self.description,
+            "pending_results_count": self.pending_results_count,
+            "control_type": self.control_type,
+            "priority": self.priority,
+            "datasources": self.datasources,
+            "control_last_run": self.control_last_run,
+            "control_last_updated": self.control_last_updated,
+            "status": self.status,
+            "state": self.state,
+            "result_investigator": self.result_investigator,
+            "authorized_data": self.authorized_data,
+            "revision": self.revision,
+            "revision_date": self.revision_date,
+            "created_by": self.created_by,
+            "created_date": self.created_date
+        }
 
 

@@ -2691,17 +2691,18 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
         db.session.close()
 
 
-# @flask_app.route('/view_requests', methods=['GET'])
-# def get_all_tasks():
-#     try:
-#         fourteen_days = datetime.utcnow() - timedelta(days=14)
-#         tasks = DefAsyncTaskRequest.query.filter(DefAsyncTaskRequest.creation_date>=fourteen_days).all()
-#         #tasks = DefAsyncTaskRequest.query.limit(100000).all()
-#         if not tasks:
-#             return jsonify({"message": "No tasks found"}), 404
-#         return jsonify([task.json() for task in tasks]), 200
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+@flask_app.route('/view_requests', methods=['GET'])
+def get_all_tasks():
+    try:
+        fourteen_days = datetime.utcnow() - timedelta(days=14)
+        tasks = DefAsyncTaskRequest.query.filter(DefAsyncTaskRequest.creation_date >= fourteen_days).order_by(DefAsyncTaskRequest.creation_date.desc())
+        #tasks = DefAsyncTaskRequest.query.limit(100000).all()
+        if not tasks:
+            return jsonify({"message": "No tasks found"}), 404
+        return jsonify([task.json() for task in tasks]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # @flask_app.route('/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
 # # @jwt_required()

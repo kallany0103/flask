@@ -2693,6 +2693,7 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
 
 
 @flask_app.route('/view_requests', methods=['GET'])
+@jwt_required()
 def get_all_tasks():
     try:
         fourteen_days = datetime.utcnow() - timedelta(days=1)

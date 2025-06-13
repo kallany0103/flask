@@ -4681,8 +4681,8 @@ def create_control():
             control_type=request.json.get('control_type'),
             priority=request.json.get('priority'),
             datasources=request.json.get('datasources'),
-            control_last_run=request.json.get('control_last_run'),
-            control_last_updated=request.json.get('control_last_updated'),
+            last_run_date=request.json.get('last_run_date'),
+            last_updated_date=request.json.get('last_updated_date'),
             status=request.json.get('status'),
             state=request.json.get('state'),
             result_investigator=request.json.get('result_investigator'),
@@ -4710,8 +4710,8 @@ def update_control(control_id):
             control.control_type = request.json.get('control_type', control.control_type)
             control.priority = request.json.get('priority', control.priority)
             control.datasources = request.json.get('datasources', control.datasources)
-            control.control_last_run = request.json.get('control_last_run', control.control_last_run)
-            control.control_last_updated = request.json.get('control_last_updated', control.control_last_updated)
+            control.last_run_date = request.json.get('last_run_date', control.last_run_date)
+            control.last_updated_date = request.json.get('last_updated_date', control.last_updated_date)
             control.status = request.json.get('status', control.status)
             control.state = request.json.get('state', control.state)
             control.result_investigator = request.json.get('result_investigator', control.result_investigator)

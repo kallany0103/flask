@@ -758,8 +758,8 @@ class DefControl(db.Model):
     control_type         = db.Column(db.Text)
     priority             = db.Column(db.Integer)
     datasources          = db.Column(db.Text)
-    control_last_run     = db.Column(db.Text)
-    control_last_updated = db.Column(db.Text)
+    last_run_date     = db.Column(db.Text)
+    last_updated_date = db.Column(db.Text)
     status               = db.Column(db.Text)
     state                = db.Column(db.Text)
     result_investigator  = db.Column(db.Text)
@@ -778,8 +778,8 @@ class DefControl(db.Model):
             "control_type": self.control_type,
             "priority": self.priority,
             "datasources": self.datasources,
-            "control_last_run": self.control_last_run,
-            "control_last_updated": self.control_last_updated,
+            "last_run_date": self.last_run_date,
+            "last_updated_date": self.last_updated_date,
             "status": self.status,
             "state": self.state,
             "result_investigator": self.result_investigator,

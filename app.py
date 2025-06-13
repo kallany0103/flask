@@ -2692,7 +2692,7 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
         db.session.close()
 
 
-@flask_app.route('/view_requests', methods=['GET'])
+@flask_app.route('/view_requests_v1', methods=['GET'])
 @jwt_required()
 def get_all_tasks():
     try:
@@ -2742,7 +2742,7 @@ def get_all_tasks():
 
 
 #def_async_task_requests
-@flask_app.route('/def_async_task_requests/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
+@flask_app.route('/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
 @jwt_required()
 def view_requests(page, page_limit):
     try:
@@ -2768,7 +2768,7 @@ def view_requests(page, page_limit):
         return jsonify({"error": str(e)}), 500
 
 
-@flask_app.route('/def_async_task_requests/view_requests/search/<int:page>/<int:limit>', methods=['GET'])
+@flask_app.route('/view_requests/search/<int:page>/<int:limit>', methods=['GET'])
 @jwt_required()
 def def_async_task_requests_view_requests(page, limit):
     try:

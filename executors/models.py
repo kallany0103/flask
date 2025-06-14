@@ -507,12 +507,12 @@ class DefAccessModel(db.Model):
     type               = db.Column(db.Text)                       
     run_status         = db.Column(db.Text)                       
     state              = db.Column(db.Text)                       
-    last_run_date      = db.Column(db.Text)                       
+    last_run_date      = db.Column(db.DateTime)                       
     created_by         = db.Column(db.Text)                       
     last_updated_by    = db.Column(db.Text)                       
-    last_updated_date  = db.Column(db.Text)                       
+    last_updated_date  = db.Column(db.DateTime)                       
     revision           = db.Column(db.Integer)                    
-    revision_date      = db.Column(db.Text)
+    revision_date      = db.Column(db.DateTime)
     datasource_name = db.Column(db.Text, db.ForeignKey('apps.def_data_sources.datasource_name', name='datasource_name'), nullable=True)                       
 
 
@@ -526,12 +526,12 @@ class DefAccessModel(db.Model):
             "type": self.type,
             "run_status": self.run_status,
             "state": self.state,
-            "last_run_date": self.last_run_date,
+            "last_run_date": self.last_run_date.isoformat() if self.last_run_date else None,
             "created_by": self.created_by,
             "last_updated_by": self.last_updated_by,
-            "last_updated_date": self.last_updated_date,
+            "last_updated_date": self.last_updated_date.isoformat() if self.last_updated_date else None,
             "revision": self.revision,
-            "revision_date": self.revision_date,
+            "revision_date": self.revision_date.isoformat() if self.revision_date else None,
             "datasource_name": self.datasource_name
         }
 

@@ -1251,6 +1251,40 @@ def delete_specific_user(user_id):
         return make_response(jsonify({'message': 'Error deleting user', 'error': str(e)}), 500)
 
 
+# @flask_app.route('/users/<int:user_id>', methods=['DELETE'])
+# def delete_specific_user(user_id):
+#     try:
+#         user = DefUser.query.filter_by(user_id=user_id).first()
+#         if not user:
+#             return make_response(jsonify({'message': 'User not found'}), 404)
+
+#         # Delete DefPerson if user_type is "person"
+#         if user.user_type and user.user_type.lower() == "person":
+#             person = DefPerson.query.filter_by(user_id=user_id).first()
+#             if person:
+#                 db.session.delete(person)
+
+#         # Delete DefUserCredential if exists
+#         user_credential = DefUserCredential.query.filter_by(user_id=user_id).first()
+#         if user_credential:
+#             db.session.delete(user_credential)
+
+#         # Delete DefAccessProfile(s) if exist
+#         access_profiles = DefAccessProfile.query.filter_by(user_id=user_id).all()
+#         for profile in access_profiles:
+#             db.session.delete(profile)
+
+#         # Delete the DefUser record
+#         db.session.delete(user)
+#         db.session.commit()
+
+#         return make_response(jsonify({'message': 'User and related records deleted successfully'}), 200)
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return make_response(jsonify({'message': 'Error deleting user', 'error': str(e)}), 500)
+
+
 @flask_app.route('/login', methods=['POST'])
 def login():
     try:

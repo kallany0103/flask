@@ -2851,12 +2851,12 @@ def create_def_access_models():
             type = request.json.get('type'),
             run_status = request.json.get('run_status'),
             state = request.json.get('state'),
-            last_run_date = current_timestamp(),
+            last_run_date = datetime.utcnow(),
             created_by = request.json.get('created_by'),
             last_updated_by = request.json.get('last_updated_by'),
-            last_updated_date = current_timestamp(),
+            last_updated_date = datetime.utcnow(),
             revision = 0,
-            revision_date = current_timestamp(),
+            revision_date = datetime.utcnow(),
             datasource_name = datasource_name  # FK assignment
         )
         db.session.add(new_def_access_model)
@@ -2951,11 +2951,11 @@ def update_def_access_model(model_id):
             model.type              = data.get('type', model.type)
             model.run_status        = data.get('run_status', model.run_status)
             model.state             = data.get('state', model.state)
-            model.last_run_date     = current_timestamp()
+            model.last_run_date     = datetime.utcnow()
             model.last_updated_by   = data.get('last_updated_by', model.last_updated_by)
-            model.last_updated_date = current_timestamp()
+            model.last_updated_date = datetime.utcnow()
             model.revision          = model.revision + 1
-            model.revision_date     = current_timestamp()
+            model.revision_date     = datetime.utcnow()
 
             db.session.commit()
             return make_response(jsonify({'message': 'DefAccessModel updated successfully'}), 200)

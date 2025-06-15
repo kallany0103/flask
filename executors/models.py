@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB
 from .extensions import db
 from sqlalchemy import Text, TIMESTAMP
+from sqlalchemy.sql import func
 
 
 
@@ -507,12 +508,12 @@ class DefAccessModel(db.Model):
     type               = db.Column(db.Text)                       
     run_status         = db.Column(db.Text)                       
     state              = db.Column(db.Text)                       
-    last_run_date      = db.Column(db.DateTime)                       
+    last_run_date      = db.Column(db.DateTime, default=datetime.utcnow)                       
     created_by         = db.Column(db.Text)                       
     last_updated_by    = db.Column(db.Text)                       
-    last_updated_date  = db.Column(db.DateTime)                       
+    last_updated_date  = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)                       
     revision           = db.Column(db.Integer)                    
-    revision_date      = db.Column(db.DateTime)
+    revision_date      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     datasource_name = db.Column(db.Text, db.ForeignKey('apps.def_data_sources.datasource_name', name='datasource_name'), nullable=True)                       
 
 

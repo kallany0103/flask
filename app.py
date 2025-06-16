@@ -317,7 +317,7 @@ def search_tenants(page, limit):
             "items": [tenant.json() for tenant in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page": 1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching tenants", "error": str(e)}), 500)
@@ -560,7 +560,7 @@ def search_enterprises(page, limit):
             "items": [row.json() for row in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching enterprises", "error": str(e)}), 500)
@@ -667,7 +667,7 @@ def search_def_users(page, limit):
             "items": [user.json() for user in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching users", "error": str(e)}), 500)
@@ -750,7 +750,7 @@ def search_combined_users(page, limit):
             "items": [user.json() for user in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching combined users', 'error': str(e)}), 500)
@@ -840,7 +840,7 @@ def search_def_persons(page, limit):
             "items": [person.json() for person in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching persons", "error": str(e)}), 500)
@@ -1540,7 +1540,7 @@ def search_execution_methods(page, limit):
             "items": [method.json() for method in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200
 
     except Exception as e:
@@ -1681,7 +1681,7 @@ def Show_Tasks_Paginated(page, limit):
             "items": [model.json() for model in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
@@ -1707,7 +1707,7 @@ def def_async_tasks_show_tasks(page, limit):
             "items": [task.json() for task in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error fetching tasks", "error": str(e)}), 500)
@@ -1830,7 +1830,10 @@ def Add_TaskParams(task_name):
         db.session.add_all(new_params)
         db.session.commit()
 
-        return make_response(jsonify([param.json() for param in new_params])), 201
+        return make_response(jsonify({
+            "message": "Parameters added successfully",
+            "parameters": [param.json() for param in new_params]
+        }), 201)
     except Exception as e:
         return jsonify({"error": "Failed to create task parameters", "details": str(e)}), 500
 
@@ -1903,7 +1906,8 @@ def Update_TaskParams(task_name, def_param_id):
         # Commit the changes to the database
         db.session.commit()
 
-        return jsonify({"message": "Task parameter updated successfully", "task_param": param.json()}), 200
+        return jsonify({"message": "Task parameter updated successfully", 
+                         "task_param": param.json()}), 200
 
     except Exception as e:
         return jsonify({"error": "Error updating task parameter", "details": str(e)}), 500
@@ -2336,7 +2340,7 @@ def paginated_task_schedules(page, limit):
             "items": [schedule.json() for schedule in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200
     except Exception as e:
         return jsonify({"message": "Error fetching task schedules", "error": str(e)}), 500
@@ -2368,7 +2372,7 @@ def search_task_schedules(page, limit):
             "items": [schedule.json() for schedule in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200
     except Exception as e:
         return jsonify({"message": "Error searching task schedules", "error": str(e)}), 500
@@ -2826,7 +2830,7 @@ def def_async_task_requests_view_requests(page, limit):
             "items": [req.json() for req in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
 
     except Exception as e:
@@ -2914,7 +2918,7 @@ def search_def_access_models(page, limit):
             "items": [model.json() for model in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching access models", "error": str(e)}), 500)
@@ -3431,7 +3435,7 @@ def search_def_global_conditions(page, limit):
             "items": [item.json() for item in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({
@@ -3760,9 +3764,9 @@ def get_def_global_condition_logic_attribute(id):
         return make_response(jsonify({"message": "Error retrieving condition logic attribute", "error": str(e)}), 500)
     
 
-# @flask_app.route('/def_global_condition_logic_attributes/<int:page>/<int:limit>', methods=['GET'])
-# # @jwt_required()
-# def get_paginated_def_global_condition_logic_attributes(page, limit):
+@flask_app.route('/def_global_condition_logic_attributes/<int:page>/<int:limit>', methods=['GET'])
+# @jwt_required()
+def get_paginated_def_global_condition_logic_attributes(page, limit):
     try:
         query = DefGlobalConditionLogicAttribute.query.order_by(DefGlobalConditionLogicAttribute.id.desc())
         paginated = query.paginate(page=page, per_page=limit, error_out=False)
@@ -4025,7 +4029,7 @@ def search_def_access_point_elements(page, limit):
             "items": [element.json() for element in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching access point elements', 'error': str(e)}), 500)
@@ -4168,7 +4172,7 @@ def search_def_data_sources(page, limit):
             "items": [ds.json() for ds in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching data sources', 'error': str(e)}), 500)
@@ -4275,7 +4279,7 @@ def search_def_access_entitlements(page, limit):
             "items": [e.json() for e in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching entitlements', 'error': str(e)}), 500)
@@ -4686,7 +4690,7 @@ def search_controls(page, limit):
             "items": [control.json() for control in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
-            "page": paginated.page
+            "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching controls', 'error': str(e)}), 500)

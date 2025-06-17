@@ -316,8 +316,8 @@ def search_tenants(page, limit):
         return make_response(jsonify({
             "items": [tenant.json() for tenant in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page": 1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching tenants", "error": str(e)}), 500)
@@ -559,8 +559,8 @@ def search_enterprises(page, limit):
         return make_response(jsonify({
             "items": [row.json() for row in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching enterprises", "error": str(e)}), 500)
@@ -666,8 +666,8 @@ def search_def_users(page, limit):
         return make_response(jsonify({
             "items": [user.json() for user in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching users", "error": str(e)}), 500)
@@ -749,8 +749,8 @@ def search_combined_users(page, limit):
         return make_response(jsonify({
             "items": [user.json() for user in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching combined users', 'error': str(e)}), 500)
@@ -839,8 +839,8 @@ def search_def_persons(page, limit):
         return make_response(jsonify({
             "items": [person.json() for person in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching persons", "error": str(e)}), 500)
@@ -1539,8 +1539,8 @@ def search_execution_methods(page, limit):
         return jsonify({
             "items": [method.json() for method in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200
 
     except Exception as e:
@@ -1706,8 +1706,8 @@ def def_async_tasks_show_tasks(page, limit):
         return make_response(jsonify({
             "items": [task.json() for task in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error fetching tasks", "error": str(e)}), 500)
@@ -2371,8 +2371,8 @@ def search_task_schedules(page, limit):
         return jsonify({
             "items": [schedule.json() for schedule in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200
     except Exception as e:
         return jsonify({"message": "Error searching task schedules", "error": str(e)}), 500
@@ -2829,8 +2829,8 @@ def def_async_task_requests_view_requests(page, limit):
         return make_response(jsonify({
             "items": [req.json() for req in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
 
     except Exception as e:
@@ -2917,8 +2917,8 @@ def search_def_access_models(page, limit):
         return make_response(jsonify({
             "items": [model.json() for model in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error searching access models", "error": str(e)}), 500)
@@ -3434,8 +3434,8 @@ def search_def_global_conditions(page, limit):
         return make_response(jsonify({
             "items": [item.json() for item in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({
@@ -4028,8 +4028,8 @@ def search_def_access_point_elements(page, limit):
         return make_response(jsonify({
             "items": [element.json() for element in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching access point elements', 'error': str(e)}), 500)
@@ -4171,8 +4171,8 @@ def search_def_data_sources(page, limit):
         return make_response(jsonify({
             "items": [ds.json() for ds in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching data sources', 'error': str(e)}), 500)
@@ -4278,8 +4278,8 @@ def search_def_access_entitlements(page, limit):
         return make_response(jsonify({
             "items": [e.json() for e in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching entitlements', 'error': str(e)}), 500)
@@ -4689,8 +4689,8 @@ def search_controls(page, limit):
         return make_response(jsonify({
             "items": [control.json() for control in paginated.items],
             "total": paginated.total,
-            "pages": paginated.pages,
-            "page":  1 if paginated.total == 0 else paginated.page
+            "pages": 1 if paginated.total == 0 else paginated.pages,
+            "page":  paginated.page
         }), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error searching controls', 'error': str(e)}), 500)

@@ -2734,7 +2734,7 @@ def Cancel_AdHoc_Task(task_name, user_schedule_name, schedule_id, task_id):
 @jwt_required()
 def get_all_tasks():
     try:
-        fourteen_days = datetime.utcnow() - timedelta(days=1)
+        fourteen_days = datetime.utcnow() - timedelta(days=4)
         tasks = DefAsyncTaskRequest.query.filter(DefAsyncTaskRequest.creation_date >= fourteen_days).order_by(DefAsyncTaskRequest.creation_date.desc())
         #tasks = DefAsyncTaskRequest.query.limit(100000).all()
         if not tasks:

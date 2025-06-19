@@ -2744,6 +2744,21 @@ def get_all_tasks():
         return jsonify({"error": str(e)}), 500
 
 
+
+@flask_app.route('/view_requests_v2', methods=['GET'])
+@jwt_required()
+def view_requests_v2():
+    try:
+        fourteen_days = datetime.utcnow() - timedelta(days=4)
+        tasks = DefAsyncTaskRequest.query.filter(DefAsyncTaskRequest.creation_date >= fourteen_days).order_by(DefAsyncTaskRequest.creation_date.desc())
+        #tasks = DefAsyncTaskRequest.query.limit(100000).all()
+        if not tasks:
+            return jsonify({"message": "No tasks found"}), 404
+        return jsonify([task.json() for task in tasks]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # @flask_app.route('/view_requests/<int:page>/<int:page_limit>', methods=['GET'])
 # # @jwt_required()
 # def view_requests(page, page_limit):

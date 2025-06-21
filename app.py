@@ -2617,8 +2617,10 @@ def Reschedule_TaskSchedule(task_name):
             cron_schedule = crontab(minute=dt.minute, hour=dt.hour, day_of_month=dt.day, month_of_year=dt.month)
 
         elif schedule_type == "PERIODIC":
-            frequency_type = schedule_data.get('FREQUENCY_TYPE', '').upper()
+            frequency_type_raw = schedule_data.get('FREQUENCY_TYPE', 'MINUTES')
+            frequency_type = frequency_type_raw.upper().strip().rstrip('s').replace('(', '').replace(')', '')
             frequency = schedule_data.get('FREQUENCY', 1)
+
             if frequency_type == 'MONTHS':
                 schedule_minutes = frequency * 30 * 24 * 60
             elif frequency_type == 'WEEKS':

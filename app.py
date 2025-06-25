@@ -248,7 +248,7 @@ def create_tenant():
        new_tenant  = DefTenant(tenant_name = tenant_name)
        db.session.add(new_tenant)
        db.session.commit()
-       return make_response(jsonify({"message": "Tenant created successfully"}), 201)
+       return make_response(jsonify({"message": "Added successfully"}), 201)
    
     except IntegrityError as e:
         return make_response(jsonify({"message": "Error creating Tenant", "error": "Tenant already exists"}), 409)
@@ -290,7 +290,7 @@ def get_paginated_tenants(page, limit):
             "page": paginated.page
         }), 200)
     except Exception as e:
-        return make_response(jsonify({"message": "Error fetching paginated tenants", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error fetching tenants", "error": str(e)}), 500)
 
 
 @flask_app.route('/def_tenants/search/<int:page>/<int:limit>', methods=['GET'])
@@ -347,7 +347,7 @@ def update_tenant(tenant_id):
             data = request.get_json()
             tenant.tenant_name  = data['tenant_name']
             db.session.commit()
-            return make_response(jsonify({"message": "Tenant updated successfully"}), 200)
+            return make_response(jsonify({"message": "Edited successfully"}), 200)
         return make_response(jsonify({"message": "Tenant not found"}), 404)
     except Exception as e:
         return make_response(jsonify({"message": "Error updating Tenant", "error": str(e)}), 500)
@@ -362,7 +362,7 @@ def delete_tenant(tenant_id):
         if user:
             db.session.delete(user)
             db.session.commit()
-            return make_response(jsonify({"message": "Tenant deleted successfully"}), 200)
+            return make_response(jsonify({"message": "Deleted successfully"}), 200)
         return make_response(jsonify({"message": "Tenant not found"}), 404)
     except Exception as e:
         return make_response(jsonify({"message": "Error deleting tenant", "error": str(e)}), 500)
@@ -386,12 +386,12 @@ def create_enterprise(tenant_id):
 
         db.session.add(new_enterprise)
         db.session.commit()
-        return make_response(jsonify({"message": "Enterprise setup created successfully"}), 201)
+        return make_response(jsonify({"message": "Added successfully"}), 201)
 
     except IntegrityError:
-        return make_response(jsonify({"message": "Error creating enterprise setup", "error": "Setup already exists"}), 409)
+        return make_response(jsonify({"message": f"Enterprise setup already exists for tenant ID {tenant_id}."}), 409)
     except Exception as e:
-        return make_response(jsonify({"message": "Error creating enterprise setup", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Failed to add enterprise setup.", "error": str(e)}), 500)
 
 # Create or update enterprise setup
 @flask_app.route('/create_enterprise/<int:tenant_id>', methods=['POST'])
@@ -408,7 +408,7 @@ def create_update_enterprise(tenant_id):
         if existing_enterprise:
             existing_enterprise.enterprise_name = enterprise_name
             existing_enterprise.enterprise_type = enterprise_type
-            message = "Enterprise setup updated successfully"
+            message = "Edited successfully"
 
         else:
             new_enterprise = DefTenantEnterpriseSetup(
@@ -418,7 +418,7 @@ def create_update_enterprise(tenant_id):
             )
 
             db.session.add(new_enterprise)
-            message = "Enterprise setup created successfully"
+            message = "Added successfully"
 
         db.session.commit()
         return make_response(jsonify({"message": message}), 200)
@@ -475,7 +475,7 @@ def get_paginated_enterprises(page, limit):
             "page": paginated.page
         }), 200
     except Exception as e:
-        return jsonify({"message": "Error fetching paginated enterprises", "error": str(e)}), 500
+        return jsonify({"message": "Error fetching enterprises", "error": str(e)}), 500
 
 # Update enterprise setup
 @flask_app.route('/update_enterprise/<int:tenant_id>', methods=['PUT'])
@@ -488,10 +488,10 @@ def update_enterprise(tenant_id):
             setup.enterprise_name = data.get('enterprise_name', setup.enterprise_name)
             setup.enterprise_type = data.get('enterprise_type', setup.enterprise_type)
             db.session.commit()
-            return make_response(jsonify({"message": "Enterprise setup updated successfully"}), 200)
+            return make_response(jsonify({"message": "Edited successfully"}), 200)
         return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
     except Exception as e:
-        return make_response(jsonify({"message": "Error updating enterprise setup", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error Editing enterprise setup", "error": str(e)}), 500)
 
 
 # Delete enterprise setup
@@ -608,7 +608,7 @@ def create_def_user():
         db.session.commit()
 
         # Return a success response
-        return make_response(jsonify({"message": "Def USER created successfully!",
+        return make_response(jsonify({"message": "Added successfully",
                                        "User Id": user_id}), 201)
 
     except Exception as e:
@@ -622,7 +622,7 @@ def get_users():
         users = DefUser.query.all()
         return make_response(jsonify([user.json() for user in users]), 200)
     except Exception as e:
-        return make_response(jsonify({'message': 'error getting users', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error getting users', 'error': str(e)}), 500)
     
 
 @flask_app.route('/defusers/<int:page>/<int:limit>', methods=['GET'])
@@ -639,7 +639,7 @@ def get_paginated_def_users(page, limit):
             "page": paginated.page
         }), 200)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error getting paginated users', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error getting users', 'error': str(e)}), 500)
 
 
 
@@ -680,9 +680,9 @@ def get_user(user_id):
         user = DefUser.query.filter_by(user_id=user_id).first()
         if user:
             return make_response(jsonify({'user': user.json()}), 200)
-        return make_response(jsonify({'message': 'user not found'}), 404)
+        return make_response(jsonify({'message': 'User not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'error getting user', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error getting user', 'error': str(e)}), 500)
     
     
 @flask_app.route('/defusers/<int:user_id>', methods=['PUT'])
@@ -699,13 +699,12 @@ def update_user(user_id):
                 user.last_updated_by = data['last_updated_by']
             user.last_updated_on = current_timestamp()
             db.session.commit()
-            return make_response(jsonify({'message': 'user updated'}), 200)
-        return make_response(jsonify({'message': 'user not found'}), 404)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
+        return make_response(jsonify({'message': 'User not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'error updating user', 'error': str(e)}), 500)
-    
-    
-    
+        return make_response(jsonify({'message': 'Error updating user', 'error': str(e)}), 500)
+
+
 @flask_app.route('/defusers/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     try:
@@ -713,10 +712,10 @@ def delete_user(user_id):
         if user:
             db.session.delete(user)
             db.session.commit()
-            return make_response(jsonify({'message': 'User deleted successfully'}), 200)
-        return make_response(jsonify({'message': 'user not found'}), 404)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
+        return make_response(jsonify({'message': 'User not found'}), 404)
     except:
-        return make_response(jsonify({'message': 'error deleting user'}), 500)
+        return make_response(jsonify({'message': 'Error deleting user'}), 500)
 
 
 
@@ -733,7 +732,7 @@ def get_paginated_combined_users(page, limit):
             "page": paginated.page
         }), 200)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error fetching combined users', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error fetching users', 'error': str(e)}), 500)
         
 
 @flask_app.route('/def_combined_user/search/<int:page>/<int:limit>', methods=['GET'])
@@ -753,7 +752,7 @@ def search_combined_users(page, limit):
             "page":  paginated.page
         }), 200)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error searching combined users', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error searching users', 'error': str(e)}), 500)
 
 
 @flask_app.route('/defpersons', methods=['POST'])
@@ -780,7 +779,7 @@ def create_arc_person():
         # Commit the changes to the database
         db.session.commit()
         # Return a success response
-        return make_response(jsonify({"message": "Def person's data created succesfully"}), 201)
+        return make_response(jsonify({"message": "Added successfully"}), 201)
     
     except Exception as e:
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
@@ -792,7 +791,7 @@ def get_persons():
         persons = DefPerson.query.all()
         return make_response(jsonify([person.json() for person in persons]), 200)
     except Exception as e:
-        return make_response(jsonify({'message': 'error getting persons', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error getting persons', 'error': str(e)}), 500)
     
 
 
@@ -811,7 +810,7 @@ def get_paginated_persons(page, limit):
             "page": paginated.page
         }), 200)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error getting paginated persons', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error getting persons', 'error': str(e)}), 500)
 
 @flask_app.route('/defpersons/search/<int:page>/<int:limit>', methods=['GET'])
 @jwt_required()
@@ -873,10 +872,10 @@ def update_person(user_id):
             if 'job_title' in data:
                 person.job_title = data['job_title']
             db.session.commit()
-            return make_response(jsonify({'message': 'person updated'}), 200)
-        return make_response(jsonify({'message': 'person not found'}), 404)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
+        return make_response(jsonify({'message': 'Person not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'error updating person', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error editing person', 'error': str(e)}), 500)
     
     
 @flask_app.route('/defpersons/<int:user_id>', methods=['DELETE'])
@@ -886,7 +885,7 @@ def delete_person(user_id):
         if person:
             db.session.delete(person)
             db.session.commit()
-            return make_response(jsonify({'message': 'Person deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         return make_response(jsonify({'message': 'Person not found'}), 404)
     except:
         return make_response(jsonify({'message': 'Error deleting user'}), 500)
@@ -913,7 +912,7 @@ def create_user_credential():
         db.session.commit()
 
         # Return a success response
-        return make_response(jsonify({"message": "User credentials created successfully!"}), 201)
+        return make_response(jsonify({"message": "Added successfully!"}), 201)
 
     except Exception as e:
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
@@ -943,7 +942,7 @@ def reset_user_password():
     
     db.session.commit()
     
-    return jsonify({'message': 'Password reset successful'}), 200
+    return jsonify({'message': 'Edited successfully'}), 200
 
 
 @flask_app.route('/def_user_credentials/<int:user_id>', methods=['DELETE'])
@@ -953,7 +952,7 @@ def delete_user_credentials(user_id):
         if credential:
             db.session.delete(credential)
             db.session.commit()
-            return make_response(jsonify({'message': 'User credentials deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         return make_response(jsonify({'message': 'User not found'}), 404)
     except:
         return make_response(jsonify({'message': 'Error deleting user credentials'}), 500)
@@ -1148,7 +1147,7 @@ def register_user():
         db.session.add(new_cred)
 
         db.session.commit()
-        return jsonify({"message": "User registered successfully", "user_id": user_id}), 201
+        return jsonify({"message": "Added successfully", "user_id": user_id}), 201
 
     except Exception as e:
         db.session.rollback()
@@ -1213,7 +1212,7 @@ def update_specific_user(user_id):
             user_cred.password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
 
         db.session.commit()
-        return make_response(jsonify({'message': 'User updated successfully'}), 200)
+        return make_response(jsonify({'message': 'Edited successfully'}), 200)
 
     except Exception as e:
         db.session.rollback()
@@ -1242,7 +1241,7 @@ def delete_specific_user(user_id):
             db.session.delete(user)
             db.session.commit()
 
-            return make_response(jsonify({'message': 'User and related records deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
 
         return make_response(jsonify({'message': 'User not found'}), 404)
     
@@ -1350,7 +1349,7 @@ def create_access_profiles(user_id):
 
         db.session.add(new_profile)  # Fixed: Corrected session operation
         db.session.commit()
-        return make_response(jsonify({"message": "Access profiles created successfully"}), 201)
+        return make_response(jsonify({"message": "Added successfully"}), 201)
 
     except IntegrityError as e:
         db.session.rollback()  
@@ -1407,11 +1406,11 @@ def update_access_profile(user_id, serial_number):
         # Commit changes to DefAccessProfile
         db.session.commit()
 
-        return make_response(jsonify({"message": "Access Profile updated successfully"}), 200)
+        return make_response(jsonify({"message": "Edited successfully"}), 200)
 
     except Exception as e:
         db.session.rollback()  # Rollback on error
-        return make_response(jsonify({"message": "Error updating Access Profile", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error Editing Access Profile", "error": str(e)}), 500)
 
 
 # Delete an access profile
@@ -1422,7 +1421,7 @@ def delete_access_profile(user_id, serial_number):
         if profile:
             db.session.delete(profile)
             db.session.commit()
-            return make_response(jsonify({"message": "Access Profile deleted successfully"}), 200)
+            return make_response(jsonify({"message": "Deleted successfully"}), 200)
         return make_response(jsonify({"message": "Access Profile not found"}), 404)
     except Exception as e:
         return make_response(jsonify({"message": "Error deleting Access Profile", "error": str(e)}), 500)
@@ -1460,7 +1459,7 @@ def Create_ExecutionMethod():
         db.session.add(new_method)
         db.session.commit()
 
-        return jsonify({"message": "Execution method created successfully", "data": new_method.json()}), 201
+        return jsonify({"message": "Added successfully", "data": new_method.json()}), 201
 
     except Exception as e:
         return jsonify({"message": "Error creating execution method", "error": str(e)}), 500
@@ -1581,12 +1580,12 @@ def Update_ExecutionMethod(internal_execution_method):
             execution_method.last_update_date = datetime.utcnow()
 
             db.session.commit()
-            return make_response(jsonify({"message": "Execution method updated successfully"}), 200)
+            return make_response(jsonify({"message": "Edited successfully"}), 200)
 
         return make_response(jsonify({"message": f"Execution method with internal_execution_method '{internal_execution_method}' not found"}), 404)
 
     except Exception as e:
-        return make_response(jsonify({"message": "Error updating execution method", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error editing execution method", "error": str(e)}), 500)
 
 
 @flask_app.route('/Delete_ExecutionMethod/<string:internal_execution_method>', methods=['DELETE'])
@@ -1604,7 +1603,7 @@ def Delete_ExecutionMethod(internal_execution_method):
         db.session.delete(execution_method)
         db.session.commit()
 
-        return jsonify({"message": f"Execution method with internal_execution_method '{internal_execution_method}' successfully deleted"}), 200
+        return jsonify({"message": f"Deleted successfully"}), 200
 
     except Exception as e:
         return jsonify({"error": "Failed to delete execution method", "details": str(e)}), 500
@@ -1645,7 +1644,7 @@ def Create_Task():
         db.session.add(new_task)
         db.session.commit()
 
-        return {"message": "DEF async task created successfully"}, 201
+        return {"message": "Added successfully"}, 201
 
     except Exception as e:
         return {"message": "Error creating Task", "error": str(e)}, 500
@@ -1658,7 +1657,7 @@ def Show_Tasks():
         tasks = DefAsyncTask.query.order_by(DefAsyncTask.def_task_id.desc()).all()
         return make_response(jsonify([task.json() for task in tasks]))
     except Exception as e:
-        return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error getting async Tasks", "error": str(e)}), 500)
 
 
 @flask_app.route('/def_async_tasks/v1', methods=['GET'])
@@ -1667,7 +1666,7 @@ def Show_Tasks_v1():
         tasks = DefAsyncTask.query.order_by(DefAsyncTask.def_task_id.desc()).all()
         return make_response(jsonify([task.json() for task in tasks]))
     except Exception as e:
-        return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error getting async Tasks", "error": str(e)}), 500)
 
 
 @flask_app.route('/def_async_tasks/<int:page>/<int:limit>', methods=['GET'])
@@ -1684,7 +1683,7 @@ def Show_Tasks_Paginated(page, limit):
             "page":  1 if paginated.total == 0 else paginated.page
         }), 200)
     except Exception as e:
-        return make_response(jsonify({"message": "Error getting DEF async Tasks", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error getting async Tasks", "error": str(e)}), 500)
 
 
 @flask_app.route('/def_async_tasks/search/<int:page>/<int:limit>', methods=['GET'])
@@ -1755,12 +1754,12 @@ def Update_Task(task_name):
             task.updated_at = datetime.utcnow()
 
             db.session.commit()
-            return make_response(jsonify({"message": "DEF async Task updated successfully"}), 200)
+            return make_response(jsonify({"message": "Edited successfully"}), 200)
 
-        return make_response(jsonify({"message": f"DEF async Task with name '{task_name}' not found"}), 404)
+        return make_response(jsonify({"message": f"Async Task with name '{task_name}' not found"}), 404)
 
     except Exception as e:
-        return make_response(jsonify({"message": "Error updating DEF async Task", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error editing async Task", "error": str(e)}), 500)
 
 
 @flask_app.route('/Cancel_Task/<string:task_name>', methods=['PUT'])
@@ -1776,7 +1775,9 @@ def Cancel_Task(task_name):
 
             db.session.commit()
 
-            return make_response(jsonify({"message": f"Task {task_name} has been cancelled successfully"}), 200)
+            # return make_response(jsonify({"message": f"Task {task_name} has been cancelled successfully"}), 200)
+            return make_response(jsonify({"message": "Cancelled successfully"}), 200)
+
 
         return make_response(jsonify({"message": f"Task {task_name} not found"}), 404)
 
@@ -1830,12 +1831,15 @@ def Add_TaskParams(task_name):
         db.session.add_all(new_params)
         db.session.commit()
 
+        # return make_response(jsonify({
+        #     "message": "Parameters Created successfully",
+        #     "parameters": [param.json() for param in new_params]
+        # }), 201)
         return make_response(jsonify({
-            "message": "Parameters added successfully",
-            "parameters": [param.json() for param in new_params]
+            "message": "Added successfully",
         }), 201)
     except Exception as e:
-        return jsonify({"error": "Failed to create task parameters", "details": str(e)}), 500
+        return jsonify({"error": "Failed to add task parameters", "details": str(e)}), 500
 
 
 
@@ -1906,11 +1910,12 @@ def Update_TaskParams(task_name, def_param_id):
         # Commit the changes to the database
         db.session.commit()
 
-        return jsonify({"message": "Task parameter updated successfully", 
-                         "task_param": param.json()}), 200
+        # return jsonify({"message": "Task parameter updated successfully", 
+        #                  "task_param": param.json()}), 200
+        return jsonify({"message": "Edited successfully"}), 200
 
     except Exception as e:
-        return jsonify({"error": "Error updating task parameter", "details": str(e)}), 500
+        return jsonify({"error": "Error editing task parameter", "details": str(e)}), 500
 
 
 
@@ -1929,7 +1934,9 @@ def Delete_TaskParams(task_name, def_param_id):
         db.session.delete(param)
         db.session.commit()
 
-        return jsonify({"message": f"Parameter with def_param_id '{def_param_id}' successfully deleted from task '{task_name}'"}), 200
+        # return jsonify({"message": f"Parameter with def_param_id '{def_param_id}' successfully deleted from task '{task_name}'"}), 200
+        return jsonify({"message": "Deleted successfully"}), 200
+
 
     except Exception as e:
         return jsonify({"error": "Failed to delete task parameter", "details": str(e)}), 500
@@ -2300,14 +2307,15 @@ def Create_TaskSchedule():
         db.session.add(new_schedule)
         db.session.commit()
 
-        return jsonify({
-            "message": "Task schedule created successfully!",
-            "schedule_id": new_schedule.def_task_sche_id
-        }), 201
+        # return jsonify({
+        #     "message": "Task schedule created successfully!",
+        #     "schedule_id": new_schedule.def_task_sche_id
+        # }), 201
+        return jsonify({"message": "Added successfully"}), 201
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "Failed to create task schedule", "details": str(e)}), 500
+        return jsonify({"error": "Failed to add task schedule", "details": str(e)}), 500
 
 
 @flask_app.route('/Show_TaskSchedules', methods=['GET'])
@@ -2524,11 +2532,13 @@ def Update_TaskSchedule(task_name):
             return jsonify({"message": "Error updating Redis. Database changes rolled back.", "error": str(e)}), 500
 
         db.session.commit()
-        return jsonify({"message": f"Task Schedule for {redbeat_schedule_name} updated successfully in database and Redis"}), 200
+        # return jsonify({"message": f"Task Schedule for {redbeat_schedule_name} updated successfully in database and Redis"}), 200
+        return jsonify({"message": "Edited successfully"}), 200
+
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"message": "Error updating Task Schedule", "error": str(e)}), 500
+        return jsonify({"message": "Error editing Task Schedule", "error": str(e)}), 500
 
 
 @flask_app.route('/Cancel_TaskSchedule/<string:task_name>', methods=['PUT'])
@@ -2565,7 +2575,8 @@ def Cancel_TaskSchedule(task_name):
             return make_response(jsonify({"message": "Task schedule cancelled, but failed to delete from Redis", "error": redis_response['error']}), 500)
 
         # Return success message if both operations are successful
-        return make_response(jsonify({"message": f"Task periodic schedule for {redbeat_schedule_name} has been cancelled successfully in the database and deleted from Redis"}), 200)
+        # return make_response(jsonify({"message": f"Task periodic schedule for {redbeat_schedule_name} has been cancelled successfully in the database and deleted from Redis"}), 200)
+        return make_response(jsonify({"message": "Cancelled successfully"}), 200)
 
     except Exception as e:
         db.session.rollback()  # Rollback on failure
@@ -2662,7 +2673,9 @@ def Reschedule_TaskSchedule(task_name):
         schedule.last_update_date = datetime.utcnow()
         db.session.commit()
 
-        return make_response(jsonify({'message': f"Schedule '{redbeat_schedule_name}' has been rescheduled."}), 200)
+        # return make_response(jsonify({'message': f"Schedule '{redbeat_schedule_name}' has been rescheduled."}), 200)
+        return make_response(jsonify({'message': "Rescheduled Successfully."}), 200)
+
 
     except Exception as e:
         db.session.rollback()
@@ -2882,7 +2895,7 @@ def create_def_access_models():
         )
         db.session.add(new_def_access_model)
         db.session.commit()
-        return make_response(jsonify({"message": "DefAccessModel created successfully!"}), 201)
+        return make_response(jsonify({"message": "Added successfully"}), 201)
     except Exception as e:
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
     
@@ -2979,11 +2992,11 @@ def update_def_access_model(model_id):
             model.revision_date     = datetime.utcnow()
 
             db.session.commit()
-            return make_response(jsonify({'message': 'DefAccessModel updated successfully'}), 200)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
         else:
-            return make_response(jsonify({'message': 'DefAccessModel not found'}), 404)
+            return make_response(jsonify({'message': 'Access Model not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error updating DefAccessModel', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error Editing Access Model', 'error': str(e)}), 500)
 
 @flask_app.route('/def_access_models/<int:model_id>', methods=['DELETE'])
 def delete_def_access_model(model_id):
@@ -2992,11 +3005,11 @@ def delete_def_access_model(model_id):
         if model:
             db.session.delete(model)
             db.session.commit()
-            return make_response(jsonify({'message': 'DefAccessModel deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         else:
-            return make_response(jsonify({'message': 'DefAccessModel not found'}), 404)
+            return make_response(jsonify({'message': 'Access Model not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error deleting DefAccessModel', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error deleting Access Model', 'error': str(e)}), 500)
 
 
 
@@ -3037,7 +3050,7 @@ def create_def_access_model_logic():
         )
         db.session.add(new_logic)
         db.session.commit()
-        return make_response(jsonify({'message': 'DefAccessModelLogic created successfully!'}), 201)
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
     except Exception as e:
         return make_response(jsonify({'message': f'Error: {str(e)}'}), 500)
 
@@ -3088,11 +3101,12 @@ def upsert_def_access_model_logics():
                 existing_logic.value = value
                 db.session.add(existing_logic)
 
-                response.append({
-                    'def_access_model_logic_id': existing_logic.def_access_model_logic_id,
-                    'status': 'updated',
-                    'message': 'Logic updated successfully'
-                })
+                # response.append({
+                #     'def_access_model_logic_id': existing_logic.def_access_model_logic_id,
+                #     'status': 'updated',
+                #     'message': 'AccessModelLogic updated successfully'
+                # })
+                response.append({'message': 'Edited successfully'})
 
             else:
                 if not model_id:
@@ -3126,11 +3140,12 @@ def upsert_def_access_model_logics():
                 db.session.add(new_logic)
                 db.session.flush()
 
-                response.append({
-                    'def_access_model_logic_id': new_logic.def_access_model_logic_id,
-                    'status': 'created',
-                    'message': 'Logic created successfully'
-                })
+                # response.append({
+                #     'def_access_model_logic_id': new_logic.def_access_model_logic_id,
+                #     'status': 'created',
+                #     'message': 'AccessModelLogic created successfully'
+                # })
+                response.append({'message': 'Added successfully'})
 
         db.session.commit()
         return make_response(jsonify(response), 200)
@@ -3153,7 +3168,7 @@ def get_def_access_model_logics():
         logics = DefAccessModelLogic.query.order_by(DefAccessModelLogic.def_access_model_logic_id.desc()).all()
         return make_response(jsonify([logic.json() for logic in logics]), 200)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error retrieving logics', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error retrieving access model logics', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_access_model_logics/<int:logic_id>', methods=['GET'])
@@ -3163,9 +3178,9 @@ def get_def_access_model_logic(logic_id):
         if logic:
             return make_response(jsonify(logic.json()), 200)
         else:
-            return make_response(jsonify({'message': 'Logic not found'}), 404)
+            return make_response(jsonify({'message': 'access model logic not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error retrieving logic', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error retrieving access model logic', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_access_model_logics/<int:logic_id>', methods=['PUT'])
@@ -3181,11 +3196,11 @@ def update_def_access_model_logic(logic_id):
             logic.value = request.json.get('value', logic.value)
 
             db.session.commit()
-            return make_response(jsonify({'message': 'Logic updated successfully'}), 200)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
         else:
-            return make_response(jsonify({'message': 'Logic not found'}), 404)
+            return make_response(jsonify({'message': 'Access Model Logic not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error updating logic', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error editing Access Model Logic', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_access_model_logics/<int:logic_id>', methods=['DELETE'])
@@ -3195,11 +3210,11 @@ def delete_def_access_model_logic(logic_id):
         if logic:
             db.session.delete(logic)
             db.session.commit()
-            return make_response(jsonify({'message': 'Logic deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         else:
-            return make_response(jsonify({'message': 'Logic not found'}), 404)
+            return make_response(jsonify({'message': 'Access Model Logic not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error deleting logic', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error deleting Access Model Logic', 'error': str(e)}), 500)
 
 
 
@@ -3234,7 +3249,7 @@ def create_def_access_model_logic_attribute():
         )
         db.session.add(new_attribute)
         db.session.commit()
-        return make_response(jsonify({"message": "DefAccessModelLogicAttribute created successfully!"}), 201)
+        return make_response(jsonify({"message": "Added successfully"}), 201)
     except Exception as e:
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
 
@@ -3289,11 +3304,12 @@ def upsert_def_access_model_logic_attributes():
                 existing_attribute.widget_state = widget_state
                 db.session.add(existing_attribute)
 
-                response.append({
-                    'id': existing_attribute.id,
-                    'status': 'updated',
-                    'message': 'Attribute updated successfully'
-                })
+                # response.append({
+                #     'id': existing_attribute.id,
+                #     'status': 'updated',
+                #     'message': 'Attribute updated successfully'
+                # })
+                response.append({'message': 'Edited successfully'})
 
             else:
                 # Take the maximum data of foreign-key from foreign table
@@ -3329,11 +3345,13 @@ def upsert_def_access_model_logic_attributes():
                 db.session.add(new_attribute)
                 db.session.flush()
 
-                response.append({
-                    'id': new_attribute.id,
-                    'status': 'created',
-                    'message': 'Attribute created successfully'
-                })
+                # response.append({
+                #     'id': new_attribute.id,
+                #     'status': 'created',
+                #     'message': 'Attribute created successfully'
+                # })
+                response.append({'message': 'Added successfully'})
+
 
         db.session.commit()
         return make_response(jsonify(response), 200)
@@ -3372,11 +3390,11 @@ def update_def_access_model_logic_attribute(attr_id):
             attribute.widget_state = request.json.get('widget_state', attribute.widget_state)
 
             db.session.commit()
-            return make_response(jsonify({'message': 'Attribute updated successfully'}), 200)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
         else:
             return make_response(jsonify({'message': 'Attribute not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error updating attribute', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error editing attribute', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_access_model_logic_attributes/<int:attr_id>', methods=['DELETE'])
@@ -3386,7 +3404,7 @@ def delete_def_access_model_logic_attribute(attr_id):
         if attribute:
             db.session.delete(attribute)
             db.session.commit()
-            return make_response(jsonify({'message': 'Attribute deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         else:
             return make_response(jsonify({'message': 'Attribute not found'}), 404)
     except Exception as e:
@@ -3415,7 +3433,7 @@ def create_def_global_condition():
         db.session.add(new_condition)
         db.session.commit()
 
-        return make_response(jsonify({"message": "DefGlobalCondition created successfully!"}), 201)
+        return make_response(jsonify({"message": "Added successfully"}), 201)
     except Exception as e:
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
 
@@ -3425,7 +3443,7 @@ def get_def_global_conditions():
         conditions = DefGlobalCondition.query.order_by(DefGlobalCondition.def_global_condition_id.desc()).all()
         return make_response(jsonify([condition.json() for condition in conditions]), 200)
     except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving DefGlobalConditions", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error retrieving GlobalConditions", "error": str(e)}), 500)
 
 
 @flask_app.route('/def_global_conditions/search/<int:page>/<int:limit>', methods=['GET'])
@@ -3456,7 +3474,7 @@ def search_def_global_conditions(page, limit):
         }), 200)
     except Exception as e:
         return make_response(jsonify({
-            "message": "Error searching DefGlobalConditions",
+            "message": "Error searching Global Conditions",
             "error": str(e)
         }), 500)
 
@@ -3467,9 +3485,9 @@ def get_def_global_condition(def_global_condition_id):
         condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
         if condition:
             return make_response(jsonify(condition.json()), 200)
-        return make_response(jsonify({"message": "DefGlobalCondition not found"}), 404)
+        return make_response(jsonify({"message": "Global condition not found"}), 404)
     except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving DefGlobalCondition", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error retrieving Global Condition", "error": str(e)}), 500)
 
 
 @flask_app.route('/def_global_conditions/<int:page>/<int:limit>', methods=['GET'])
@@ -3487,7 +3505,7 @@ def get_paginated_def_global_conditions(page, limit):
 
     except Exception as e:
         return make_response(jsonify({
-            "message": "Error retrieving DefGlobalConditions",
+            "message": "Error retrieving Global Conditions",
             "error": str(e)
         }), 500)
 
@@ -3503,10 +3521,10 @@ def update_def_global_condition(def_global_condition_id):
             condition.status      = request.json.get('status', condition.status)
 
             db.session.commit()
-            return make_response(jsonify({'message': 'DefGlobalCondition updated successfully'}), 200)
-        return make_response(jsonify({'message': 'DefGlobalCondition not found'}), 404)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
+        return make_response(jsonify({'message': 'Global Condition not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error updating DefGlobalCondition', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error editing Global Condition', 'error': str(e)}), 500)
 
 @flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['DELETE'])
 def delete_def_global_condition(def_global_condition_id):
@@ -3515,10 +3533,10 @@ def delete_def_global_condition(def_global_condition_id):
         if condition:
             db.session.delete(condition)
             db.session.commit()
-            return make_response(jsonify({'message': 'DefGlobalCondition deleted successfully'}), 200)
-        return make_response(jsonify({'message': 'DefGlobalCondition not found'}), 404)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
+        return make_response(jsonify({'message': 'Global Condition not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error deleting DefGlobalCondition', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error deleting Global Condition', 'error': str(e)}), 500)
 
 
 
@@ -3536,7 +3554,7 @@ def create_def_global_condition_logic():
         existing = DefGlobalConditionLogic.query.get(def_global_condition_logic_id)
         if existing:
             return make_response(jsonify({
-                "message": f"DefGlobalConditionLogic ID {def_global_condition_logic_id} already exists."
+                "message": f"Global Condition Logic ID {def_global_condition_logic_id} already exists."
             }), 409)
         
         def_global_condition_id = request.json.get('def_global_condition_id')
@@ -3556,8 +3574,9 @@ def create_def_global_condition_logic():
         )
         db.session.add(new_logic)
         db.session.commit()
-        return make_response(jsonify({'def_global_condition_logic_id' : new_logic.def_global_condition_logic_id,
-                                      'message': 'DefGlobalConditionLogic created successfully!'}), 201)
+        # return make_response(jsonify({'def_global_condition_logic_id' : new_logic.def_global_condition_logic_id,
+        #                               'message': 'Global Condition Logic created successfully'}), 201)
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
     except Exception as e:
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
 
@@ -3597,11 +3616,12 @@ def upsert_def_global_condition_logics():
                 existing_logic.value = value
                 db.session.add(existing_logic)
 
-                response.append({
-                    'def_global_condition_logic_id': existing_logic.def_global_condition_logic_id,
-                    'status': 'updated',
-                    'message': 'Logic updated successfully'
-                })
+                # response.append({
+                #     'def_global_condition_logic_id': existing_logic.def_global_condition_logic_id,
+                #     'status': 'updated',
+                #     'message': 'Logic updated successfully'
+                # })
+                response.append({'message': 'Edited successfully'})
 
             else:
                 if not def_global_condition_id:
@@ -3634,11 +3654,12 @@ def upsert_def_global_condition_logics():
                 db.session.add(new_logic)
                 db.session.flush()
 
-                response.append({
-                    'def_global_condition_logic_id': new_logic.def_global_condition_logic_id,
-                    'status': 'created',
-                    'message': 'Logic created successfully'
-                })
+                # response.append({
+                #     'def_global_condition_logic_id': new_logic.def_global_condition_logic_id,
+                #     'status': 'created',
+                #     'message': 'Logic created successfully'
+                # })
+                response.append({'message': 'Added successfully'})
 
         db.session.commit()
         return make_response(jsonify(response), 200)
@@ -3660,7 +3681,7 @@ def get_def_global_condition_logics():
         logics = DefGlobalConditionLogic.query.order_by(DefGlobalConditionLogic.def_global_condition_logic_id.desc()).all()
         return make_response(jsonify([logic.json() for logic in logics]), 200)
     except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving DefGlobalConditionLogics", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error retrieving Global Condition Logics", "error": str(e)}), 500)
 
 
 
@@ -3670,9 +3691,9 @@ def get_def_global_condition_logic(def_global_condition_logic_id):
         logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
         if logic:
             return make_response(jsonify(logic.json()), 200)
-        return make_response(jsonify({"message": "DefGlobalConditionLogic not found"}), 404)
+        return make_response(jsonify({"message": "Global Condition Logic not found"}), 404)
     except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving DefGlobalConditionLogic", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error retrieving Global Condition Logic", "error": str(e)}), 500)
 
 
 @flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['PUT'])
@@ -3687,10 +3708,10 @@ def update_def_global_condition_logic(def_global_condition_logic_id):
             logic.value                   = request.json.get('value', logic.value)
 
             db.session.commit()
-            return make_response(jsonify({'message': 'DefGlobalConditionLogic updated successfully'}), 200)
-        return make_response(jsonify({'message': 'DefGlobalConditionLogic not found'}), 404)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
+        return make_response(jsonify({'message': 'Global Condition Logic not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error updating DefGlobalConditionLogic', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error editing Global Condition Logic', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['DELETE'])
@@ -3700,10 +3721,10 @@ def delete_def_global_condition_logic(def_global_condition_logic_id):
         if logic:
             db.session.delete(logic)
             db.session.commit()
-            return make_response(jsonify({'message': 'DefGlobalConditionLogic deleted successfully'}), 200)
-        return make_response(jsonify({'message': 'DefGlobalConditionLogic not found'}), 404)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
+        return make_response(jsonify({'message': 'Global Condition Logic not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error deleting DefGlobalConditionLogic', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error deleting Global Condition Logic', 'error': str(e)}), 500)
 
 
 
@@ -3747,10 +3768,11 @@ def create_def_global_condition_logic_attribute():
         db.session.add(new_attr)
         db.session.commit()
 
-        return make_response(jsonify({
-            'id': new_attr.id,
-            'message': 'Attribute created successfully'
-        }), 201)
+        # return make_response(jsonify({
+        #     'id': new_attr.id,
+        #     'message': 'Attribute created successfully'
+        # }), 201)
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
 
     except IntegrityError:
         db.session.rollback()
@@ -3776,9 +3798,9 @@ def get_def_global_condition_logic_attribute(id):
         attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
         if attribute:
             return make_response(jsonify(attribute.json()), 200)
-        return make_response(jsonify({"message": "DefGlobalConditionLogicAttribute not found"}), 404)
+        return make_response(jsonify({"message": "Global Condition Logic Attribute not found"}), 404)
     except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving condition logic attribute", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error retrieving global condition logic attribute", "error": str(e)}), 500)
     
 
 @flask_app.route('/def_global_condition_logic_attributes/<int:page>/<int:limit>', methods=['GET'])
@@ -3834,11 +3856,12 @@ def upsert_def_global_condition_logic_attributes():
                 existing_attr.widget_state = widget_state
                 db.session.add(existing_attr)
 
-                response.append({
-                    'id': existing_attr.id,
-                    'status': 'updated',
-                    'message': 'Attribute updated successfully'
-                })
+                # response.append({
+                #     'id': existing_attr.id,
+                #     'status': 'updated',
+                #     'message': 'Attribute updated successfully'
+                # })
+                response.append({'message': 'Edited successfully'})
 
             else:
                 # Validate required FK
@@ -3877,11 +3900,12 @@ def upsert_def_global_condition_logic_attributes():
                 db.session.add(new_attr)
                 db.session.flush()
 
-                response.append({
-                    'id': new_attr.id,
-                    'status': 'created',
-                    'message': 'Attribute created successfully'
-                })
+                # response.append({
+                #     'id': new_attr.id,
+                #     'status': 'created',
+                #     'message': 'Attribute created successfully'
+                # })
+                response.append({'message': 'Added successfully'})
 
         db.session.commit()
         return make_response(jsonify(response), 200)
@@ -3904,7 +3928,7 @@ def update_def_global_condition_logic_attribute(id):
         attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
 
         if not attribute:
-            return make_response(jsonify({'message': 'DefGlobalConditionLogicAttribute not found'}), 404)
+            return make_response(jsonify({'message': 'Global Condition Logic Attribute not found'}), 404)
 
         # Update allowed fields
         attribute.widget_position = data.get('widget_position', attribute.widget_position)
@@ -3912,12 +3936,12 @@ def update_def_global_condition_logic_attribute(id):
 
         db.session.commit()
 
-        return make_response(jsonify({'message': 'DefGlobalConditionLogicAttribute updated successfully'}), 200)
+        return make_response(jsonify({'message': 'Edited successfully'}), 200)
 
     except Exception as e:
         db.session.rollback()
         return make_response(jsonify({
-            'message': 'Error updating DefGlobalConditionLogicAttribute',
+            'message': 'Error editing Global Condition Logic Attribute',
             'error': str(e)
         }), 500)
 
@@ -3930,17 +3954,17 @@ def delete_def_global_condition_logic_attribute(id):
         attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
 
         if not attribute:
-            return make_response(jsonify({'message': 'DefGlobalConditionLogicAttribute not found'}), 404)
+            return make_response(jsonify({'message': 'Global Condition Logic Attribute not found'}), 404)
 
         db.session.delete(attribute)
         db.session.commit()
 
-        return make_response(jsonify({'message': 'DefGlobalConditionLogicAttribute deleted successfully'}), 200)
+        return make_response(jsonify({'message': 'Deleted successfully'}), 200)
 
     except Exception as e:
         db.session.rollback()
         return make_response(jsonify({
-            'message': 'Error deleting DefGlobalConditionLogicAttribute',
+            'message': 'Error deleting Global Condition Logic Attribute',
             'error': str(e)
         }), 500)
 
@@ -3990,7 +4014,7 @@ def create_def_access_point_element():
 
         db.session.add(new_element)
         db.session.commit()
-        return make_response(jsonify({"message": "DefAccessPointElement created successfully!"}), 201)
+        return make_response(jsonify({"message": "Added successfully"}), 201)
     except Exception as e:
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
     
@@ -4076,7 +4100,7 @@ def update_def_access_point_element(dap_id):
     try:
         element = DefAccessPointElement.query.filter_by(def_access_point_id=dap_id).first()
         if not element:
-            return make_response(jsonify({'message': 'DefAccessPointElement not found'}), 404)
+            return make_response(jsonify({'message': 'Access Point Element not found'}), 404)
 
         new_data_source_id = request.json.get('def_data_source_id')
 
@@ -4099,11 +4123,11 @@ def update_def_access_point_element(dap_id):
         element.last_updated_by = request.json.get('last_updated_by', element.last_updated_by)
 
         db.session.commit()
-        return make_response(jsonify({'message': 'DefAccessPointElement updated successfully'}), 200)
+        return make_response(jsonify({'message': 'Edited successfully'}), 200)
 
     except Exception as e:
         db.session.rollback()
-        return make_response(jsonify({'message': 'Error updating DefAccessPointElement', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error editing Access Point Element', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_access_point_elements/<int:dap_id>', methods=['DELETE'])
@@ -4114,12 +4138,12 @@ def delete_element(dap_id):
         if element:
             db.session.delete(element)
             db.session.commit()
-            return make_response(jsonify({'message': 'DefAccessPointElement deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         else:
-            return make_response(jsonify({'message': 'DefAccessPointElement not found'}), 404)
+            return make_response(jsonify({'message': 'Access Point Element not found'}), 404)
 
     except Exception as e:
-        return make_response(jsonify({'message': 'Error deleting DefAccessPointElement', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error deleting Access Point Element', 'error': str(e)}), 500)
 
 
 
@@ -4151,7 +4175,7 @@ def create_def_data_source():
         )
         db.session.add(new_ds)
         db.session.commit()
-        return make_response(jsonify({'message': 'Data source created successfully'}), 201)
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
     except Exception as e:
         return make_response(jsonify({'message': 'Error creating data source', 'error': str(e)}), 500)
 
@@ -4234,10 +4258,10 @@ def update_def_data_source(id):
             ds.created_by = request.json.get('created_by', ds.created_by)
             ds.last_updated_by = request.json.get('last_updated_by', ds.last_updated_by)
             db.session.commit()
-            return make_response(jsonify({'message': 'Data source updated successfully'}), 200)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
         return make_response(jsonify({'message': 'Data source not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error updating data source', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error editing data source', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_data_sources/<int:id>', methods=['DELETE'])
@@ -4247,7 +4271,7 @@ def delete_def_data_source(id):
         if ds:
             db.session.delete(ds)
             db.session.commit()
-            return make_response(jsonify({'message': 'Data source deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         return make_response(jsonify({'message': 'Data source not found'}), 404)
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting data source', 'error': str(e)}), 500)
@@ -4312,7 +4336,7 @@ def get_paginated_entitlements(page, limit):
             'page': paginated.page
         }), 200)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error fetching paginated entitlements', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error fetching entitlements', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_access_entitlements/<int:id>', methods=['GET'])
@@ -4342,7 +4366,7 @@ def create_entitlement():
         )
         db.session.add(new_e)
         db.session.commit()
-        return make_response(jsonify({'message': 'Entitlement created successfully'}), 201)
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
     except Exception as e:
         return make_response(jsonify({'message': 'Error creating entitlement', 'error': str(e)}), 500)
 
@@ -4362,10 +4386,10 @@ def update_entitlement(id):
             e.created_by = request.json.get('created_by', e.created_by)
             e.last_updated_by = request.json.get('last_updated_by', e.last_updated_by)
             db.session.commit()
-            return make_response(jsonify({'message': 'Entitlement updated successfully'}), 200)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
         return make_response(jsonify({'message': 'Entitlement not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error updating entitlement', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error editing entitlement', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_access_entitlements/<int:id>', methods=['DELETE'])
@@ -4375,7 +4399,7 @@ def delete_entitlement(id):
         if e:
             db.session.delete(e)
             db.session.commit()
-            return make_response(jsonify({'message': 'Entitlement deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         return make_response(jsonify({'message': 'Entitlement not found'}), 404)
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting entitlement', 'error': str(e)}), 500)
@@ -4679,7 +4703,7 @@ def get_paginated_controls(page, limit):
             'page': paginated.page
         }), 200)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error fetching paginated controls', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error fetching controls', 'error': str(e)}), 500)
 
 
 
@@ -4749,9 +4773,9 @@ def create_control():
         )
         db.session.add(new_control)
         db.session.commit()
-        return make_response(jsonify({'message': 'Control created successfully'}), 201)
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error creating control', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error adding control', 'error': str(e)}), 500)
 
 @flask_app.route('/def_controls/<int:control_id>', methods=['PUT'])
 @jwt_required()
@@ -4777,10 +4801,10 @@ def update_control(control_id):
             control.created_date = request.json.get('created_date', control.created_date)
 
             db.session.commit()
-            return make_response(jsonify({'message': 'Control updated successfully'}), 200)
+            return make_response(jsonify({'message': 'Edited successfully'}), 200)
         return make_response(jsonify({'message': 'Control not found'}), 404)
     except Exception as e:
-        return make_response(jsonify({'message': 'Error updating control', 'error': str(e)}), 500)
+        return make_response(jsonify({'message': 'Error editing control', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_controls/<int:control_id>', methods=['DELETE'])
@@ -4791,7 +4815,7 @@ def delete_control(control_id):
         if control:
             db.session.delete(control)
             db.session.commit()
-            return make_response(jsonify({'message': 'Control deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         return make_response(jsonify({'message': 'Control not found'}), 404)
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting control', 'error': str(e)}), 500)

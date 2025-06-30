@@ -100,7 +100,7 @@ def create_app() -> Flask:
             #result_backend=database_url,              # PostgreSQL as the result backend
             beat_scheduler='redbeat.RedBeatScheduler',# RedBeat scheduler for periodic tasks
             redbeat_redis_url=redis_url,              # Redis URL for RedBeat configuration
-            redbeat_lock_timeout=300,
+            redbeat_lock_timeout=900,
             # broker_use_ssl = {
             #     'ssl_cert_reqs': ssl.CERT_NONE  # or ssl.CERT_REQUIRED if you have proper certs
             # },

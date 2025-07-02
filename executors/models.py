@@ -155,11 +155,11 @@ class DefUsersView(db.Model):
     last_name       = db.Column(db.String(30))
     email_addresses = db.Column(db.String(100))
     job_title       = db.Column(db.String(50))
-    created_by      = db.Column(db.Integer())
+    created_by      = db.Column(db.Integer)
     created_on      = db.Column(db.String(30))
-    last_updated_by = db.Column(db.Integer())
+    last_updated_by = db.Column(db.Integer)
     last_updated_on = db.Column(db.String(50))
-    tenant_id       = db.Column(db.Integer())
+    tenant_id       = db.Column(db.Integer)
     profile_picture = db.Column(JSONB)
 
     def json(self):
@@ -509,8 +509,8 @@ class DefAccessModel(db.Model):
     run_status         = db.Column(db.Text)                       
     state              = db.Column(db.Text)                       
     last_run_date      = db.Column(db.DateTime, default=datetime.utcnow)                       
-    created_by         = db.Column(db.Text)                       
-    last_updated_by    = db.Column(db.Text)                       
+    created_by         = db.Column(db.Integer)                       
+    last_updated_by    = db.Column(db.Integer)                       
     last_updated_date  = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)                       
     revision           = db.Column(db.Integer)                    
     revision_date      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -657,9 +657,9 @@ class DefDataSource(db.Model):
     last_transaction_synchronization_date = db.Column(db.DateTime)
     last_transaction_synchronization_status = db.Column(db.String(50))
     default_datasource                    = db.Column(db.String(50))
-    created_by                            = db.Column(db.String(50))
+    created_by                            = db.Column(db.Integer)
     created_on                            = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by                       = db.Column(db.String(50))
+    last_updated_by                       = db.Column(db.Integer)
     last_updated_on                       = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
@@ -693,9 +693,9 @@ class DefAccessPointElement(db.Model):
     access_control       = db.Column(db.String(10))
     change_control       = db.Column(db.String(10))
     audit                = db.Column(db.String(50))
-    created_by           = db.Column(db.String(50))  
+    created_by           = db.Column(db.Integer)  
     created_on           = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by      = db.Column(db.String(50)) 
+    last_updated_by      = db.Column(db.Integer) 
     last_updated_on      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
@@ -727,9 +727,9 @@ class DefAccessEntitlement(db.Model):
     effective_date = db.Column(db.Date, nullable=False)           
     revision = db.Column(db.String(10))                            
     revision_date = db.Column(db.Date)                            
-    created_by = db.Column(db.String(50))                          
+    created_by = db.Column(db.Integer)                          
     created_on = db.Column(db.DateTime, default=datetime.utcnow)   
-    last_updated_by = db.Column(db.String(50))                     
+    last_updated_by = db.Column(db.Integer)                     
     last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
@@ -767,7 +767,7 @@ class DefControl(db.Model):
     authorized_data      = db.Column(db.Text)
     revision             = db.Column(db.Integer)
     revision_date        = db.Column(db.Text)
-    created_by           = db.Column(db.Text)
+    created_by           = db.Column(db.Integer)
     created_date         = db.Column(db.Text)
 
     def json(self):
@@ -791,4 +791,19 @@ class DefControl(db.Model):
             "created_date": self.created_date
         }
 
+
+class DefProcess(db.Model):
+    __tablename__ = 'def_processes'
+    __table_args__ = {'schema': 'apps'}
+
+    process_id = db.Column(db.Integer, primary_key=True)
+    process_name = db.Column(db.String(150), nullable=False)
+    process_structure = db.Column(JSONB)
+
+    def json(self):
+        return {
+            "process_id": self.process_id,
+            "process_name": self.process_name,
+            "process_structure": self.process_structure
+        }
 

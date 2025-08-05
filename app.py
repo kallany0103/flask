@@ -19,7 +19,7 @@ from celery.schedules import crontab
 from celery.result import AsyncResult      # For checking the status of tasks
 from redbeat import RedBeatSchedulerEntry
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine, Text, desc, cast, TIMESTAMP, func, or_
+from sqlalchemy import create_engine, Text, desc, cast, TIMESTAMP, func, or_, text
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, make_response       # Flask utilities for handling requests and responses
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -53,11 +53,14 @@ from executors.models import (
     DefAccessPointElement,
     DefDataSource,
     DefAccessEntitlement,
-    DefControl
+    DefControl,
+    DefActionItem,
+    DefAlert
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
 from config import redis_url
+from workflow_engine.engine_v1 import run_workflow
 
 
 redis_client = Redis.from_url(redis_url, decode_responses=True)
@@ -4821,6 +4824,356 @@ def delete_control(control_id):
         return make_response(jsonify({'message': 'Error deleting control', 'error': str(e)}), 500)
 
 
+#Workflow engine test
+
+@flask_app.route('/run_workflow/<int:process_id>', methods=['POST'])
+def api_run_workflow(process_id):
+    """
+    Trigger a workflow by process_id and input parameters.
+    POST body: { ...input parameters... }
+    """
+    try:
+        params = request.get_json() or {}
+        result = run_workflow(process_id, params)
+        return jsonify({"result": result}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+#Celery flower test
+
+@flask_app.route('/flower/tasks', methods=['GET'])
+def get_all_celery_tasks():
+    try:
+        flower_host = flask_app.config['FLOWER_HOST']
+        res = requests.get(f"{flower_host}/api/tasks", timeout=5)
+        res.raise_for_status()
+        return make_response(jsonify(res.json()), 200)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@flask_app.route('/flower/workers', methods=['GET'])
+def get_celery_workers():
+    try:
+        flower_host = flask_app.config['FLOWER_HOST']
+        res = requests.get(f"{flower_host}/api/workers", timeout=5)
+        res.raise_for_status()
+        return make_response(jsonify(res.json()), 200)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+
+
+
+
+
+# Create a DefActionItem
+@flask_app.route('/def_action_items', methods=['POST'])
+@jwt_required()
+def create_action_item():
+    try:
+        action_item_name = request.json.get('action_item_name')
+        description = request.json.get('description')
+        status = request.json.get('status', 'pending')
+        assigned_to = request.json.get('assigned_to', [])
+
+        created_by = get_jwt_identity()
+
+        # Validate required fields
+        if not action_item_name:
+            return make_response(jsonify({"message": "Action item name is required"}), 400)
+        if not created_by:
+            return make_response(jsonify({"message": "Created_by is required"}), 400)
+
+        # check for duplicate names
+        existing_item = DefActionItem.query.filter_by(action_item_name=action_item_name).first()
+        if existing_item:
+            return make_response(jsonify({"message": "Action item name already exists"}), 400)
+
+        # Validate assigned_to usernames
+        if assigned_to:
+            if not isinstance(assigned_to, list):
+                return make_response(jsonify({"message": "assigned_to must be a list of usernames"}), 400)
+
+            existing_usernames = {
+                u.user_name for u in db.session.query(DefUser.user_name)
+                .filter(DefUser.user_name.in_(assigned_to)).all()
+            }
+            invalid_usernames = set(assigned_to) - existing_usernames
+            if invalid_usernames:
+                return make_response(
+                    jsonify({'error': f'Invalid usernames: {", ".join(invalid_usernames)}'}), 400
+                )
+
+        # Create and insert the new action item
+        new_action_item = DefActionItem(
+            action_item_name=action_item_name,
+            description=description,
+            status=status,
+            created_by=created_by,
+            last_updated_by=created_by,
+            assigned_to=assigned_to
+        )
+
+        db.session.add(new_action_item)
+        db.session.commit()
+
+        return make_response(jsonify({"message": "Added successfully"}), 201)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({"message": "Error creating action item","error": str(e)}), 500)
+
+
+
+#get action items using jwt identity:
+
+@flask_app.route('/my_action_items', methods=['GET'])
+@jwt_required()
+def get_my_action_items():
+    try:
+        user_id = get_jwt_identity()
+
+
+        user = db.session.query(DefUser).filter_by(user_id=user_id).first()
+        if not user:
+            return make_response(jsonify({"message": "User not found"}), 404)
+
+        user_name = user.user_name
+
+        
+        action_items = DefActionItem.query.filter(
+            text(f"assigned_to @> '[\"{user_name}\"]'")
+        ).all()
+
+        # result = [item.json() for item in action_items]
+        result = [
+            {
+                'action_item_id': item.action_item_id,
+                'action_item_name': item.action_item_name,
+                'description': item.description,
+                'status': item.status,
+                'creation_date': item.creation_date
+            }
+            for item in action_items
+        ]
+
+        return make_response(jsonify(result), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            "message": "Error retrieving assigned action items",
+            "error": str(e)
+        }), 500)
+
+# Read all DefActionItems
+@flask_app.route('/def_action_items', methods=['GET'])
+@jwt_required()
+def get_action_items():
+    try:
+        action_items = DefActionItem.query.all()
+        if action_items:
+            return make_response(jsonify([item.json() for item in action_items]), 200)
+        else:
+            return make_response(jsonify({"message": "No action items found"}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving action items", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_action_items/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def get_paginated_action_items(page, limit):
+    try:
+        paginated = DefActionItem.query.order_by(DefActionItem.action_item_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+        return make_response(jsonify({
+            'items': [item.json() for item in paginated.items],
+            'total': paginated.total,
+            'pages': paginated.pages,
+            'page': paginated.page
+        }), 200)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error fetching action items', 'error': str(e)}), 500)
+
+
+# Read a single DefActionItem by ID
+@flask_app.route('/def_action_items/<int:action_item_id>', methods=['GET'])
+@jwt_required()
+def get_action_item(action_item_id):
+    try:
+        action_item = DefActionItem.query.filter_by(action_item_id=action_item_id).first()
+        if action_item:
+            return make_response(jsonify(action_item.json()), 200)
+        else:
+            return make_response(jsonify({"message": "Action item not found"}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving action item", "error": str(e)}), 500)
+
+# Update a DefActionItem
+@flask_app.route('/def_action_items/<int:action_item_id>', methods=['PUT'])
+@jwt_required()
+def update_action_item(action_item_id):
+    try:
+        action_item = DefActionItem.query.filter_by(action_item_id=action_item_id).first()
+        if not action_item:
+            return make_response(jsonify({"message": "Action item not found"}), 404)
+
+        data = request.get_json()
+        if not data:
+            return make_response(jsonify({"message": "No data provided"}), 400)
+
+        # Update fields
+        action_item.action_item_name = data.get('action_item_name', action_item.action_item_name)
+        action_item.description = data.get('description', action_item.description)
+        action_item.status = data.get('status', action_item.status)
+        action_item.last_updated_by = get_jwt_identity()
+        action_item.last_update_date = datetime.utcnow()
+
+        # Handle assigned_to (list of usernames)
+        if 'assigned_to' in data:
+            assigned_to = data['assigned_to']
+            if not isinstance(assigned_to, list):
+                return make_response(jsonify({"message": "assigned_to must be a list of usernames"}), 400)
+
+            # Efficient validation of usernames
+            existing_usernames = {
+                u.user_name for u in db.session.query(DefUser.user_name)
+                .filter(DefUser.user_name.in_(assigned_to)).all()
+            }
+            invalid_usernames = set(assigned_to) - existing_usernames
+            if invalid_usernames:
+                return make_response(
+                    jsonify({"message": f"Invalid usernames: {', '.join(invalid_usernames)}"}), 400
+                )
+
+            action_item.assigned_to = assigned_to
+
+        db.session.commit()
+        return make_response(jsonify({"message": "Edited successfully"}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({"message": "Error editing action item", "error": str(e)}), 500)
+
+
+# Delete a DefActionItem
+@flask_app.route('/def_action_items/<int:action_item_id>', methods=['DELETE'])
+@jwt_required()
+def delete_action_item(action_item_id):
+    try:
+        action_item = DefActionItem.query.filter_by(action_item_id=action_item_id).first()
+        if action_item:
+            db.session.delete(action_item)
+            db.session.commit()
+            return make_response(jsonify({"message": "Deleted successfully"}), 200)
+        return make_response(jsonify({"message": "Action item not found"}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error deleting action item", "error": str(e)}), 500)
+
+
+
+
+
+
+
+
+
+# Create a DefAlert
+@flask_app.route('/def_alerts', methods=['POST'])
+@jwt_required()
+def create_alert():
+    try:
+        data = request.get_json()
+        alert_name = data.get('alert_name')
+        description = data.get('description')
+        created_by = get_jwt_identity()  # Get user ID from JWT
+
+        if not alert_name:
+            return make_response(jsonify({"message": "Alert name is required"}), 400)
+        if not created_by:
+            return make_response(jsonify({"message": "Created_by is required"}), 400)
+
+        new_alert = DefAlert(
+            alert_name=alert_name,
+            description=description,
+            created_by=created_by,
+            last_updated_by=created_by
+        )
+
+        db.session.add(new_alert)
+        db.session.commit()
+
+        return make_response(jsonify({"message": "Added successfully"}), 201)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error creating alert", "error": str(e)}), 500)
+
+# Read all DefAlerts
+@flask_app.route('/def_alerts', methods=['GET'])
+@jwt_required()
+def get_alerts():
+    try:
+        alerts = DefAlert.query.all()
+        if alerts:
+            return make_response(jsonify([alert.json() for alert in alerts]), 200)
+        else:
+            return make_response(jsonify({"message": "No alerts found"}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving alerts", "error": str(e)}), 500)
+
+# Read a single DefAlert by ID
+@flask_app.route('/def_alerts/<int:alert_id>', methods=['GET'])
+@jwt_required()
+def get_alert(alert_id):
+    try:
+        alert = DefAlert.query.filter_by(alert_id=alert_id).first()
+        if alert:
+            return make_response(jsonify(alert.json()), 200)
+        else:
+            return make_response(jsonify({"message": "Alert not found"}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving alert", "error": str(e)}), 500)
+
+# Update a DefAlert
+@flask_app.route('/def_alerts/<int:alert_id>', methods=['PUT'])
+@jwt_required()
+def update_alert(alert_id):
+    try:
+        alert = DefAlert.query.filter_by(alert_id=alert_id).first()
+        if alert:
+            data = request.get_json()
+            alert.alert_name = data.get('alert_name', alert.alert_name)
+            alert.description = data.get('description', alert.description)
+            alert.last_updated_by = get_jwt_identity(), 
+            alert.last_update_date = datetime.utcnow()
+
+            db.session.commit()
+            return make_response(jsonify({"message": "Edited successfully"}), 200)
+        return make_response(jsonify({"message": "Alert not found"}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error editing alert", "error": str(e)}), 500)
+
+# Delete a DefAlert
+@flask_app.route('/def_alerts/<int:alert_id>', methods=['DELETE'])
+@jwt_required()
+def delete_alert(alert_id):
+    try:
+        alert = DefAlert.query.filter_by(alert_id=alert_id).first()
+        if alert:
+            db.session.delete(alert)
+            db.session.commit()
+            return make_response(jsonify({"message": "Deleted successfully"}), 200)
+        return make_response(jsonify({"message": "Alert not found"}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error deleting alert", "error": str(e)}), 500)
 
 
 

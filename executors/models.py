@@ -266,7 +266,7 @@ class DefAsyncExecutionMethods(db.Model):
 class DefAsyncTask(db.Model):
     __tablename__ = 'def_async_tasks'
 
-    def_task_id = db.Column(db.Integer, primary_key=True)  # Auto-incrementing primary key
+    def_task_id = db.Column(db.Integer, primary_key=True, autoincrement=True)  # Auto-incrementing primary key
     user_task_name = db.Column(db.String(255), nullable=False)
     task_name = db.Column(db.String(255), nullable=False, unique=True)  # Task name (required)
     internal_execution_method = db.Column(db.String(255), primary_key=True)
@@ -805,5 +805,32 @@ class DefProcess(db.Model):
             "process_id": self.process_id,
             "process_name": self.process_name,
             "process_structure": self.process_structure
+        }
+
+class DefActionItem(db.Model):
+    __tablename__ = 'def_action_items'
+    __table_args__ = {'schema': 'apps'}
+
+    action_item_id = db.Column(db.Integer, primary_key=True)
+    action_item_name = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(50), nullable=True)
+    created_by = db.Column(db.Integer, nullable=False)
+    creation_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
+    last_updated_by = db.Column(db.Integer, nullable=True)
+    last_update_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    notification_id = db.Column(Text, nullable=True)
+
+    def json(self):
+        return {
+            'action_item_id': self.action_item_id,
+            'action_item_name': self.action_item_name,
+            'description': self.description,
+            'status': self.status,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date.isoformat() if self.creation_date else None,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date.isoformat() if self.last_update_date else None,
+            'notification_id': self.notification_id
         }
 

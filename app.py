@@ -56,6 +56,7 @@ from executors.models import (
     DefAccessEntitlement,
     DefControl,
     DefActionItem,
+    DefActionItemsV,
     DefNotification,
     DefActionItemAssignment,
     DefAlert,
@@ -5144,7 +5145,7 @@ def update_action_item_assignments(action_item_id):
 
 
 # Delete a single DefActionItemAssignment
-@flask_app.route('/def_action_item_assignments/<int:action_item_id>/<int:user_id>', methods=['DELETE'])
+@flask_app.route('/def_action_item_assignments/<int:user_id>/<int:action_item_id>', methods=['DELETE'])
 @jwt_required()
 def delete_action_item_assignment(action_item_id, user_id):
     try:
@@ -5162,6 +5163,25 @@ def delete_action_item_assignment(action_item_id, user_id):
         return make_response(jsonify({"message": "Error deleting assignment", "error": str(e)}), 500)
 
 
+@flask_app.route('/def_action_items_v/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def get_paginated_action_items_v(page, limit):
+    try:
+        query = DefActionItemsV.query.order_by(DefActionItemsV.creation_date.desc())
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+        
+        return make_response(jsonify({
+            "items": [item.json() for item in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+    
+    except Exception as e:
+        return make_response(jsonify({
+            'message': 'Error fetching action items view',
+            'error': str(e)
+        }), 500)
 
 
 

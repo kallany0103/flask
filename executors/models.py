@@ -876,6 +876,38 @@ class DefActionItem(db.Model):
             'notification_id': self.notification_id
         }
 
+
+class DefActionItemsV(db.Model):
+    __tablename__ = 'def_action_items_v'
+    __table_args__ = {'schema': 'apps'}
+
+    user_id = db.Column(db.Integer, primary_key=True)
+    user_name = db.Column(db.String(150))
+    action_item_id = db.Column(db.Integer, primary_key=True)
+    action_item_name = db.Column(db.String(150))
+    notification_id = db.Column(db.Text)  # or UUID(as_uuid=True) if in UUID format
+    description = db.Column(db.Text)
+    status = db.Column(db.String(50))
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime(timezone=True))
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime(timezone=True))
+
+    def json(self):
+        return {
+            'user_id': self.user_id,
+            'user_name': self.user_name,
+            'action_item_id': self.action_item_id,
+            'action_item_name': self.action_item_name,
+            'notification_id': self.notification_id,
+            'description': self.description,
+            'status': self.status,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date.isoformat() if self.creation_date else None,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date.isoformat() if self.last_update_date else None
+        }
+
 class DefActionItemAssignment(db.Model):
     __tablename__ = 'def_action_item_assignments'
     __table_args__ = {'schema': 'apps'}

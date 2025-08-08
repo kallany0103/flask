@@ -807,19 +807,61 @@ class DefProcess(db.Model):
             "process_structure": self.process_structure
         }
 
+
+
+class DefNotification(db.Model):
+    __tablename__ = 'def_notifications'
+    __table_args__ = {'schema': 'apps'}
+
+    notification_id = db.Column(db.Text, primary_key=True, nullable=False)
+    notification_type = db.Column(db.Text, nullable=False)
+    sender = db.Column(db.Integer) #should be JSONB according to the script
+    recipients = db.Column(JSONB)
+    subject = db.Column(db.Text)
+    notification_body = db.Column(db.Text)
+    creation_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
+    status = db.Column(db.Text)  # SENT, DRAFT, DELETED
+    parent_notification_id = db.Column(db.Text)
+    involved_users = db.Column(JSONB)
+    readers = db.Column(JSONB)
+    holders = db.Column(JSONB)
+    recycle_bin = db.Column(JSONB)
+    action_item_id = db.Column(db.Integer)
+    alert_id = db.Column(db.Integer)
+
+    def json(self):
+        return {
+            'notification_id': self.notification_id,
+            'notification_type': self.notification_type,
+            'sender': self.sender,
+            'recipients': self.recipients,
+            'subject': self.subject,
+            'notification_body': self.notification_body,
+            'creation_date': self.creation_date.isoformat() if self.creation_date else None,
+            'status': self.status,
+            'parent_notification_id': self.parent_notification_id,
+            'involved_users': self.involved_users,
+            'readers': self.readers,
+            'holders': self.holders,
+            'recycle_bin': self.recycle_bin,
+            'action_item_id': self.action_item_id,
+            'alert_id': self.alert_id
+        }
+
+
 class DefActionItem(db.Model):
     __tablename__ = 'def_action_items'
     __table_args__ = {'schema': 'apps'}
 
     action_item_id = db.Column(db.Integer, primary_key=True)
     action_item_name = db.Column(db.String(150), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    status = db.Column(db.String(50), nullable=True)
+    description = db.Column(db.Text)
+    status = db.Column(db.String(50))
     created_by = db.Column(db.Integer, nullable=False)
     creation_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
-    last_updated_by = db.Column(db.Integer, nullable=True)
+    last_updated_by = db.Column(db.Integer)
     last_update_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp(), onupdate=func.current_timestamp())
-    notification_id = db.Column(Text, nullable=True)
+    notification_id = db.Column(db.Text, db.ForeignKey('apps.def_notifications.notification_id'))
 
     def json(self):
         return {
@@ -834,3 +876,59 @@ class DefActionItem(db.Model):
             'notification_id': self.notification_id
         }
 
+class DefActionItemAssignment(db.Model):
+    __tablename__ = 'def_action_item_assignments'
+    __table_args__ = {'schema': 'apps'}
+
+    action_item_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, primary_key=True)
+    created_by = db.Column(db.Integer, nullable=False)
+    creation_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+    def json(self):
+        return {
+            'action_item_id': self.action_item_id,
+            'user_id': self.user_id,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date.isoformat() if self.creation_date else None,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date.isoformat() if self.last_update_date else None
+        }
+
+class DefAlert(db.Model):
+    __tablename__ = 'def_alerts'
+    __table_args__ = {'schema': 'apps'}
+
+    alert_id = db.Column(db.Integer, primary_key=True)
+    alert_name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    readers = db.Column(db.JSON)
+    created_by = db.Column(db.Integer, nullable=False)
+    creation_date = db.Column(db.TIMESTAMP(timezone=True), server_default=db.func.current_timestamp())
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.TIMESTAMP(timezone=True), server_default=db.func.current_timestamp())
+    notification_id = db.Column(db.Text, db.ForeignKey('apps.def_notifications.notification_id'))
+
+
+class DefAlertRecipient(db.Model):
+    __tablename__ = 'def_alert_recepients'
+    __table_args__ = {'schema': 'apps'}
+
+    alert_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, primary_key=True)
+    created_by = db.Column(db.Integer, nullable=False)
+    creation_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+    def json(self):
+        return {
+            'alert_id': self.alert_id,
+            'user_id': self.user_id,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date.isoformat() if self.creation_date else None,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date.isoformat() if self.last_update_date else None
+        }

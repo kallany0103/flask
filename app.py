@@ -10,6 +10,7 @@ import logging
 import time
 import re
 from redis import Redis
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 from itertools import count
 from functools import wraps
@@ -54,7 +55,11 @@ from executors.models import (
     DefDataSource,
     DefAccessEntitlement,
     DefControl,
-    DefActionItem
+    DefActionItem,
+    DefNotification,
+    DefActionItemAssignment,
+    DefAlert,
+    DefAlertRecipient
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -4905,7 +4910,8 @@ def create_action_item():
         db.session.add(new_action_item)
         db.session.commit()
 
-        return make_response(jsonify({"message": "Added successfully"}), 201)
+        return make_response(jsonify({"message": "Added successfully",
+                                      "action_item_id": new_action_item.action_item_id}), 201)
 
     except Exception as e:
         db.session.rollback()
@@ -4960,6 +4966,57 @@ def get_action_item(action_item_id):
         return make_response(jsonify({"message": "Error retrieving action item", "error": str(e)}), 500)
 
 
+@flask_app.route('/def_action_items/upsert', methods=['POST'])
+@jwt_required()
+def upsert_action_item():
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"message": "Invalid request: No JSON data provided"}), 400
+
+    try:
+        action_item_id = data.get('action_item_id')
+
+        if action_item_id:
+            # --- UPDATE ---
+            action_item = DefActionItem.query.get(action_item_id)
+            if not action_item:
+                return jsonify({"message": f"Action Item with ID {action_item_id} not found"}), 404
+
+            action_item.action_item_name = data.get('action_item_name', action_item.action_item_name)
+            action_item.description = data.get('description', action_item.description)
+            action_item.status = data.get('status', action_item.status)
+            action_item.notification_id = data.get('notification_id', action_item.notification_id)
+            action_item.last_updated_by = get_jwt_identity()
+
+            message = "Edited successfully" 
+
+        else:
+            # --- CREATE ---
+            action_item = DefActionItem(
+                action_item_name=data.get('action_item_name'),
+                description=data.get('description'),
+                status=data.get('status'),
+                created_by=get_jwt_identity(),
+                notification_id=data.get('notification_id')
+            )
+
+            if not action_item.action_item_name:
+                return jsonify({"message": "Missing required field: action_item_name"}), 400
+
+            db.session.add(action_item)
+            message = "Added successfully"
+
+        db.session.commit()
+        return make_response(jsonify({"message": message,
+                                     "action_item_id": action_item.action_item_id}), 200)
+
+    # except SQLAlchemyError as e:
+    #     db.session.rollback()
+    #     return jsonify({"message": "Database error", "error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"message": "An unexpected error occurred", "error": str(e)}), 500
+
 # Update a DefActionItem
 @flask_app.route('/def_action_items/<int:action_item_id>', methods=['PUT'])
 @jwt_required()
@@ -5006,8 +5063,103 @@ def delete_action_item(action_item_id):
 
 
 
+# Create DefActionItemAssignments (multiple user_ids)
+@flask_app.route('/def_action_item_assignments', methods=['POST'])
+@jwt_required()
+def create_action_item_assignments():
+    try:
+        action_item_id = request.json.get('action_item_id')
+        user_ids = request.json.get('user_ids')
+
+        if not action_item_id:
+            return make_response(jsonify({"message": "action_item_id is required"}), 400)
+        if not user_ids or not isinstance(user_ids, list):
+            return make_response(jsonify({"message": "user_ids must be a non-empty list"}), 400)
+
+        created_assignments = []
+        for uid in user_ids:
+            assignment = DefActionItemAssignment(
+                action_item_id=action_item_id,
+                user_id=uid,
+                created_by=get_jwt_identity(),
+                last_updated_by=get_jwt_identity()
+            )
+            db.session.add(assignment)
+            created_assignments.append(assignment)
+
+        db.session.commit()
+        return make_response(jsonify({"message": "Added successfully"}), 201)
+
+    except IntegrityError:
+        db.session.rollback()
+        return make_response(jsonify({"message": "One or more assignments already exist"}), 400)
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({"message": "Error creating assignments", "error": str(e)}), 500)
 
 
+# Get all DefActionItemAssignments
+@flask_app.route('/def_action_item_assignments', methods=['GET'])
+@jwt_required()
+def get_action_item_assignments():
+    try:
+        assignments = DefActionItemAssignment.query.all()
+        if assignments:
+            return make_response(jsonify([a.json() for a in assignments]), 200)
+        else:
+            return make_response(jsonify({"message": "No assignments found"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"message": "Error retrieving assignments", "error": str(e)}), 500)
+
+
+
+# Update DefActionItemAssignments (replace user_ids for given action_item_id)
+@flask_app.route('/def_action_item_assignments/<int:action_item_id>', methods=['PUT'])
+@jwt_required()
+def update_action_item_assignments(action_item_id):
+    try:
+        data = request.get_json()
+        if not data or 'user_ids' not in data or not isinstance(data['user_ids'], list):
+            return make_response(jsonify({"message": "user_ids must be a non-empty list"}), 400)
+
+        # Remove existing assignments for this action_item_id
+        DefActionItemAssignment.query.filter_by(action_item_id=action_item_id).delete()
+
+        # Add new assignments
+        for uid in data['user_ids']:
+            assignment = DefActionItemAssignment(
+                action_item_id=action_item_id,
+                user_id=uid,
+                created_by=get_jwt_identity(),
+                last_updated_by=get_jwt_identity()
+            )
+            db.session.add(assignment)
+
+        db.session.commit()
+        return make_response(jsonify({"message": "Edited successfully"}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({"message": "Error editing assignments", "error": str(e)}), 500)
+
+
+# Delete a single DefActionItemAssignment
+@flask_app.route('/def_action_item_assignments/<int:action_item_id>/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def delete_action_item_assignment(action_item_id, user_id):
+    try:
+        assignment = DefActionItemAssignment.query.filter_by(
+            action_item_id=action_item_id,
+            user_id=user_id
+        ).first()
+        if assignment:
+            db.session.delete(assignment)
+            db.session.commit()
+            return make_response(jsonify({"message": "Deleted successfully"}), 200)
+        return make_response(jsonify({"message": "Assignment not found"}), 404)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error deleting assignment", "error": str(e)}), 500)
 
 
 

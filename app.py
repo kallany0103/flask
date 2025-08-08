@@ -5163,11 +5163,11 @@ def delete_action_item_assignment(action_item_id, user_id):
         return make_response(jsonify({"message": "Error deleting assignment", "error": str(e)}), 500)
 
 
-@flask_app.route('/def_action_items_v/<int:page>/<int:limit>', methods=['GET'])
+@flask_app.route('/def_action_items_v/<int:user_id>/<int:page>/<int:limit>', methods=['GET'])
 @jwt_required()
-def get_paginated_action_items_v(page, limit):
+def get_paginated_action_items_v(user_id,page, limit):
     try:
-        query = DefActionItemsV.query.order_by(DefActionItemsV.creation_date.desc())
+        query = DefActionItemsV.query.filter_by(user_id = user_id)
         paginated = query.paginate(page=page, per_page=limit, error_out=False)
         
         return make_response(jsonify({

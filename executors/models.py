@@ -856,7 +856,6 @@ class DefActionItem(db.Model):
     action_item_id = db.Column(db.Integer, primary_key=True)
     action_item_name = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text)
-    status = db.Column(db.String(50))
     created_by = db.Column(db.Integer, nullable=False)
     creation_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
     last_updated_by = db.Column(db.Integer)
@@ -868,7 +867,6 @@ class DefActionItem(db.Model):
             'action_item_id': self.action_item_id,
             'action_item_name': self.action_item_name,
             'description': self.description,
-            'status': self.status,
             'created_by': self.created_by,
             'creation_date': self.creation_date.isoformat() if self.creation_date else None,
             'last_updated_by': self.last_updated_by,
@@ -914,6 +912,7 @@ class DefActionItemAssignment(db.Model):
 
     action_item_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, primary_key=True)
+    status = db.Column(db.String(50))
     created_by = db.Column(db.Integer, nullable=False)
     creation_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
     last_updated_by = db.Column(db.Integer)
@@ -923,6 +922,7 @@ class DefActionItemAssignment(db.Model):
         return {
             'action_item_id': self.action_item_id,
             'user_id': self.user_id,
+            'status': self.status,
             'created_by': self.created_by,
             'creation_date': self.creation_date.isoformat() if self.creation_date else None,
             'last_updated_by': self.last_updated_by,
@@ -936,7 +936,6 @@ class DefAlert(db.Model):
     alert_id = db.Column(db.Integer, primary_key=True)
     alert_name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    readers = db.Column(db.JSON)
     created_by = db.Column(db.Integer, nullable=False)
     creation_date = db.Column(db.TIMESTAMP(timezone=True), server_default=db.func.current_timestamp())
     last_updated_by = db.Column(db.Integer)
@@ -950,6 +949,7 @@ class DefAlertRecipient(db.Model):
 
     alert_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, primary_key=True)
+    acknowledge = db.Column(db.Boolean)
     created_by = db.Column(db.Integer, nullable=False)
     creation_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
     last_updated_by = db.Column(db.Integer)
@@ -959,6 +959,7 @@ class DefAlertRecipient(db.Model):
         return {
             'alert_id': self.alert_id,
             'user_id': self.user_id,
+            'acknowledge': self.acknowledge,
             'created_by': self.created_by,
             'creation_date': self.creation_date.isoformat() if self.creation_date else None,
             'last_updated_by': self.last_updated_by,

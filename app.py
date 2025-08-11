@@ -5223,12 +5223,20 @@ def update_action_item(action_item_id):
         # Handle assignments update (based on user_ids list)
         if 'user_ids' in data:
             new_user_ids = set(data['user_ids'])
+            new_status = data.get('status')
 
             # Get existing assigned user IDs for this action item
             existing_assignments = DefActionItemAssignment.query.filter_by(
                 action_item_id=action_item_id
             ).all()
             existing_user_ids = {a.user_id for a in existing_assignments}
+
+            # Update status for existing users (if provided)
+            if new_status is not None:
+                for assignment in existing_assignments:
+                    if assignment.user_id in new_user_ids:
+                        assignment.status = new_status
+                        assignment.last_updated_by = created_by
 
             # Users to remove (in DB but not in new list)
             to_remove = existing_user_ids - new_user_ids
@@ -5244,7 +5252,7 @@ def update_action_item(action_item_id):
                 assignment = DefActionItemAssignment(
                     action_item_id=action_item_id,
                     user_id=uid,
-                    status=data.get('status'),
+                    status=new_status,
                     created_by=created_by,
                     last_updated_by=created_by
                 )

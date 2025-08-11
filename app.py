@@ -5395,9 +5395,9 @@ def delete_action_item_assignment(action_item_id, user_id):
         return make_response(jsonify({"message": "Error deleting assignment", "error": str(e)}), 500)
 
 
-@flask_app.route('/def_action_items_v/<int:user_id>/<int:page>/<int:limit>', methods=['GET'])
+@flask_app.route('/def_action_items_view/<int:user_id>/<int:page>/<int:limit>', methods=['GET'])
 @jwt_required()
-def get_paginated_action_items_v(user_id,page, limit):
+def get_paginated_action_items_view(user_id,page, limit):
     try:
         # Validate pagination parameters
         if page < 1 or limit < 1:
@@ -5422,6 +5422,19 @@ def get_paginated_action_items_v(user_id,page, limit):
             'error': str(e)
         }), 500)
 
+@flask_app.route('/def_action_items_view/<string:status>', methods=['GET'])
+@jwt_required()
+def get_action_items_by_status(status):
+    try:
+        # Query filtered by status
+        items = DefActionItemsV.query.filter(
+            func.lower(func.trim(DefActionItemsV.status)) == status.strip().lower()
+        ).all()
+
+        return make_response(jsonify([item.json() for item in items]), 200)
+
+    except Exception as e:
+        return make_response(jsonify({"error": str(e)}), 500)
 
 
 

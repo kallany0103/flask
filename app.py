@@ -5195,64 +5195,63 @@ def upsert_action_item():
         return jsonify({"message": "An unexpected error occurred", "error": str(e)}), 500
 
 
-# Update a DefActionItem
+ #Update a DefActionItem
 @flask_app.route('/def_action_items/<int:action_item_id>', methods=['PUT'])
 @jwt_required()
 def update_action_item(action_item_id):
     try:
         data = request.get_json()
-        if not data:
-            return make_response(jsonify({"message": "Invalid request: No JSON data provided"}), 400)
+        created_by = get_jwt_identity()
 
-        action_item_name = data.get('action_item_name')
-        description = data.get('description')
-        notification_id = data.get('notification_id')
-        status = data.get('status')
-        user_ids = data.get('user_ids', [])
-
-        updated_by = get_jwt_identity()
-
-        # Fetch existing record
+        # Get the action item
         action_item = DefActionItem.query.get(action_item_id)
         if not action_item:
             return make_response(jsonify({"message": "Action item not found"}), 404)
 
-        # Check for duplicate name (if changing name)
-        if action_item_name and action_item_name != action_item.action_item_name:
-            duplicate = DefActionItem.query.filter_by(action_item_name=action_item_name).first()
-            if duplicate:
-                return make_response(jsonify({"message": "Action item name already exists"}), 400)
-            action_item.action_item_name = action_item_name
+        # Update main fields
+        if 'action_item_name' in data:
+            action_item.action_item_name = data['action_item_name']
+        if 'description' in data:
+            action_item.description = data['description']
+        if 'status' in data:
+            action_item.status = data['status']
+        if 'notification_id' in data:
+            action_item.notification_id = data['notification_id']
 
-        if description is not None:
-            action_item.description = description
+        action_item.last_updated_by = created_by
 
-        if notification_id is not None:
-            action_item.notification_id = notification_id
+        # Handle assignments update (based on user_ids list)
+        if 'user_ids' in data:
+            new_user_ids = set(data['user_ids'])
 
-        action_item.last_updated_by = updated_by
+            # Get existing assigned user IDs for this action item
+            existing_assignments = DefActionItemAssignment.query.filter_by(
+                action_item_id=action_item_id
+            ).all()
+            existing_user_ids = {a.user_id for a in existing_assignments}
 
-        db.session.commit()
+            # Users to remove (in DB but not in new list)
+            to_remove = existing_user_ids - new_user_ids
+            if to_remove:
+                DefActionItemAssignment.query.filter(
+                    DefActionItemAssignment.action_item_id == action_item_id,
+                    DefActionItemAssignment.user_id.in_(to_remove)
+                ).delete(synchronize_session=False)
 
-        # Handle user assignments if provided
-        if user_ids:
-            # Remove old assignments
-            DefActionItemAssignment.query.filter_by(action_item_id=action_item_id).delete()
-
-            # Add new ones
-            for uid in user_ids:
+            # Users to add (in new list but not in DB)
+            to_add = new_user_ids - existing_user_ids
+            for uid in to_add:
                 assignment = DefActionItemAssignment(
                     action_item_id=action_item_id,
                     user_id=uid,
-                    status = status,
-                    # created_by=updated_by,
-                    last_updated_by=updated_by
+                    status=data.get('status'),
+                    created_by=created_by,
+                    last_updated_by=created_by
                 )
                 db.session.add(assignment)
 
-            db.session.commit()
-
-        return make_response(jsonify({"message": "Updated successfully"}), 200)
+        db.session.commit()
+        return make_response(jsonify({"message": "Edited successfully"}), 200)
 
     except Exception as e:
         db.session.rollback()
@@ -5266,13 +5265,20 @@ def update_action_item(action_item_id):
 def delete_action_item(action_item_id):
     try:
         action_item = DefActionItem.query.filter_by(action_item_id=action_item_id).first()
-        if action_item:
-            db.session.delete(action_item)
-            db.session.commit()
-            return make_response(jsonify({"message": "Deleted successfully"}), 200)
-        return make_response(jsonify({"message": "Action item not found"}), 404)
+        if not action_item:
+            return make_response(jsonify({"message": "Action item not found"}), 404)
+
+        # First delete all related assignments
+        DefActionItemAssignment.query.filter_by(action_item_id=action_item_id).delete()
+
+        # Then delete the main action item
+        db.session.delete(action_item)
+        db.session.commit()
+
+        return make_response(jsonify({"message": "Deleted successfully"}), 200)
 
     except Exception as e:
+        db.session.rollback()
         return make_response(jsonify({"message": "Error deleting action item", "error": str(e)}), 500)
 
 
@@ -5321,7 +5327,7 @@ def create_action_item_assignments():
 @jwt_required()
 def get_action_item_assignments():
     try:
-        assignments = DefActionItemAssignment.query.all()
+        assignments = DefActionItemAssignment.query.order_by(DefActionItemAssignment.action_item_id.desc()).all()
         if assignments:
             return make_response(jsonify([a.json() for a in assignments]), 200)
         else:

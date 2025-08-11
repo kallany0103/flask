@@ -10,7 +10,7 @@ import logging
 import time
 import re
 from redis import Redis
-from uuid import uuid4
+from requests.auth import HTTPBasicAuth
 from zoneinfo import ZoneInfo
 from itertools import count
 from functools import wraps
@@ -65,9 +65,10 @@ from executors.models import (
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
 from config import redis_url
+
 # from workflow_engine.engine_v1 import run_workflow
 
-
+flower_url = flask_app.config["FLOWER_URL"]
 redis_client = Redis.from_url(redis_url, decode_responses=True)
 
 jwt = JWTManager(flask_app)
@@ -4829,7 +4830,7 @@ def delete_control(control_id):
         return make_response(jsonify({'message': 'Error deleting control', 'error': str(e)}), 500)
 
 
-#Workflow engine test
+#Workflow engine
 
 # @flask_app.route('/run_workflow/<int:process_id>', methods=['POST'])
 # def api_run_workflow(process_id):
@@ -4845,29 +4846,157 @@ def delete_control(control_id):
 #         return jsonify({"error": str(e)}), 500
 
 
-# #Celery flower test
+# CELERY FLOWER
 
-# @flask_app.route('/flower/tasks', methods=['GET'])
-# def get_all_celery_tasks():
-#     try:
-#         flower_host = flask_app.config['FLOWER_HOST']
-#         res = requests.get(f"{flower_host}/api/tasks", timeout=5)
-#         res.raise_for_status()
-#         return make_response(jsonify(res.json()), 200)
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+@flask_app.route("/flower/tasks", methods=["GET"])
+def list_tasks():
+    try:
+        res = requests.get(f"{flower_url}/api/tasks", timeout=5)
+        return jsonify(res.json()), res.status_code
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Flower service unreachable"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
-# @flask_app.route('/flower/workers', methods=['GET'])
-# def get_celery_workers():
-#     try:
-#         flower_host = flask_app.config['FLOWER_HOST']
-#         res = requests.get(f"{flower_host}/api/workers", timeout=5)
-#         res.raise_for_status()
-#         return make_response(jsonify(res.json()), 200)
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+@flask_app.route("/flower/workers", methods=["GET"])
+def list_workers():
+    try:
+        res = requests.get(f"{flower_url}/api/workers", timeout=5)
+        return jsonify(res.json()), res.status_code
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Flower service unreachable"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     
+# @flask_app.route("/flower/tasks/types", methods=["GET"])
+# def list_task_types():
+#     try:
+#         res = requests.get(f"{flower_url}/api/tasks/types", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+#         return jsonify(res.json()), res.status_code  # First attempt to parse JSON
+        
+#         # Unreachable code due to the return statement above
+#         print("Status code:", res.status_code)
+#         print("Response headers:", res.headers)
+#         print("Response body:", repr(res.text))
+#         if res.status_code != 200:
+#             return jsonify({"error": f"Flower API returned status {res.status_code}"}), res.status_code
+#         if not res.text:
+#             return jsonify({"error": "Empty response from Flower API"}), 502
+#         try:
+#             return jsonify(res.json()), res.status_code
+#         except ValueError:
+#             return jsonify({"error": "Invalid JSON response from Flower API"}), 502
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+
+
+@flask_app.route("/flower/tasks/types", methods=["GET"])
+def list_task_types():
+    try:
+        res = requests.get(f"{flower_url}/api/tasks/types", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+        
+        # Debugging: Log the response details
+        print("Status code:", res.status_code)
+        print("Response headers:", res.headers)
+        print("Response body:", repr(res.text))
+        
+        # Check for non-200 status code
+        if res.status_code != 200:
+            return jsonify({"error": f"Flower API returned status {res.status_code}"}), res.status_code
+        
+        # Check for empty response
+        if not res.text.strip():
+            return jsonify({"error": "Empty response from Flower API"}), 502
+        
+        # Try parsing JSON
+        try:
+            data = res.json()
+            return jsonify(data), res.status_code
+        except ValueError as e:
+            print(f"JSON parsing error: {e}")
+            return jsonify({"error": f"Invalid JSON response from Flower API: {repr(res.text)}"}), 502
+            
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Flower service unreachable"}), 503
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
+@flask_app.route("/flower/task/<task_id>", methods=["GET"])
+def get_task_info(task_id):
+    try:
+        res = requests.get(f"{flower_url}/api/task/info/{task_id}", timeout=5)
+        return jsonify(res.json()), res.status_code
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Flower service unreachable"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+# @flask_app.route("/flower/queues", methods=["GET"])
+# def list_queues():
+#     try:
+#         res = requests.get(f"{flower_url}/api/queues", timeout=5)
+#         return jsonify(res.json()), res.status_code
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+# @flask_app.route("/flower/broker/queues", methods=["GET"])
+# def broker_queues():
+#     try:
+#         res = requests.get(f"{flower_url}/api/broker/queues", timeout=5)
+#         return jsonify(res.json()), res.status_code
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500 
+
+# @flask_app.route("/flower/tasks/scheduled", methods=["GET"])
+# def scheduled_tasks():
+#     try:
+#         res = requests.get(f"{flower_url}/api/tasks/scheduled", timeout=5)
+#         return jsonify(res.json()), res.status_code
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500 
+
+# @flask_app.route("/flower/tasks/active", methods=["GET"])
+# def active_tasks():
+#     try:
+#         res = requests.get(f"{flower_url}/api/tasks/active", timeout=5)
+#         return jsonify(res.json()), res.status_code
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+# @flask_app.route("/flower/tasks/reserved", methods=["GET"])
+# def reserved_tasks():
+#     try:
+#         res = requests.get(f"{flower_url}/api/tasks/reserved", timeout=5)
+#         return jsonify(res.json()), res.status_code
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+
+# @flask_app.route("/flower/tasks/revoked", methods=["GET"])
+# def revoked_tasks():
+#     try:
+#         res = requests.get(f"{flower_url}/api/tasks/revoked", timeout=5)
+#         return jsonify(res.json()), res.status_code
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500  
 
 
 
@@ -4883,6 +5012,7 @@ def create_action_item():
         description = request.json.get('description')
         status = request.json.get('status', 'pending')
         notification_id = request.json.get('notification_id')
+        user_ids = request.json.get('user_ids')
 
         created_by = get_jwt_identity()
 
@@ -4902,15 +5032,26 @@ def create_action_item():
         new_action_item = DefActionItem(
             action_item_name=action_item_name,
             description=description,
-            status=status,
             created_by=created_by,
             last_updated_by=created_by,
             notification_id=notification_id
         )
 
         db.session.add(new_action_item)
-        db.session.commit()
+        db.session.flush()  # so we get the ID
 
+        # Add assignments
+        for uid in user_ids:
+            assignment = DefActionItemAssignment(
+                action_item_id=new_action_item.action_item_id,
+                user_id=uid,
+                status=status,
+                created_by=created_by,
+                last_updated_by=created_by
+            )
+            db.session.add(assignment)
+
+        db.session.commit()
         return make_response(jsonify({"message": "Added successfully",
                                       "action_item_id": new_action_item.action_item_id}), 201)
 
@@ -4971,12 +5112,14 @@ def get_action_item(action_item_id):
 @jwt_required()
 def upsert_action_item():
     data = request.get_json()
-
     if not data:
         return jsonify({"message": "Invalid request: No JSON data provided"}), 400
 
     try:
         action_item_id = data.get('action_item_id')
+        user_ids = data.get('user_ids', [])
+        status = data.get('status')
+        current_user = get_jwt_identity()
 
         if action_item_id:
             # --- UPDATE ---
@@ -4984,66 +5127,137 @@ def upsert_action_item():
             if not action_item:
                 return jsonify({"message": f"Action Item with ID {action_item_id} not found"}), 404
 
-            action_item.action_item_name = data.get('action_item_name', action_item.action_item_name)
-            action_item.description = data.get('description', action_item.description)
-            action_item.status = data.get('status', action_item.status)
-            action_item.notification_id = data.get('notification_id', action_item.notification_id)
-            action_item.last_updated_by = get_jwt_identity()
+            # Check duplicate name if changing
+            new_name = data.get('action_item_name')
+            if new_name and new_name != action_item.action_item_name:
+                duplicate = DefActionItem.query.filter_by(action_item_name=new_name).first()
+                if duplicate:
+                    return jsonify({"message": "Action item name already exists"}), 400
+                action_item.action_item_name = new_name
 
-            message = "Edited successfully" 
+            if "description" in data:
+                action_item.description = data["description"]
+            if "notification_id" in data:
+                action_item.notification_id = data["notification_id"]
+
+            action_item.last_updated_by = current_user
+            message = "Edited successfully"
 
         else:
             # --- CREATE ---
-            action_item = DefActionItem(
-                action_item_name=data.get('action_item_name'),
-                description=data.get('description'),
-                status=data.get('status'),
-                created_by=get_jwt_identity(),
-                notification_id=data.get('notification_id')
-            )
-
-            if not action_item.action_item_name:
+            action_item_name = data.get('action_item_name')
+            if not action_item_name:
                 return jsonify({"message": "Missing required field: action_item_name"}), 400
 
+            # Check duplicate name before insert
+            duplicate = DefActionItem.query.filter_by(action_item_name=action_item_name).first()
+            if duplicate:
+                return jsonify({"message": "Action item name already exists"}), 400
+
+            action_item = DefActionItem(
+                action_item_name=action_item_name,
+                description=data.get('description'),
+                created_by=current_user,
+                last_updated_by=current_user,
+                notification_id=data.get('notification_id')
+            )
             db.session.add(action_item)
+            db.session.flush()  # get the ID before assignments
             message = "Added successfully"
 
         db.session.commit()
-        return make_response(jsonify({"message": message,
-                                     "action_item_id": action_item.action_item_id}), 200)
 
-    # except SQLAlchemyError as e:
-    #     db.session.rollback()
-    #     return jsonify({"message": "Database error", "error": str(e)}), 500
+        # Handle user assignments
+        if user_ids:
+            # Remove old assignments if updating
+            if action_item_id:
+                DefActionItemAssignment.query.filter_by(action_item_id=action_item.action_item_id).delete()
+
+            for uid in user_ids:
+                assignment = DefActionItemAssignment(
+                    action_item_id=action_item.action_item_id,
+                    user_id=uid,
+                    status=status,
+                    created_by=current_user,
+                    last_updated_by=current_user
+                )
+                db.session.add(assignment)
+
+            db.session.commit()
+
+        return make_response(jsonify({
+            "message": message,
+            "action_item_id": action_item.action_item_id
+        }), 200)
+
     except Exception as e:
+        db.session.rollback()
         return jsonify({"message": "An unexpected error occurred", "error": str(e)}), 500
+
 
 # Update a DefActionItem
 @flask_app.route('/def_action_items/<int:action_item_id>', methods=['PUT'])
 @jwt_required()
 def update_action_item(action_item_id):
     try:
-        action_item = DefActionItem.query.filter_by(action_item_id=action_item_id).first()
+        data = request.get_json()
+        if not data:
+            return make_response(jsonify({"message": "Invalid request: No JSON data provided"}), 400)
+
+        action_item_name = data.get('action_item_name')
+        description = data.get('description')
+        notification_id = data.get('notification_id')
+        status = data.get('status')
+        user_ids = data.get('user_ids', [])
+
+        updated_by = get_jwt_identity()
+
+        # Fetch existing record
+        action_item = DefActionItem.query.get(action_item_id)
         if not action_item:
             return make_response(jsonify({"message": "Action item not found"}), 404)
 
-        data = request.get_json()
-        if not data:
-            return make_response(jsonify({"message": "No data provided"}), 400)
+        # Check for duplicate name (if changing name)
+        if action_item_name and action_item_name != action_item.action_item_name:
+            duplicate = DefActionItem.query.filter_by(action_item_name=action_item_name).first()
+            if duplicate:
+                return make_response(jsonify({"message": "Action item name already exists"}), 400)
+            action_item.action_item_name = action_item_name
 
-        action_item.action_item_name = data.get('action_item_name', action_item.action_item_name)
-        action_item.description = data.get('description', action_item.description)
-        action_item.status = data.get('status', action_item.status)
-        action_item.notification_id = data.get('notification_id', action_item.notification_id)
-        action_item.last_updated_by = get_jwt_identity()
-        action_item.last_update_date = datetime.utcnow()
+        if description is not None:
+            action_item.description = description
+
+        if notification_id is not None:
+            action_item.notification_id = notification_id
+
+        action_item.last_updated_by = updated_by
 
         db.session.commit()
-        return make_response(jsonify({"message": "Edited successfully"}), 200)
+
+        # Handle user assignments if provided
+        if user_ids:
+            # Remove old assignments
+            DefActionItemAssignment.query.filter_by(action_item_id=action_item_id).delete()
+
+            # Add new ones
+            for uid in user_ids:
+                assignment = DefActionItemAssignment(
+                    action_item_id=action_item_id,
+                    user_id=uid,
+                    status = status,
+                    created_by=updated_by,
+                    last_updated_by=updated_by
+                )
+                db.session.add(assignment)
+
+            db.session.commit()
+
+        return make_response(jsonify({"message": "Updated successfully"}), 200)
 
     except Exception as e:
         db.session.rollback()
-        return make_response(jsonify({"message": "Error editing action item", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error updating action item", "error": str(e)}), 500)
+
 
 
 # Delete a DefActionItem
@@ -5071,6 +5285,8 @@ def create_action_item_assignments():
     try:
         action_item_id = request.json.get('action_item_id')
         user_ids = request.json.get('user_ids')
+        status = request.json.get('status')
+
 
         if not action_item_id:
             return make_response(jsonify({"message": "action_item_id is required"}), 400)
@@ -5082,6 +5298,7 @@ def create_action_item_assignments():
             assignment = DefActionItemAssignment(
                 action_item_id=action_item_id,
                 user_id=uid,
+                status= status,
                 created_by=get_jwt_identity(),
                 last_updated_by=get_jwt_identity()
             )
@@ -5115,33 +5332,34 @@ def get_action_item_assignments():
 
 
 # Update DefActionItemAssignments (replace user_ids for given action_item_id)
-@flask_app.route('/def_action_item_assignments/<int:action_item_id>', methods=['PUT'])
+@flask_app.route('/def_action_item_assignments/<int:user_id>/<int:action_item_id>', methods=['PUT'])
 @jwt_required()
-def update_action_item_assignments(action_item_id):
+def update_action_item_assignment_status(user_id, action_item_id):
     try:
         data = request.get_json()
-        if not data or 'user_ids' not in data or not isinstance(data['user_ids'], list):
-            return make_response(jsonify({"message": "user_ids must be a non-empty list"}), 400)
+        if not data or 'status' not in data:
+            return make_response(jsonify({"message": "Missing required field: status"}), 400)
 
-        # Remove existing assignments for this action_item_id
-        DefActionItemAssignment.query.filter_by(action_item_id=action_item_id).delete()
+        # Fetch the assignment
+        assignment = DefActionItemAssignment.query.filter_by(
+            action_item_id=action_item_id,
+            user_id=user_id
+        ).first()
 
-        # Add new assignments
-        for uid in data['user_ids']:
-            assignment = DefActionItemAssignment(
-                action_item_id=action_item_id,
-                user_id=uid,
-                created_by=get_jwt_identity(),
-                last_updated_by=get_jwt_identity()
-            )
-            db.session.add(assignment)
+        if not assignment:
+            return make_response(jsonify({"message": "Assignment not found"}), 404)
+
+        # Update only the status
+        assignment.status = data['status']
+        assignment.last_updated_by = get_jwt_identity()
 
         db.session.commit()
         return make_response(jsonify({"message": "Edited successfully"}), 200)
 
     except Exception as e:
         db.session.rollback()
-        return make_response(jsonify({"message": "Error editing assignments", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error updating status", "error": str(e)}), 500)
+
 
 
 # Delete a single DefActionItemAssignment
@@ -5167,7 +5385,14 @@ def delete_action_item_assignment(action_item_id, user_id):
 @jwt_required()
 def get_paginated_action_items_v(user_id,page, limit):
     try:
-        query = DefActionItemsV.query.filter_by(user_id = user_id)
+        # Validate pagination parameters
+        if page < 1 or limit < 1:
+            return make_response(jsonify({
+                "message": "Page and limit must be positive integers"
+            }), 400)
+        
+        
+        query = DefActionItemsV.query.filter_by(user_id=user_id).order_by(DefActionItemsV.action_item_id.desc())
         paginated = query.paginate(page=page, per_page=limit, error_out=False)
         
         return make_response(jsonify({

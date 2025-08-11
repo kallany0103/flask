@@ -68,7 +68,7 @@ from config import redis_url
 
 # from workflow_engine.engine_v1 import run_workflow
 
-flower_url = flask_app.config["FLOWER_URL"]
+# flower_url = flask_app.config["FLOWER_URL"]
 redis_client = Redis.from_url(redis_url, decode_responses=True)
 
 jwt = JWTManager(flask_app)
@@ -4848,26 +4848,26 @@ def delete_control(control_id):
 
 # CELERY FLOWER
 
-@flask_app.route("/flower/tasks", methods=["GET"])
-def list_tasks():
-    try:
-        res = requests.get(f"{flower_url}/api/tasks", timeout=5)
-        return jsonify(res.json()), res.status_code
-    except requests.exceptions.ConnectionError:
-        return jsonify({"error": "Flower service unreachable"}), 503
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# @flask_app.route("/flower/tasks", methods=["GET"])
+# def list_tasks():
+#     try:
+#         res = requests.get(f"{flower_url}/api/tasks", timeout=5)
+#         return jsonify(res.json()), res.status_code
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
 
-@flask_app.route("/flower/workers", methods=["GET"])
-def list_workers():
-    try:
-        res = requests.get(f"{flower_url}/api/workers", timeout=5)
-        return jsonify(res.json()), res.status_code
-    except requests.exceptions.ConnectionError:
-        return jsonify({"error": "Flower service unreachable"}), 503
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# @flask_app.route("/flower/workers", methods=["GET"])
+# def list_workers():
+#     try:
+#         res = requests.get(f"{flower_url}/api/workers", timeout=5)
+#         return jsonify(res.json()), res.status_code
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
     
 # @flask_app.route("/flower/tasks/types", methods=["GET"])
 # def list_task_types():
@@ -4894,47 +4894,47 @@ def list_workers():
 
 
 
-@flask_app.route("/flower/tasks/types", methods=["GET"])
-def list_task_types():
-    try:
-        res = requests.get(f"{flower_url}/api/tasks/types", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+# @flask_app.route("/flower/tasks/types", methods=["GET"])
+# def list_task_types():
+#     try:
+#         res = requests.get(f"{flower_url}/api/tasks/types", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
         
-        # Debugging: Log the response details
-        print("Status code:", res.status_code)
-        print("Response headers:", res.headers)
-        print("Response body:", repr(res.text))
+#         # Debugging: Log the response details
+#         print("Status code:", res.status_code)
+#         print("Response headers:", res.headers)
+#         print("Response body:", repr(res.text))
         
-        # Check for non-200 status code
-        if res.status_code != 200:
-            return jsonify({"error": f"Flower API returned status {res.status_code}"}), res.status_code
+#         # Check for non-200 status code
+#         if res.status_code != 200:
+#             return jsonify({"error": f"Flower API returned status {res.status_code}"}), res.status_code
         
-        # Check for empty response
-        if not res.text.strip():
-            return jsonify({"error": "Empty response from Flower API"}), 502
+#         # Check for empty response
+#         if not res.text.strip():
+#             return jsonify({"error": "Empty response from Flower API"}), 502
         
-        # Try parsing JSON
-        try:
-            data = res.json()
-            return jsonify(data), res.status_code
-        except ValueError as e:
-            print(f"JSON parsing error: {e}")
-            return jsonify({"error": f"Invalid JSON response from Flower API: {repr(res.text)}"}), 502
+#         # Try parsing JSON
+#         try:
+#             data = res.json()
+#             return jsonify(data), res.status_code
+#         except ValueError as e:
+#             print(f"JSON parsing error: {e}")
+#             return jsonify({"error": f"Invalid JSON response from Flower API: {repr(res.text)}"}), 502
             
-    except requests.exceptions.ConnectionError:
-        return jsonify({"error": "Flower service unreachable"}), 503
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         print(f"Unexpected error: {e}")
+#         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
-@flask_app.route("/flower/task/<task_id>", methods=["GET"])
-def get_task_info(task_id):
-    try:
-        res = requests.get(f"{flower_url}/api/task/info/{task_id}", timeout=5)
-        return jsonify(res.json()), res.status_code
-    except requests.exceptions.ConnectionError:
-        return jsonify({"error": "Flower service unreachable"}), 503
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# @flask_app.route("/flower/task/<task_id>", methods=["GET"])
+# def get_task_info(task_id):
+#     try:
+#         res = requests.get(f"{flower_url}/api/task/info/{task_id}", timeout=5)
+#         return jsonify(res.json()), res.status_code
+#     except requests.exceptions.ConnectionError:
+#         return jsonify({"error": "Flower service unreachable"}), 503
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
     
 
 # @flask_app.route("/flower/queues", methods=["GET"])
@@ -5245,7 +5245,7 @@ def update_action_item(action_item_id):
                     action_item_id=action_item_id,
                     user_id=uid,
                     status = status,
-                    created_by=updated_by,
+                    # created_by=updated_by,
                     last_updated_by=updated_by
                 )
                 db.session.add(assignment)

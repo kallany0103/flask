@@ -5397,41 +5397,77 @@ def delete_action_item_assignment(action_item_id, user_id):
 
 @flask_app.route('/def_action_items_view/<int:user_id>/<int:page>/<int:limit>', methods=['GET'])
 @jwt_required()
-def get_paginated_action_items_view(user_id,page, limit):
+def get_paginated_action_items_view(user_id, page, limit):
     try:
-        # Validate pagination parameters
+        status = request.args.get('status')
+
+        # Validate pagination
         if page < 1 or limit < 1:
             return make_response(jsonify({
                 "message": "Page and limit must be positive integers"
             }), 400)
+
+        # Base 
+        query = DefActionItemsV.query.filter_by(user_id=user_id)
+
+        # Apply status filter if provided
+        if status:
+            query = query.filter(
+                func.lower(func.trim(DefActionItemsV.status)) == func.lower(func.trim(status))
+            )
+
+        query = query.order_by(DefActionItemsV.action_item_id.desc())
+
         
-        
-        query = DefActionItemsV.query.filter_by(user_id=user_id).order_by(DefActionItemsV.action_item_id.desc())
+        # paginated
         paginated = query.paginate(page=page, per_page=limit, error_out=False)
-        
         return make_response(jsonify({
             "items": [item.json() for item in paginated.items],
             "total": paginated.total,
             "pages": paginated.pages,
             "page": paginated.page
         }), 200)
-    
+
+        # Without pagination
+        
+        # items = query.all()
+        # return make_response(jsonify({
+        #     "items": [item.json() for item in items],
+        #     "total": len(items)
+        # }), 200)
+
     except Exception as e:
         return make_response(jsonify({
             'message': 'Error fetching action items view',
             'error': str(e)
         }), 500)
 
-@flask_app.route('/def_action_items_view/<string:status>', methods=['GET'])
-@jwt_required()
-def get_action_items_by_status(status):
-    try:
-        # Query filtered by status
-        items = DefActionItemsV.query.filter(
-            func.lower(func.trim(DefActionItemsV.status)) == status.strip().lower()
-        ).all()
 
-        return make_response(jsonify([item.json() for item in items]), 200)
+@flask_app.route('/def_action_items_view/<int:user_id>/<string:status>/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def get_action_items_by_status(user_id, status, page, limit):
+    try:
+        # Validate pagination
+        if page < 1 or limit < 1:
+            return make_response(jsonify({
+                "message": "Page and limit must be positive integers"
+            }), 400)
+
+        # Query filtered by user_id + status (case-insensitive, trim)
+        query = DefActionItemsV.query.filter(
+            DefActionItemsV.user_id == user_id,
+            func.lower(func.trim(DefActionItemsV.status)) == func.lower(func.trim(status))
+        ).order_by(DefActionItemsV.action_item_id.desc())
+
+        # Pagination
+        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+
+        return make_response(jsonify({
+            "items": [item.json() for item in paginated.items],
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
 
     except Exception as e:
         return make_response(jsonify({"error": str(e)}), 500)

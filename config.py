@@ -111,6 +111,8 @@ def create_app() -> Flask:
         JWT_SECRET_KEY = os.getenv('JWT_SECRET_ACCESS_TOKEN'),
         JWT_ACCESS_TOKEN_EXPIRES = parse_expiry(os.getenv('ACCESS_TOKEN_EXPIRED_TIME', '15m')),
         JWT_REFRESH_TOKEN_EXPIRES = parse_expiry(os.getenv('REFRESH_TOKEN_EXPIRED_TIME', '30d')),
+        FLOWER_URL = os.environ.get("FLOWER_URL")
+
     )
     # Load additional configuration from environment variables with a prefix
     app.config.from_prefixed_env()

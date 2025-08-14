@@ -4895,7 +4895,9 @@ def delete_control(control_id):
 @flask_app.route("/flower/tasks", methods=["GET"])
 def list_tasks():
     try:
-        res = requests.get(f"{flower_url}/api/tasks", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+        # res = requests.get(f"{flower_url}/api/tasks", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+        res = requests.get(f"{flower_url}/api/tasks", timeout=5)
+
         try:
             data = res.json()  # attempt to parse JSON
         except ValueError:
@@ -4912,7 +4914,9 @@ def list_tasks():
 @flask_app.route("/flower/workers", methods=["GET"])
 def list_workers():
     try:
-        res = requests.get(f"{flower_url}/api/workers",auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+        # res = requests.get(f"{flower_url}/api/workers",auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+        res = requests.get(f"{flower_url}/api/workers", timeout=5)
+
         return jsonify(res.json()), res.status_code
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Flower service unreachable"}), 503

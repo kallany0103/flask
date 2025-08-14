@@ -2823,7 +2823,10 @@ def view_requests_v2():
 @jwt_required()
 def view_requests(page, page_limit):
     try:
-        cutoff_date = datetime.utcnow() - timedelta(days=14)
+
+        days = request.args.get('days', default=14, type=int)
+
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
 
         query = DefAsyncTaskRequest.query.filter(
             DefAsyncTaskRequest.creation_date >= cutoff_date
@@ -3069,9 +3072,10 @@ def upsert_def_access_model_logics():
         data_list = request.get_json()
 
         if not isinstance(data_list, list):
-            return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
+            return make_response(jsonify({'message': 'Payload must be a non-empty list of objects'}), 400)
 
         response = []
+        created = False
 
         for data in data_list:
             def_access_model_logic_id = data.get('def_access_model_logic_id')
@@ -3155,9 +3159,12 @@ def upsert_def_access_model_logics():
                 #     'message': 'AccessModelLogic created successfully'
                 # })
                 response.append({'message': 'Added successfully'})
+                created = True
 
         db.session.commit()
-        return make_response(jsonify(response), 200)
+
+        status_code = 201 if created else 200
+        return make_response(jsonify(response), status_code)
 
     except IntegrityError:
         db.session.rollback()
@@ -3283,6 +3290,7 @@ def upsert_def_access_model_logic_attributes():
             return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
 
         response = []
+        created = False
 
         for data in data_list:
             id = data.get('id')
@@ -3360,10 +3368,13 @@ def upsert_def_access_model_logic_attributes():
                 #     'message': 'Attribute created successfully'
                 # })
                 response.append({'message': 'Added successfully'})
+                created =True
 
 
         db.session.commit()
-        return make_response(jsonify(response), 200)
+
+        status_code = 201 if created else 200
+        return make_response(jsonify(response), status_code)
 
     except IntegrityError:
         db.session.rollback()
@@ -3598,6 +3609,7 @@ def upsert_def_global_condition_logics():
             return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
 
         response = []
+        created = False
 
         for data in data_list:
             def_global_condition_logic_id = data.get('def_global_condition_logic_id')
@@ -3669,9 +3681,11 @@ def upsert_def_global_condition_logics():
                 #     'message': 'Logic created successfully'
                 # })
                 response.append({'message': 'Added successfully'})
+                created = True
 
         db.session.commit()
-        return make_response(jsonify(response), 200)
+        status_code = 201 if created else 200
+        return make_response(jsonify(response), status_code)
 
     except IntegrityError:
         db.session.rollback()
@@ -3842,6 +3856,7 @@ def upsert_def_global_condition_logic_attributes():
             return make_response(jsonify({'message': 'Payload must be a list of objects'}), 400)
 
         response = []
+        created = False
 
         for data in data_list:
             id = data.get('id')
@@ -3915,9 +3930,11 @@ def upsert_def_global_condition_logic_attributes():
                 #     'message': 'Attribute created successfully'
                 # })
                 response.append({'message': 'Added successfully'})
+                created = True
 
         db.session.commit()
-        return make_response(jsonify(response), 200)
+        status_code = 201 if created else 200
+        return make_response(jsonify(response), status_code)
 
     except IntegrityError:
         db.session.rollback()
@@ -4851,42 +4868,60 @@ def delete_control(control_id):
 # @flask_app.route("/flower/tasks", methods=["GET"])
 # def list_tasks():
 #     try:
-#         res = requests.get(f"{flower_url}/api/tasks", timeout=5)
-#         return jsonify(res.json()), res.status_code
+#         res = requests.get(f"{flower_url}/api/tasks", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+#         try:
+#             data = res.json()  # attempt to parse JSON
+#         except ValueError:
+#             # If response is not JSON, return raw text
+#             data = {"error": "Invalid response from Flower", "response_text": res.text}
+#         return jsonify(data), res.status_code
 #     except requests.exceptions.ConnectionError:
 #         return jsonify({"error": "Flower service unreachable"}), 503
 #     except Exception as e:
 #         return jsonify({"error": str(e)}), 500
 
 
+
 # @flask_app.route("/flower/workers", methods=["GET"])
 # def list_workers():
 #     try:
-#         res = requests.get(f"{flower_url}/api/workers", timeout=5)
+#         res = requests.get(f"{flower_url}/api/workers",auth=HTTPBasicAuth('user', 'pass'), timeout=5)
 #         return jsonify(res.json()), res.status_code
 #     except requests.exceptions.ConnectionError:
 #         return jsonify({"error": "Flower service unreachable"}), 503
 #     except Exception as e:
 #         return jsonify({"error": str(e)}), 500
     
-# @flask_app.route("/flower/tasks/types", methods=["GET"])
+# @flask_app.route("/flower/tasks/types", methods=["GET"])  #doesn't work #404
 # def list_task_types():
 #     try:
-#         res = requests.get(f"{flower_url}/api/tasks/types", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
-#         return jsonify(res.json()), res.status_code  # First attempt to parse JSON
-        
-#         # Unreachable code due to the return statement above
+#         res = requests.get(
+#             f"{flower_url}/api/tasks/types",
+#             auth=HTTPBasicAuth('user', 'pass'),
+#             timeout=5
+#         )
+
+#         # Debugging info (optional, prints to console)
 #         print("Status code:", res.status_code)
-#         print("Response headers:", res.headers)
-#         print("Response body:", repr(res.text))
+#         # print("Response headers:", res.headers)
+#         # print("Response body:", repr(res.text))
+
+#         # Handle non-200 status codes
 #         if res.status_code != 200:
 #             return jsonify({"error": f"Flower API returned status {res.status_code}"}), res.status_code
-#         if not res.text:
+
+#         # Handle empty response
+#         if not res.text.strip():
 #             return jsonify({"error": "Empty response from Flower API"}), 502
+
+#         # Parse JSON safely
 #         try:
-#             return jsonify(res.json()), res.status_code
+#             data = res.json()
 #         except ValueError:
 #             return jsonify({"error": "Invalid JSON response from Flower API"}), 502
+
+#         return jsonify(data), res.status_code
+
 #     except requests.exceptions.ConnectionError:
 #         return jsonify({"error": "Flower service unreachable"}), 503
 #     except Exception as e:
@@ -4937,25 +4972,61 @@ def delete_control(control_id):
 #         return jsonify({"error": str(e)}), 500
     
 
-# @flask_app.route("/flower/queues", methods=["GET"])
+# @flask_app.route("/flower/queues", methods=["GET"])  #404
 # def list_queues():
 #     try:
-#         res = requests.get(f"{flower_url}/api/queues", timeout=5)
-#         return jsonify(res.json()), res.status_code
+#         res = requests.get(f"{flower_url}/api/queues", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+
+#         # Debug info (optional)
+#         print("Status code:", res.status_code)
+#         # print("Response headers:", res.headers)
+#         # print("Response body:", repr(res.text))
+
+#         if res.status_code != 200:
+#             return jsonify({"error": f"Flower API returned status {res.status_code}"}), res.status_code
+
+#         if not res.text.strip():
+#             return jsonify({"error": "Empty response from Flower API"}), 502
+
+#         try:
+#             data = res.json()
+#         except ValueError:
+#             return jsonify({"error": "Invalid JSON response from Flower API", "response_text": res.text}), 502
+
+#         return jsonify(data), 200
+
 #     except requests.exceptions.ConnectionError:
 #         return jsonify({"error": "Flower service unreachable"}), 503
 #     except Exception as e:
 #         return jsonify({"error": str(e)}), 500
 
-# @flask_app.route("/flower/broker/queues", methods=["GET"])
+# @flask_app.route("/flower/broker/queues", methods=["GET"]) #404
 # def broker_queues():
 #     try:
-#         res = requests.get(f"{flower_url}/api/broker/queues", timeout=5)
-#         return jsonify(res.json()), res.status_code
+#         res = requests.get(f"{flower_url}/api/broker/queues", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+
+#         # Debug info (optional)
+#         print("Status code:", res.status_code)
+#         # print("Response headers:", res.headers)
+#         # print("Response body:", repr(res.text))
+
+#         if res.status_code != 200:
+#             return jsonify({"error": f"Flower API returned status {res.status_code}"}), res.status_code
+
+#         if not res.text.strip():
+#             return jsonify({"error": "Empty response from Flower API"}), 502
+
+#         try:
+#             data = res.json()
+#         except ValueError:
+#             return jsonify({"error": "Invalid JSON response from Flower API", "response_text": res.text}), 502
+
+#         return jsonify(data), 200
+
 #     except requests.exceptions.ConnectionError:
 #         return jsonify({"error": "Flower service unreachable"}), 503
 #     except Exception as e:
-#         return jsonify({"error": str(e)}), 500 
+#         return jsonify({"error": str(e)}), 500
 
 # @flask_app.route("/flower/tasks/scheduled", methods=["GET"])
 # def scheduled_tasks():
@@ -5142,6 +5213,7 @@ def upsert_action_item():
 
             action_item.last_updated_by = current_user
             message = "Edited successfully"
+            status_code = 200
 
         else:
             # --- CREATE ---
@@ -5164,6 +5236,7 @@ def upsert_action_item():
             db.session.add(action_item)
             db.session.flush()  # get the ID before assignments
             message = "Added successfully"
+            status_code = 201
 
         db.session.commit()
 
@@ -5188,7 +5261,7 @@ def upsert_action_item():
         return make_response(jsonify({
             "message": message,
             "action_item_id": action_item.action_item_id
-        }), 200)
+        }), status_code)
 
     except Exception as e:
         db.session.rollback()

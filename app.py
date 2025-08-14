@@ -2831,7 +2831,7 @@ def view_requests(page, page_limit):
 
         # Case 1: task_name provided but days not provided -> default days = 30
         if search_query and days is None:
-            days = 30
+            days = 7
 
         # Apply days filter if available (now days will be set in all needed cases)
         if days is not None:

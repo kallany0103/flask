@@ -68,7 +68,7 @@ from config import redis_url
 
 # from workflow_engine.engine_v1 import run_workflow
 
-# flower_url = flask_app.config["FLOWER_URL"]
+flower_url = flask_app.config["FLOWER_URL"]
 redis_client = Redis.from_url(redis_url, decode_responses=True)
 
 jwt = JWTManager(flask_app)
@@ -2823,15 +2823,42 @@ def view_requests_v2():
 @jwt_required()
 def view_requests(page, page_limit):
     try:
+        # Query params
+        days = request.args.get('days', type=int)
+        search_query = request.args.get('task_name', '').strip().lower()
 
-        days = request.args.get('days', default=14, type=int)
+        query = DefAsyncTaskRequest.query
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        # Case 1: task_name provided but days not provided -> default days = 30
+        if search_query and days is None:
+            days = 30
 
-        query = DefAsyncTaskRequest.query.filter(
-            DefAsyncTaskRequest.creation_date >= cutoff_date
-        ).order_by(DefAsyncTaskRequest.creation_date.desc())
+        # Apply days filter if available (now days will be set in all needed cases)
+        if days is not None:
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            query = query.filter(DefAsyncTaskRequest.creation_date >= cutoff_date)
 
+        # Apply task_name search if provided (with TRIM to avoid space issues)
+        if search_query:
+            search_underscore = search_query.replace(' ', '_')
+            search_space = search_query.replace('_', ' ')
+            query = query.filter(or_(
+                DefAsyncTaskRequest.task_name.ilike(f'%{search_query}%'),
+                DefAsyncTaskRequest.task_name.ilike(f'%{search_underscore}%'),
+                DefAsyncTaskRequest.task_name.ilike(f'%{search_space}%')
+            ))
+
+
+        # if search_query:
+        #     normalized_search = search_query.replace('_', ' ')
+        #     query = query.filter(or_(
+        #         func.lower(func.replace(func.trim(DefAsyncTaskRequest.task_name), '_', ' ')).ilike(f'%{normalized_search}%')
+        #     ))
+
+        # Order newest first
+        query = query.order_by(DefAsyncTaskRequest.creation_date.desc())
+
+        # Paginate results
         paginated = query.paginate(page=page, per_page=page_limit, error_out=False)
 
         if not paginated.items:
@@ -4865,32 +4892,32 @@ def delete_control(control_id):
 
 # CELERY FLOWER
 
-# @flask_app.route("/flower/tasks", methods=["GET"])
-# def list_tasks():
-#     try:
-#         res = requests.get(f"{flower_url}/api/tasks", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
-#         try:
-#             data = res.json()  # attempt to parse JSON
-#         except ValueError:
-#             # If response is not JSON, return raw text
-#             data = {"error": "Invalid response from Flower", "response_text": res.text}
-#         return jsonify(data), res.status_code
-#     except requests.exceptions.ConnectionError:
-#         return jsonify({"error": "Flower service unreachable"}), 503
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+@flask_app.route("/flower/tasks", methods=["GET"])
+def list_tasks():
+    try:
+        res = requests.get(f"{flower_url}/api/tasks", auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+        try:
+            data = res.json()  # attempt to parse JSON
+        except ValueError:
+            # If response is not JSON, return raw text
+            data = {"error": "Invalid response from Flower", "response_text": res.text}
+        return jsonify(data), res.status_code
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Flower service unreachable"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 
-# @flask_app.route("/flower/workers", methods=["GET"])
-# def list_workers():
-#     try:
-#         res = requests.get(f"{flower_url}/api/workers",auth=HTTPBasicAuth('user', 'pass'), timeout=5)
-#         return jsonify(res.json()), res.status_code
-#     except requests.exceptions.ConnectionError:
-#         return jsonify({"error": "Flower service unreachable"}), 503
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+@flask_app.route("/flower/workers", methods=["GET"])
+def list_workers():
+    try:
+        res = requests.get(f"{flower_url}/api/workers",auth=HTTPBasicAuth('user', 'pass'), timeout=5)
+        return jsonify(res.json()), res.status_code
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Flower service unreachable"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     
 # @flask_app.route("/flower/tasks/types", methods=["GET"])  #doesn't work #404
 # def list_task_types():
@@ -4961,7 +4988,7 @@ def delete_control(control_id):
 #         print(f"Unexpected error: {e}")
 #         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
-# @flask_app.route("/flower/task/<task_id>", methods=["GET"])
+# @flask_app.route("/flower/task/<task_id>", methods=["GET"]) #404
 # def get_task_info(task_id):
 #     try:
 #         res = requests.get(f"{flower_url}/api/task/info/{task_id}", timeout=5)

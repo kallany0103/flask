@@ -5512,9 +5512,14 @@ def get_paginated_action_items_view(user_id, page, limit):
             }), 400)
 
         # Base 
-        query = DefActionItemsV.query.filter_by(user_id=user_id)
+        # query = DefActionItemsV.query.filter_by(user_id=user_id)
 
-        # Apply status filter if provided
+        # Base query: filter by user_id and only SENT status
+        query = DefActionItemsV.query.filter_by(user_id=user_id).filter(
+            func.lower(func.trim(DefActionItemsV.notification_status)) == "sent"
+        )
+
+        #Apply status filter if provided
         if status:
             query = query.filter(
                 func.lower(func.trim(DefActionItemsV.status)) == func.lower(func.trim(status))
@@ -5560,7 +5565,8 @@ def get_action_items_by_status(user_id, status, page, limit):
         # Query filtered by user_id + status (case-insensitive, trim)
         query = DefActionItemsV.query.filter(
             DefActionItemsV.user_id == user_id,
-            func.lower(func.trim(DefActionItemsV.status)) == func.lower(func.trim(status))
+            func.lower(func.trim(DefActionItemsV.status)) == func.lower(func.trim(status)),
+            func.lower(func.trim(DefActionItemsV.notification_status)) == "sent"
         ).order_by(DefActionItemsV.action_item_id.desc())
 
         # Pagination

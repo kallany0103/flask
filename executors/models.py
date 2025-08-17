@@ -815,7 +815,7 @@ class DefNotification(db.Model):
 
     notification_id = db.Column(db.Text, primary_key=True, nullable=False)
     notification_type = db.Column(db.Text, nullable=False)
-    sender = db.Column(db.Integer) #should be JSONB according to the script
+    sender = db.Column(db.Integer) 
     recipients = db.Column(JSONB)
     subject = db.Column(db.Text)
     notification_body = db.Column(db.Text)
@@ -884,6 +884,7 @@ class DefActionItemsV(db.Model):
     action_item_id = db.Column(db.Integer, primary_key=True)
     action_item_name = db.Column(db.String(150))
     notification_id = db.Column(db.Text)  # or UUID(as_uuid=True) if in UUID format
+    notification_status = db.Column(db.Text)
     description = db.Column(db.Text)
     status = db.Column(db.String(50))
     created_by = db.Column(db.Integer)
@@ -898,6 +899,7 @@ class DefActionItemsV(db.Model):
             'action_item_id': self.action_item_id,
             'action_item_name': self.action_item_name,
             'notification_id': self.notification_id,
+            'notification_status': self.notification_status,
             'description': self.description,
             'status': self.status,
             'created_by': self.created_by,

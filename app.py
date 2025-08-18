@@ -2907,6 +2907,74 @@ def def_async_task_requests_view_requests(page, limit):
 
 
 
+@flask_app.route('/view_requests_v3/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
+def combined_tasks_v3(page, limit):
+    try:
+        days = request.args.get('days', type=int)
+        search_query = request.args.get('task_name', '').strip().lower()
+
+        query = DefAsyncTaskRequest.query
+
+        if search_query and days is None:
+            days = 7
+
+        if days is not None:
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            query = query.filter(DefAsyncTaskRequest.creation_date >= cutoff_date)
+
+        if search_query:
+            search_underscore = search_query.replace(' ', '_')
+            search_space = search_query.replace('_', ' ')
+            query = query.filter(or_(
+                DefAsyncTaskRequest.task_name.ilike(f'%{search_query}%'),
+                DefAsyncTaskRequest.task_name.ilike(f'%{search_underscore}%'),
+                DefAsyncTaskRequest.task_name.ilike(f'%{search_space}%')
+            ))
+
+        paginated = query.order_by(DefAsyncTaskRequest.creation_date.desc()) \
+                         .paginate(page=page, per_page=limit, error_out=False)
+
+        db_tasks = paginated.items
+
+        flower_tasks = {}
+        try:
+            res = requests.get(f"{flower_url}/api/tasks", timeout=5)
+            if res.status_code == 200:
+                flower_tasks = res.json()
+        except:
+            pass  # keep flower_tasks empty if error
+
+        items = []
+
+        
+        for t in db_tasks:
+            item = t.json()  # get all DB fields
+            # add Flower fields
+            if t.task_id and t.task_id in flower_tasks:
+                ftask = flower_tasks[t.task_id]
+                item["uuid"] = ftask.get("uuid")
+                item["state"] = ftask.get("state")
+                item["worker"] = ftask.get("worker")
+            else:
+                item["uuid"] = None
+                item["state"] = None
+                item["worker"] = None
+            items.append(item)
+
+        return make_response(jsonify({
+            "items": items,
+            "total": paginated.total,
+            "pages": paginated.pages,
+            "page": paginated.page
+        }), 200)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+
 #def_access_models
 @flask_app.route('/def_access_models', methods=['POST'])
 def create_def_access_models():
@@ -4992,15 +5060,15 @@ def list_workers():
 #         print(f"Unexpected error: {e}")
 #         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
-# @flask_app.route("/flower/task/<task_id>", methods=["GET"]) #404
-# def get_task_info(task_id):
-#     try:
-#         res = requests.get(f"{flower_url}/api/task/info/{task_id}", timeout=5)
-#         return jsonify(res.json()), res.status_code
-#     except requests.exceptions.ConnectionError:
-#         return jsonify({"error": "Flower service unreachable"}), 503
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+@flask_app.route("/flower/task/<task_id>", methods=["GET"])
+def get_task_info(task_id):
+    try:
+        res = requests.get(f"{flower_url}/api/task/info/{task_id}", timeout=5)
+        return jsonify(res.json()), res.status_code
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Flower service unreachable"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     
 
 # @flask_app.route("/flower/queues", methods=["GET"])  #404

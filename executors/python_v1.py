@@ -71,14 +71,8 @@ def execute(self, *args, **kwargs):
     #     raise Ignore()
 
     except Exception as exc:
-        self.update_state(
-            state=states.FAILURE,
-            meta={
-                "exc_type": type(exc).__name__,
-                "exc_message": str(exc)
-            }
-        )
-        return {
+
+        return_data = {
             "user_task_name": user_task_name,
             "task_name": task_name,
             "executor": self.name,
@@ -92,6 +86,21 @@ def execute(self, *args, **kwargs):
             "result": None,
             "message": "Script execution failed"
         }
+        
+        self.update_state(
+                state=states.FAILURE,
+                meta={
+                    "exc_type": type(exc).__name__,
+                    "exc_message": str(exc)
+                }
+            )
+        
+        # Raise Ignore so Celery marks task as FAILURE
+        raise Ignore()
+        
+        
+        
+        
 
     finally:
         sys.stdout = original_stdout

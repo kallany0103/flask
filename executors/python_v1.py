@@ -42,14 +42,20 @@ def execute(self, *args, **kwargs):
             output = json.loads(raw_output)
         except json.JSONDecodeError:
             output = {"output": raw_output}
-        
-        self.update_state(
-                state=states.FAILURE,
-                meta={
-                    "exc_type": type(exc).__name__,
-                    "exc_message": str(exc)
-                }
-            )
+
+        return_data = {
+            "user_task_name": user_task_name,
+            "task_name": task_name,
+            "executor": self.name
+        }
+        # self.update_state(
+        #         state=states.FAILURE,
+        #         meta={
+        #             "return_data": return_data,
+        #             "exc_type": type().__name__,
+        #             "exc_message": str()
+        #         }
+        #     )
 
         return {
             "user_task_name": user_task_name,

@@ -58,8 +58,19 @@ def execute(self, *args, **kwargs):
             "message": "Script executed successfully"
         }
     
+    # except Exception as exc:
+    #     #Update state to FAILURE and attach exception metadata
+    #     self.update_state(
+    #         state=states.FAILURE,
+    #         meta={
+    #             "exc_type": type(exc).__name__,
+    #             "exc_message": str(exc)
+    #         }
+    #     )
+    #     # Raise Ignore so Celery marks task as FAILURE
+    #     raise Ignore()
+
     except Exception as exc:
-        #Update state to FAILURE and attach exception metadata
         self.update_state(
             state=states.FAILURE,
             meta={
@@ -67,34 +78,20 @@ def execute(self, *args, **kwargs):
                 "exc_message": str(exc)
             }
         )
-        # Raise Ignore so Celery marks task as FAILURE
-        raise Ignore()
-
-    # except Exception as e:
-    #     failure_data = {
-    #         # "status": "FAILURE",
-    #         "user_task_name": user_task_name,
-    #         "task_name": task_name,
-    #         "executor": self.name,
-    #         "user_schedule_name": user_schedule_name,
-    #         "redbeat_schedule_name": redbeat_schedule_name,
-    #         "schedule_type": schedule_type,
-    #         "schedule": schedule,
-    #         "args": args,
-    #         "kwargs": params,
-    #         "parameters": params,
-    #         "error": str(e),
-    #         "message": "Script execution failed"
-    #     }
-
-    #     # Store failure info in result backend
-    #     self.update_state(
-    #         state="FAILURE",
-    #         meta=failure_data
-    #     )
-
-    #     # Raise so Celery still marks as FAILURE
-    #     raise Exception(json.dumps(failure_data))
+        return {
+            "user_task_name": user_task_name,
+            "task_name": task_name,
+            "executor": self.name,
+            "user_schedule_name": user_schedule_name,
+            "redbeat_schedule_name": redbeat_schedule_name,
+            "schedule_type": schedule_type,
+            "schedule": schedule,
+            "args": args,
+            "kwargs": params,
+            "parameters": params,
+            "result": output,
+            "message": "Script execution failed"
+        }
 
     finally:
         sys.stdout = original_stdout

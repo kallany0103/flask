@@ -89,7 +89,7 @@ def execute(self, *args, **kwargs):
             "args": args,
             "kwargs": params,
             "parameters": params,
-            "result": output,
+            "result": None,
             "message": "Script execution failed"
         }
 

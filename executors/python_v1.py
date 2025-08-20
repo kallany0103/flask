@@ -42,6 +42,14 @@ def execute(self, *args, **kwargs):
             output = json.loads(raw_output)
         except json.JSONDecodeError:
             output = {"output": raw_output}
+        
+        self.update_state(
+                state=states.FAILURE,
+                meta={
+                    "exc_type": type(exc).__name__,
+                    "exc_message": str(exc)
+                }
+            )
 
         return {
             "user_task_name": user_task_name,
@@ -86,7 +94,7 @@ def execute(self, *args, **kwargs):
             "result": None,
             "message": "Script execution failed"
         }
-        
+
         self.update_state(
                 state=states.FAILURE,
                 meta={

@@ -7,6 +7,7 @@ from .bash import execute as bash_script
 from .stored_procedure import execute as execute_procedure
 from .stored_function import execute as execute_function
 from .http import execute as http_request
+from .python_v1 import execute as python_script
 from .extensions import db
 
 # load_dotenv()

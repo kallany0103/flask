@@ -3,9 +3,14 @@ import sys
 import io
 import os
 from celery import shared_task, states
-from celery.exceptions import Ignore
+from celery.exceptions import Ignore, CeleryError, Reject
+
 
 script_path = os.getenv("SCRIPT_PATH_01")
+
+# class TaskFailed(CeleryError):
+#     pass
+
 
 @shared_task(bind=True)
 def execute(self, *args, **kwargs):
@@ -43,21 +48,8 @@ def execute(self, *args, **kwargs):
         except json.JSONDecodeError:
             output = {"output": raw_output}
 
-        return_data = {
-            "user_task_name": user_task_name,
-            "task_name": task_name,
-            "executor": self.name
-        }
-        # self.update_state(
-        #         state=states.FAILURE,
-        #         meta={
-        #             "return_data": return_data,
-        #             "exc_type": type().__name__,
-        #             "exc_message": str()
-        #         }
-        #     )
-
-        return {
+        result_data = {
+            "task_id": self.request.id,
             "user_task_name": user_task_name,
             "task_name": task_name,
             "executor": self.name,
@@ -69,24 +61,16 @@ def execute(self, *args, **kwargs):
             "kwargs": params,
             "parameters": params,
             "result": output,
+            "status": "SUCCESS",
             "message": "Script executed successfully"
         }
-    
-    # except Exception as exc:
-    #     #Update state to FAILURE and attach exception metadata
-    #     self.update_state(
-    #         state=states.FAILURE,
-    #         meta={
-    #             "exc_type": type(exc).__name__,
-    #             "exc_message": str(exc)
-    #         }
-    #     )
-    #     # Raise Ignore so Celery marks task as FAILURE
-    #     raise Ignore()
+
+        return result_data  #stored in taskmeta.result on success
 
     except Exception as exc:
-
-        return_data = {
+        # build same schema, mark failure
+        result_data = {
+            "task_id": self.request.id,
             "user_task_name": user_task_name,
             "task_name": task_name,
             "executor": self.name,
@@ -98,23 +82,46 @@ def execute(self, *args, **kwargs):
             "kwargs": params,
             "parameters": params,
             "result": None,
-            "message": "Script execution failed"
+            "status": "FAILURE",
+            "message": str(exc),
+            "exc_type": type(exc).__name__,
         }
 
+        #store this directly into taskmeta.result
         self.update_state(
-                state=states.FAILURE,
-                meta={
-                    "exc_type": type(exc).__name__,
-                    "exc_message": str(exc)
-                }
-            )
-        
-        # Raise Ignore so Celery marks task as FAILURE
-        raise Ignore()
-        
-        
-        
-        
+            state=states.FAILURE,
+            meta=result_data
+        )
+
+        #! DOESN"T STORE DATA BUT CELERY FLOWER STATE CHNAGES TO FAILURE
+
+        raise exc
+        # raise Exception()
+        # raise TaskFailed(str(exc))
+
+        #! STORE DATA BUT CELERY FLOWER STATE REMAINS STARTED
+
+        # raise Ignore()
+        # raise Reject(exc, requeue=False)
 
     finally:
         sys.stdout = original_stdout
+        return {
+            "task_id": self.request.id,
+            "user_task_name": user_task_name,
+            "task_name": task_name,
+            "executor": self.name,
+            "user_schedule_name": user_schedule_name,
+            "redbeat_schedule_name": redbeat_schedule_name,
+            "schedule_type": schedule_type,
+            "schedule": schedule,
+            "args": args,
+            "kwargs": params,
+            "parameters": params,
+            "result": output,
+            "status": "SUCCESS",
+            "message": "Script executed successfully"
+        }
+
+
+

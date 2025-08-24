@@ -5191,9 +5191,9 @@ def create_action_item():
         if not action_item_name:
             return make_response(jsonify({"message": "Action item name is required"}), 400)
 
-        existing_item = DefActionItem.query.filter_by(action_item_name=action_item_name).first()
-        if existing_item:
-            return make_response(jsonify({"message": "Action item name already exists"}), 400)
+        # existing_item = DefActionItem.query.filter_by(action_item_name=action_item_name).first()
+        # if existing_item:
+        #     return make_response(jsonify({"message": "Action item name already exists"}), 400)
 
         # if notification_id:
         #     # Optionally validate if notification exists
@@ -5299,13 +5299,16 @@ def upsert_action_item():
             if not action_item:
                 return jsonify({"message": f"Action Item with ID {action_item_id} not found"}), 404
 
-            # Check duplicate name if changing
-            new_name = data.get('action_item_name')
-            if new_name and new_name != action_item.action_item_name:
-                duplicate = DefActionItem.query.filter_by(action_item_name=new_name).first()
-                if duplicate:
-                    return jsonify({"message": "Action item name already exists"}), 400
-                action_item.action_item_name = new_name
+            #Check duplicate name if changing
+            # new_name = data.get('action_item_name')
+            # if new_name and new_name != action_item.action_item_name:
+            #     duplicate = DefActionItem.query.filter_by(action_item_name=new_name).first()
+            #     if duplicate:
+            #         return jsonify({"message": "Action item name already exists"}), 400
+            #     action_item.action_item_name = new_name
+
+            if "action_item_name" in data:
+                action_item.action_item_name = data["action_item_name"]
 
             if "description" in data:
                 action_item.description = data["description"]
@@ -5323,9 +5326,9 @@ def upsert_action_item():
                 return jsonify({"message": "Missing required field: action_item_name"}), 400
 
             # Check duplicate name before insert
-            duplicate = DefActionItem.query.filter_by(action_item_name=action_item_name).first()
-            if duplicate:
-                return jsonify({"message": "Action item name already exists"}), 400
+            # duplicate = DefActionItem.query.filter_by(action_item_name=action_item_name).first()
+            # if duplicate:
+            #     return jsonify({"message": "Action item name already exists"}), 400
 
             action_item = DefActionItem(
                 action_item_name=action_item_name,

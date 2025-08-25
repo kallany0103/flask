@@ -5546,7 +5546,7 @@ def update_action_item_assignment_status(user_id, action_item_id):
         assignment.last_updated_by = get_jwt_identity()
 
         db.session.commit()
-        return make_response(jsonify({"message": "Status updated successfully"}), 200)
+        return make_response(jsonify({"message": "Status Updated Successfully"}), 200)
 
     except Exception as e:
         db.session.rollback()

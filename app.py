@@ -69,7 +69,7 @@ from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
 from config import redis_url
 
 # from workflow_engine.engine_v1 import run_workflow
-from workflow_engine import run_workflow
+# from workflow_engine import run_workflow
 
 flower_url = flask_app.config["FLOWER_URL"]
 redis_client = Redis.from_url(redis_url, decode_responses=True)
@@ -4947,18 +4947,18 @@ def delete_control(control_id):
 
 #Workflow engine
 
-@flask_app.route('/run_workflow/<int:process_id>', methods=['POST'])
-def api_run_workflow(process_id):
-    """
-    Trigger a workflow by process_id and input parameters.
-    POST body: { ...input parameters... }
-    """
-    try:
-        params = request.get_json() or {}
-        result = run_workflow(process_id, params)
-        return jsonify({"result": result}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# @flask_app.route('/run_workflow/<int:process_id>', methods=['POST'])
+# def api_run_workflow(process_id):
+#     """
+#     Trigger a workflow by process_id and input parameters.
+#     POST body: { ...input parameters... }
+#     """
+#     try:
+#         params = request.get_json() or {}
+#         result = run_workflow(process_id, params)
+#         return jsonify({"result": result}), 200
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
 
 # CELERY FLOWER

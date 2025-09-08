@@ -967,3 +967,28 @@ class DefAlertRecipient(db.Model):
             'last_updated_by': self.last_updated_by,
             'last_update_date': self.last_update_date.isoformat() if self.last_update_date else None
         }
+
+
+
+class DefControlEnvironment(db.Model):
+    __tablename__ = "def_control_environments"
+    __table_args__ = {"schema": "apps"} 
+
+    control_environment_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    created_by = db.Column(db.Integer, nullable=False)
+    creation_date = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            "control_environment_id": self.control_environment_id,
+            "name": self.name,
+            "description": self.description,
+            "created_by": self.created_by,
+            "creation_date": self.creation_date.isoformat() if self.creation_date else None,
+            "last_updated_by": self.last_updated_by,
+            "last_update_date": self.last_update_date.isoformat() if self.last_update_date else None,
+        }

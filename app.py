@@ -62,7 +62,9 @@ from executors.models import (
     DefNotification,
     DefActionItemAssignment,
     DefAlert,
-    DefAlertRecipient
+    DefAlertRecipient,
+    DefProcess,
+    DefControlEnvironment
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -70,6 +72,7 @@ from config import redis_url
 
 # from workflow_engine.engine_v1 import run_workflow
 # from workflow_engine import run_workflow
+# from workflow_engine.services import run_workflow
 
 flower_url = flask_app.config["FLOWER_URL"]
 redis_client = Redis.from_url(redis_url, decode_responses=True)
@@ -4947,7 +4950,7 @@ def delete_control(control_id):
 
 #Workflow engine
 
-# @flask_app.route('/run_workflow/<int:process_id>', methods=['POST'])
+# @flask_app.route('/workflow/<int:process_id>', methods=['POST'])
 # def api_run_workflow(process_id):
 #     """
 #     Trigger a workflow by process_id and input parameters.
@@ -4958,7 +4961,87 @@ def delete_control(control_id):
 #         result = run_workflow(process_id, params)
 #         return jsonify({"result": result}), 200
 #     except Exception as e:
+#         traceback.print_exc()
 #         return jsonify({"error": str(e)}), 500
+
+
+# @flask_app.route('/workflow_v1/<int:process_id>', methods=['POST'])
+# def api_run_workflow_v1(process_id):
+#     """
+#     Trigger a workflow by process_id and input parameters.
+#     Waits for all tasks to finish and returns the results.
+#     """
+#     try:
+#         params = request.get_json() or {}
+#         async_result = run_workflow(process_id, params)  # returns AsyncResult
+
+#         # Wait for workflow to complete
+#         final_result = async_result.get(timeout=30)  # adjust timeout as needed
+
+#         return jsonify({"result": final_result}), 200
+#     except Exception as e:
+#         traceback.print_exc()
+#         return jsonify({"error": str(e)}), 500
+
+
+# @flask_app.route('/workflow_v2/<int:process_id>', methods=['POST'])
+# def api_start_workflow_v2(process_id):
+#     try:
+#         input_params = request.get_json() or {}
+#         async_result = run_workflow(process_id, input_params)
+#         return jsonify({"task_id": async_result.id}), 202
+#     except Exception as e:
+#         traceback.print_exc()
+#         return jsonify({"error": str(e)}), 500
+
+# @flask_app.route("/workflow_v3/<int:process_id>", methods=["POST"])
+# def run_workflow_api(process_id):
+#     process = DefProcess.query.filter_by(process_id=process_id).first()
+#     if not process:
+#         return jsonify({"error": "Process not found"}), 404
+
+#     input_params = request.json or {}
+#     celery_task_id = run_workflow(process.process_structure, initial_context=input_params)
+#     return jsonify({"status": "started", "celery_task_id": celery_task_id})
+
+# @flask_app.route("/run_workflow_wait/<int:process_id>", methods=["POST"])
+# def run_workflow_wait(process_id):
+#     process = DefProcess.query.filter_by(process_id=process_id).first()
+#     if not process:
+#         return jsonify({"error": "Process not found"}), 404
+
+#     input_params = request.json or {}
+#     celery_task_id = run_workflow(process.process_structure, initial_context=input_params)
+    
+#     # Wait for the workflow to finish
+#     from celery.result import AsyncResult
+#     result = AsyncResult(celery_task_id)
+#     workflow_result = result.get(timeout=300)  # Wait max 5 minutes
+    
+#     return jsonify({"status": "finished", "result": workflow_result})
+
+
+
+
+# @flask_app.route('/get_user_details/<string:user_name>', methods=['GET'])
+# def get_user_by_name(user_name):
+#     try:
+#         user = DefUsersView.query.filter(
+#             DefUsersView.user_name.ilike(user_name.strip())
+#         ).first()
+
+#         if not user:
+#             return make_response(jsonify({
+#                 "message": f"User '{user_name}' not found"
+#             }), 404)
+
+#         return make_response(jsonify(user.json()), 200)
+
+#     except Exception as e:
+#         return make_response(jsonify({
+#             "message": "Error retrieving user",
+#             "error": str(e)
+#         }), 500)
 
 
 # CELERY FLOWER
@@ -5805,6 +5888,71 @@ def combined_tasks_v4(page, limit):
         return jsonify({"error": str(e)}), 500
 
 
+
+
+
+
+
+
+
+
+@flask_app.route('/def_control_environments', methods=['GET'])
+@jwt_required()
+def get_control_environments():
+    try:
+        environments = (
+            DefControlEnvironment.query
+            .order_by(DefControlEnvironment.control_environment_id.desc())
+            .all()
+        )
+
+        if environments:
+            return make_response(jsonify([env.json() for env in environments]), 200)
+        else:
+            return make_response(jsonify({"message": "No control environments found"}), 404)
+
+    except Exception as e:
+        return make_response(
+            jsonify({
+                "message": "Error retrieving control environments",
+                "error": str(e)
+            }),
+            500
+        )
+
+
+
+@flask_app.route('/def_control_environments', methods=['POST'])
+@jwt_required()
+def create_control_environment():
+    try:
+        data = request.get_json()
+        current_user = get_jwt_identity()
+
+        if not data or "name" not in data:
+            return make_response(jsonify({"message": "Missing required field: name"}), 400)
+
+        new_env = DefControlEnvironment(
+            name=data.get("name"),
+            description=data.get("description"),
+            created_by=current_user,
+            last_updated_by=current_user,
+        )
+
+        db.session.add(new_env)
+        db.session.commit()
+
+        return make_response(jsonify({"message": "Added successfully"}), 201)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(
+            jsonify({
+                "message": "Error creating control environment",
+                "error": str(e)
+            }),
+            500
+        )
 
 
 if __name__ == "__main__":

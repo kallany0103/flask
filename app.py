@@ -5900,12 +5900,54 @@ def combined_tasks_v4(page, limit):
 @jwt_required()
 def get_control_environments():
     try:
-        environments = (
-            DefControlEnvironment.query
-            .order_by(DefControlEnvironment.control_environment_id.desc())
-            .all()
-        )
+        # Query params
+        page = request.args.get("page", type=int)
+        limit = request.args.get("limit", type=int)
+        environment_id = request.args.get("environment_id", type=int)
+        name = request.args.get("name", "").strip()
 
+        # Validate pagination
+        if page is not None and limit is not None:
+            if page < 1 or limit < 1:
+                return make_response(jsonify({
+                    "message": "Page and limit must be positive integers"
+                }), 400)
+
+        # Base query
+        query = DefControlEnvironment.query
+
+        # Filter by environment_id
+        if environment_id:
+            query = query.filter(DefControlEnvironment.control_environment_id == environment_id)
+
+        # Filter by name (supports underscores/spaces)
+        if name:
+            search_underscore = name.replace(" ", "_")
+            search_space = name.replace("_", " ")
+            query = query.filter(
+                or_(
+                    DefControlEnvironment.name.ilike(f"%{name}%"),
+                    DefControlEnvironment.name.ilike(f"%{search_underscore}%"),
+                    DefControlEnvironment.name.ilike(f"%{search_space}%"),
+                )
+            )
+
+        # Order by latest first
+        query = query.order_by(DefControlEnvironment.control_environment_id.desc())
+
+        # Paginated response
+        if page and limit:
+            paginated = query.paginate(page=page, per_page=limit, error_out=False)
+            items = [env.json() for env in paginated.items]
+            return make_response(jsonify({
+                "items": items,
+                "total": paginated.total,
+                "pages": paginated.pages,
+                "page": paginated.page
+            }), 200)
+
+        # Return all if no pagination
+        environments = query.all()
         if environments:
             return make_response(jsonify([env.json() for env in environments]), 200)
         else:
@@ -5919,6 +5961,7 @@ def get_control_environments():
             }),
             500
         )
+
 
 
 
@@ -5953,6 +5996,62 @@ def create_control_environment():
             }),
             500
         )
+
+
+
+
+@flask_app.route('/def_control_environments', methods=['PUT'])
+@jwt_required()
+def update_control_environment():
+    try:
+        environment_id = request.args.get('environment_id', type=int)
+        if not environment_id:
+            return make_response(jsonify({"message": "Environment ID is required"}), 400)
+
+        data = request.get_json()
+        current_user = get_jwt_identity()
+
+        env = DefControlEnvironment.query.filter_by(control_environment_id=environment_id).first()
+        if not env:
+            return make_response(jsonify({"message": "Control environment not found"}), 404)
+
+        if "name" in data:
+            env.name = data["name"]
+        if "description" in data:
+            env.description = data["description"]
+        env.last_updated_by = current_user
+
+        db.session.commit()
+        return make_response(jsonify({"message": "Edited successfully"}), 200)
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({"message": "Error updating control environment", "error": str(e)}), 500)
+
+
+@flask_app.route('/def_control_environments', methods=['DELETE'])
+@jwt_required()
+def delete_control_environment():
+    try:
+        environment_id = request.args.get('environment_id', type=int)
+        if not environment_id:
+            return make_response(jsonify({"message": "Environment ID is required"}), 400)
+
+        env = DefControlEnvironment.query.filter_by(control_environment_id=environment_id).first()
+        if not env:
+            return make_response(jsonify({"message": "Control environment not found"}), 404)
+
+        db.session.delete(env)
+        db.session.commit()
+        return make_response(jsonify({"message": "Deleted successfully"}), 200)
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({"message": "Error deleting control environment", "error": str(e)}), 500)
+
+
+
+
+
+
 
 
 if __name__ == "__main__":

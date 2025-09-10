@@ -5903,7 +5903,7 @@ def get_control_environments():
         # Query params
         page = request.args.get("page", type=int)
         limit = request.args.get("limit", type=int)
-        environment_id = request.args.get("environment_id", type=int)
+        control_environment_id = request.args.get("control_environment_id", type=int)
         name = request.args.get("name", "").strip()
 
         # Validate pagination
@@ -5916,9 +5916,9 @@ def get_control_environments():
         # Base query
         query = DefControlEnvironment.query
 
-        # Filter by environment_id
-        if environment_id:
-            query = query.filter(DefControlEnvironment.control_environment_id == environment_id)
+        # Filter by control_environment_id
+        if control_environment_id:
+            query = query.filter(DefControlEnvironment.control_environment_id == control_environment_id)
 
         # Filter by name (supports underscores/spaces)
         if name:
@@ -6004,14 +6004,14 @@ def create_control_environment():
 @jwt_required()
 def update_control_environment():
     try:
-        environment_id = request.args.get('environment_id', type=int)
-        if not environment_id:
-            return make_response(jsonify({"message": "Environment ID is required"}), 400)
+        control_environment_id = request.args.get('control_environment_id', type=int)
+        if not control_environment_id:
+            return make_response(jsonify({"message": "Control Environment ID is required"}), 400)
 
         data = request.get_json()
         current_user = get_jwt_identity()
 
-        env = DefControlEnvironment.query.filter_by(control_environment_id=environment_id).first()
+        env = DefControlEnvironment.query.filter_by(control_environment_id=control_environment_id).first()
         if not env:
             return make_response(jsonify({"message": "Control environment not found"}), 404)
 
@@ -6030,22 +6030,31 @@ def update_control_environment():
 
 @flask_app.route('/def_control_environments', methods=['DELETE'])
 @jwt_required()
-def delete_control_environment():
+def delete_control_environments():
     try:
-        environment_id = request.args.get('environment_id', type=int)
-        if not environment_id:
-            return make_response(jsonify({"message": "Environment ID is required"}), 400)
+        data = request.get_json()
+        environment_ids = data.get("control_environment_ids", []) if data else []
 
-        env = DefControlEnvironment.query.filter_by(control_environment_id=environment_id).first()
-        if not env:
-            return make_response(jsonify({"message": "Control environment not found"}), 404)
+        if not environment_ids:
+            return make_response(jsonify({"message": "Environment IDs are required"}), 400)
 
-        db.session.delete(env)
+        envs = DefControlEnvironment.query.filter(
+            DefControlEnvironment.control_environment_id.in_(environment_ids)
+        ).all()
+
+        if not envs:
+            return make_response(jsonify({"message": "No matching control environments found"}), 404)
+
+        for env in envs:
+            db.session.delete(env)
+
         db.session.commit()
         return make_response(jsonify({"message": "Deleted successfully"}), 200)
+
     except Exception as e:
         db.session.rollback()
-        return make_response(jsonify({"message": "Error deleting control environment", "error": str(e)}), 500)
+        return make_response(jsonify({"message": "Error deleting control environments", "error": str(e)}), 500)
+
 
 
 

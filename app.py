@@ -5985,7 +5985,8 @@ def create_control_environment():
         db.session.add(new_env)
         db.session.commit()
 
-        return make_response(jsonify({"message": "Added successfully"}), 201)
+        return make_response(jsonify({"message": "Added successfully",
+                                      "result": new_env.json() }), 201)
 
     except Exception as e:
         db.session.rollback()
@@ -6009,23 +6010,34 @@ def update_control_environment():
             return make_response(jsonify({"message": "Control Environment ID is required"}), 400)
 
         data = request.get_json()
-        current_user = get_jwt_identity()
+
 
         env = DefControlEnvironment.query.filter_by(control_environment_id=control_environment_id).first()
         if not env:
             return make_response(jsonify({"message": "Control environment not found"}), 404)
 
-        if "name" in data:
-            env.name = data["name"]
-        if "description" in data:
-            env.description = data["description"]
-        env.last_updated_by = current_user
 
-        db.session.commit()
-        return make_response(jsonify({"message": "Edited successfully"}), 200)
+        if env:
+            env.name = data.get("name", env.name)
+            env.description = data.get("description", env.description)
+            env.last_updated_by = get_jwt_identity()
+
+
+
+            db.session.commit()
+
+        return make_response(jsonify({
+            "message": "Edited successfully",
+            "result": env.json()
+        }), 200)
+
     except Exception as e:
         db.session.rollback()
-        return make_response(jsonify({"message": "Error updating control environment", "error": str(e)}), 500)
+        return make_response(jsonify({
+            "message": "Error updating control environment",
+            "error": str(e)
+        }), 500)
+
 
 
 @flask_app.route('/def_control_environments', methods=['DELETE'])

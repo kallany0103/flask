@@ -66,7 +66,8 @@ class DefUser(db.Model):
     created_on      = db.Column(db.String(30))
     last_updated_by = db.Column(db.Integer)
     last_updated_on = db.Column(db.String(50), unique=True, nullable=False)
-    tenant_id       = db.Column(db.Integer, db.ForeignKey('apps.def_tenants.tenant_id'), nullable=False) 
+    tenant_id       = db.Column(db.Integer, db.ForeignKey('apps.def_tenants.tenant_id'), nullable=False)
+    user_invitation_id = db.Column(db.Integer) 
     profile_picture = db.Column(
     JSONB,
     default=lambda: {
@@ -88,7 +89,8 @@ class DefUser(db.Model):
             'tenant_id'      : self.tenant_id,
             'profile_picture': self.profile_picture
         }
-        
+
+
 
 class DefPerson(db.Model):
     __tablename__ = 'def_persons'
@@ -991,4 +993,34 @@ class DefControlEnvironment(db.Model):
             "creation_date": self.creation_date.isoformat() if self.creation_date else None,
             "last_updated_by": self.last_updated_by,
             "last_update_date": self.last_update_date.isoformat() if self.last_update_date else None,
+        }
+    
+
+class NewUserInvitaion(db.Model):
+    __tablename__ = 'new_user_invitations'
+    __table_args__ = {'schema': 'apps'}
+
+    user_invitation_id    =  db.Column(db.Integer, primary_key=True)      
+    invited_by            =  db.Column(db.Integer)
+    email                 =  db.Column(db.Text)
+    registered_user_id    =  db.Column(db.Integer)
+    type                  =  db.Column(db.String(10)) 
+    token                 =  db.Column(db.Text)    
+    status                =  db.Column(db.String(10)) 
+    created_at            =  db.Column(db.DateTime())
+    accepted_at           =  db.Column(db.DateTime())
+    expires_at            =  db.Column(db.DateTime()) 
+
+    def json(self):
+        return {
+            "user_invitation_id": self.user_invitation_id,
+            "invited_by": self.invited_by,
+            "email": self.email,
+            "registered_user_id": self.registered_user_id,
+            "type": self.type,
+            "token": self.token,
+            "status": self.status,
+            "created_at": self.created_at,
+            "accepted_at": self.accepted_at, 
+            "expires_at": self.expires_at
         }

@@ -64,7 +64,8 @@ from executors.models import (
     DefAlert,
     DefAlertRecipient,
     DefProcess,
-    DefControlEnvironment
+    DefControlEnvironment,
+    NewUserInvitaion
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -1095,6 +1096,7 @@ def delete_user_credentials(user_id):
 
 
 @flask_app.route('/users', methods=['POST'])
+@jwt_required()
 def register_user():
     try:
         data = request.get_json()
@@ -1103,14 +1105,15 @@ def register_user():
         user_name       = data['user_name']
         user_type       = data['user_type']
         email_addresses = data['email_addresses']
-        created_by      = data['created_by']
-        last_updated_by = data['last_updated_by']
+        # created_by      = data['created_by']
+        # last_updated_by = data['last_updated_by']
         tenant_id       = data['tenant_id']
         # Extract person fields
         first_name      = data.get('first_name')
         middle_name     = data.get('middle_name')
         last_name       = data.get('last_name')
         job_title       = data.get('job_title')
+        user_invitation_id = data.get('user_invitation_id')
         # Extract credentials
         password        = data['password']
 
@@ -1133,17 +1136,18 @@ def register_user():
             user_name       = user_name,
             user_type       = user_type,
             email_addresses = email_addresses,
-            created_by      = created_by,
+            created_by      = get_jwt_identity(),
             created_on      = current_timestamp(),
-            last_updated_by = last_updated_by,
+            last_updated_by = get_jwt_identity(),
             last_updated_on = current_timestamp(),
             tenant_id       = tenant_id,
-            profile_picture = profile_picture
+            profile_picture = profile_picture,
+            user_invitation_id = user_invitation_id
         )
         db.session.add(new_user)
 
         # Create person if user_type is person
-        if user_type.lower() == "person":
+        if user_type.lower() == "person" :
             new_person = DefPerson(
                 user_id     = user_id,
                 first_name  = first_name,
@@ -1153,6 +1157,8 @@ def register_user():
             )
             db.session.add(new_person)
 
+
+        
         # Create credentials
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
         new_cred = DefUserCredential(
@@ -1160,6 +1166,15 @@ def register_user():
             password = hashed_password
         )
         db.session.add(new_cred)
+
+        if user_invitation_id and new_user and new_cred and new_person:
+            user_invitation = NewUserInvitaion.query.filter_by(user_invitation_id=user_invitation_id).first()
+            if user_invitation:
+
+                user_invitation.registered_user_id = new_user.user_id
+                user_invitation.status = "ACCEPTED"
+                user_invitation.accepted_at = current_timestamp()
+        
 
         db.session.commit()
         return jsonify({"message": "Added successfully", "user_id": user_id}), 201

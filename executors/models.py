@@ -61,7 +61,7 @@ class DefUser(db.Model):
     user_id         = db.Column(db.Integer, primary_key=True)
     user_name       = db.Column(db.String(40), unique=True, nullable=True)
     user_type       = db.Column(db.String(50))
-    email_addresses = db.Column(JSONB, nullable=False )
+    email_address   = db.Column(Text, nullable=False)
     created_by      = db.Column(db.Integer, nullable=False)
     created_on      = db.Column(db.String(30))
     last_updated_by = db.Column(db.Integer)
@@ -81,7 +81,7 @@ class DefUser(db.Model):
             'user_id'        : self.user_id,
             'user_name'      : self.user_name,
             'user_type'      : self.user_type,
-            'email_addresses': self.email_addresses,
+            'email_address'  : self.email_address,
             'created_by'     : self.created_by,
             'created_on'     : self.created_on,
             'last_updated_by': self.last_updated_by,
@@ -155,7 +155,7 @@ class DefUsersView(db.Model):
     first_name      = db.Column(db.String(30))
     middle_name     = db.Column(db.String(30))
     last_name       = db.Column(db.String(30))
-    email_addresses = db.Column(db.String(100))
+    email_address   = db.Column(db.Text)
     job_title       = db.Column(db.String(50))
     created_by      = db.Column(db.Integer)
     created_on      = db.Column(db.String(30))
@@ -171,7 +171,7 @@ class DefUsersView(db.Model):
             'first_name'     : self.first_name,
             'middle_name'    : self.middle_name,
             'last_name'      : self.last_name,
-            'email_addresses': self.email_addresses,
+            'email_address': self.email_address,
             'job_title'      : self.job_title,
             'created_by'     : self.created_by,
             'created_on'     : self.created_on,
@@ -996,7 +996,7 @@ class DefControlEnvironment(db.Model):
         }
     
 
-class NewUserInvitaion(db.Model):
+class NewUserInvitation(db.Model):
     __tablename__ = 'new_user_invitations'
     __table_args__ = {'schema': 'apps'}
 

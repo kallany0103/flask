@@ -65,7 +65,7 @@ from executors.models import (
     DefAlertRecipient,
     DefProcess,
     DefControlEnvironment,
-    NewUserInvitaion
+    NewUserInvitation
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -590,7 +590,7 @@ def create_def_user():
         user_id         = generate_user_id()
         user_name       = data['user_name']
         user_type       = data['user_type']
-        email_addresses = data['email_addresses']
+        email_address   = data['email_address']
         created_by      = data['created_by']
         created_on      = current_timestamp()
         last_updated_by = data['last_updated_by']
@@ -600,6 +600,7 @@ def create_def_user():
             "original": "uploads/profiles/default/profile.jpg",
             "thumbnail": "uploads/profiles/default/thumbnail.jpg"
         }
+        user_invitation_id = data.get('user_invitation_id')
         
 
        # Convert the list of email addresses to a JSON-formatted string
@@ -610,13 +611,14 @@ def create_def_user():
           user_id         = user_id,
           user_name       = user_name,
           user_type       = user_type,
-          email_addresses = email_addresses,  # Corrected variable name
+          email_address   = email_address,  # Corrected variable name
           created_by      = created_by,
           created_on      = created_on,
           last_updated_by = last_updated_by,
           last_updated_on = last_updated_on,
           tenant_id       = tenant_id,
-          profile_picture = profile_picture
+          profile_picture = profile_picture,
+          user_invitation_id = user_invitation_id
         )
         # Add the new user to the database session
         db.session.add(new_user)
@@ -709,8 +711,8 @@ def update_user(user_id):
             data = request.get_json()
             if 'user_name' in data:
                 user.user_name = data['user_name']
-            if 'email_addresses' in data:
-                user.email_addresses = data['email_addresses']
+            if 'email_address' in data:
+                user.email_address = data['email_address']
             if 'last_updated_by' in data:
                 user.last_updated_by = data['last_updated_by']
             user.last_updated_on = current_timestamp()
@@ -1104,7 +1106,7 @@ def register_user():
         user_id         = generate_user_id()
         user_name       = data['user_name']
         user_type       = data['user_type']
-        email_addresses = data['email_addresses']
+        email_address = data['email_address']
         # created_by      = data['created_by']
         # last_updated_by = data['last_updated_by']
         tenant_id       = data['tenant_id']
@@ -1126,8 +1128,8 @@ def register_user():
         # Check for existing user/email
         if DefUser.query.filter_by(user_name=user_name).first():
             return jsonify({"message": "Username already exists"}), 409
-        for email in email_addresses:
-            if DefUser.query.filter(DefUser.email_addresses.contains    ([email])).first():
+        for email in email_address:
+            if DefUser.query.filter(DefUser.email_address.contains    ([email])).first():
                 return jsonify({"message": "Email already exists"}), 409
 
         # Create user
@@ -1135,7 +1137,7 @@ def register_user():
             user_id         = user_id,
             user_name       = user_name,
             user_type       = user_type,
-            email_addresses = email_addresses,
+            email_address = email_address,
             created_by      = get_jwt_identity(),
             created_on      = current_timestamp(),
             last_updated_by = get_jwt_identity(),
@@ -1167,8 +1169,8 @@ def register_user():
         )
         db.session.add(new_cred)
 
-        if user_invitation_id and new_user and new_cred and new_person:
-            user_invitation = NewUserInvitaion.query.filter_by(user_invitation_id=user_invitation_id).first()
+        if user_invitation_id:  
+            user_invitation = NewUserInvitation.query.filter_by(user_invitation_id=user_invitation_id).first()
             if user_invitation:
 
                 user_invitation.registered_user_id = new_user.user_id
@@ -1218,7 +1220,7 @@ def update_specific_user(user_id):
 
         # Update DefUser fields
         user.user_name = data.get('user_name', user.user_name)
-        user.email_addresses = data.get('email_addresses', user.email_addresses)
+        user.email_address = data.get('email_address', user.email_address)
         user.last_updated_on = current_timestamp()
 
         # Update DefPerson fields if user_type is "person"
@@ -1337,7 +1339,7 @@ def login():
         # Use JSONB contains for email lookup
         if '@' in email_or_username:
             user_profile = DefUser.query.filter(
-                DefUser.email_addresses.contains([email_or_username])
+                DefUser.email_address.contains([email_or_username])
             ).first()
         else:
             user_profile = DefUser.query.filter_by(user_name=email_or_username).first()

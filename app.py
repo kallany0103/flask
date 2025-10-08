@@ -1136,18 +1136,9 @@ def register_user():
         if DefUser.query.filter_by(user_name=user_name).first():
             return jsonify({"message": "Username already exists"}), 409
 
-        # Normalize email_address to a list
-        if isinstance(email_address, str):
-            emails = [email_address]  # single email -> list
-        elif isinstance(email_address, list):
-            emails = email_address     # already a list
-        else:
-            return jsonify({"message": "Invalid email format"}), 400
-
-        # Check for existing emails
-        for email in emails:
-            if DefUser.query.filter(DefUser.email_address == email).first():
-                return jsonify({"message": f"Email {email} already exists"}), 409
+        # Check for existing email
+        if DefUser.query.filter(DefUser.email_address == email_address).first():
+            return jsonify({"message": "Email already exists"}), 409
 
 
         # Create user

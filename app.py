@@ -25,7 +25,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine, Text, desc, cast, TIMESTAMP, func, or_, text
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, make_response       # Flask utilities for handling requests and responses
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from itsdangerous import BadSignature,SignatureExpired, URLSafeTimedSerializer
+from flask_mail import Message as MailMessage
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, decode_token
 from werkzeug.security import generate_password_hash, check_password_hash
 from executors import flask_app # Import Flask app and tasks
 from executors.extensions import db
@@ -76,6 +78,7 @@ from config import redis_url
 # from workflow_engine.services import run_workflow
 
 flower_url = flask_app.config["FLOWER_URL"]
+# invitation_expire_time = flask_app.config["INV_EXPIRE_TIME"]
 redis_client = Redis.from_url(redis_url, decode_responses=True)
 
 jwt = JWTManager(flask_app)
@@ -92,65 +95,15 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def generate_user_id():
-    try:
-        # Query the max user_id from the arc_users table
-        max_user_id = db.session.query(db.func.max(DefUser.user_id)).scalar()
-        if max_user_id is not None:
-            # If max_user_id is not None, set the start value for the counter
-            user_id_counter = count(start=max_user_id + 1)
-        else:
-            # If max_user_id is None, set a default start value
-            user_id_counter = count(start=int(datetime.timestamp(datetime.utcnow())))
-        
-        # Generate a unique user_id using the counter
-        return next(user_id_counter)
-    except Exception as e:
-        print(f"Error generating user ID: {e}")
-        return None
-
-
-
-# def generate_tenant_id():
-#     try:
-#         # Query the max tenant_id from the arc_tenants table
-#         max_tenant_id = db.session.query(db.func.max(DefTenantEnterpriseSetup.tenant_id)).scalar()
-#         if max_tenant_id is not None:
-#             # If max_tenant_id is not None, set the start value for the counter
-#             tenant_id_counter = count(start=max_tenant_id + 1)
-#         else:
-#             # If max_tenant_id is None, set a default start value based on the current timestamp
-#             tenant_id_counter = count(start=int(datetime.timestamp(datetime.utcnow())))
-
-#         # Generate a unique tenant_id using the counter
-#         return next(tenant_id_counter)
-#     except Exception as e:
-#         # Handle specific exceptions as needed
-#         print(f"Error generating tenant ID: {e}")
-#         return None
-
-
-
-# def generate_tenant_enterprise_id():
-#     try:
-#         # Query the max tenant_id from the arc_tenants table
-#         max_tenant_id = db.session.query(db.func.max(DefTenantEnterpriseSetup.tenant_id)).scalar()
-#         if max_tenant_id is not None:
-#             # If max_tenant_id is not None, set the start value for the counter
-#             tenant_id_counter = count(start=max_tenant_id + 1)
-#         else:
-#             # If max_tenant_id is None, set a default start value based on the current timestamp
-#             tenant_id_counter = count(start=int(datetime.timestamp(datetime.utcnow())))
-
-#         # Generate a unique tenant_id using the counter
-#         return next(tenant_id_counter)
-#     except Exception as e:
-#         # Handle specific exceptions as needed
-#         print(f"Error generating tenant ID: {e}")
-#         return None
 
 def current_timestamp():
     return datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+
+
+serializer = URLSafeTimedSerializer(
+    flask_app.config["JWT_SECRET_KEY"],
+    salt="invite-link"
+)
 
 
 
@@ -587,7 +540,7 @@ def create_def_user():
     try:
         # Parse data from the request body
         data = request.get_json()
-        user_id         = generate_user_id()
+        # user_id         = generate_user_id()
         user_name       = data['user_name']
         user_type       = data['user_type']
         email_address   = data['email_address']
@@ -608,7 +561,7 @@ def create_def_user():
 
        # Create a new ArcUser object
         new_user = DefUser(
-          user_id         = user_id,
+        #   user_id         = user_id,
           user_name       = user_name,
           user_type       = user_type,
           email_address   = email_address,  # Corrected variable name
@@ -627,7 +580,7 @@ def create_def_user():
 
         # Return a success response
         return make_response(jsonify({"message": "Added successfully",
-                                       "User Id": user_id}), 201)
+                                       "User Id": new_user.user_id}), 201)
 
     except Exception as e:
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
@@ -1103,7 +1056,7 @@ def register_user():
     try:
         data = request.get_json()
         # Extract user fields
-        user_id         = generate_user_id()
+        # user_id         = generate_user_id()
         user_name       = data['user_name']
         user_type       = data['user_type']
         email_address = data['email_address']
@@ -1143,7 +1096,7 @@ def register_user():
 
         # Create user
         new_user = DefUser(
-            user_id         = user_id,
+            # user_id         = user_id,
             user_name       = user_name,
             user_type       = user_type,
             email_address = email_address,
@@ -1156,11 +1109,12 @@ def register_user():
             user_invitation_id = user_invitation_id
         )
         db.session.add(new_user)
+        db.session.flush()
 
         # Create person if user_type is person
         if user_type.lower() == "person" :
             new_person = DefPerson(
-                user_id     = user_id,
+                user_id     = new_user.user_id,
                 first_name  = first_name,
                 middle_name = middle_name,
                 last_name   = last_name,
@@ -1173,7 +1127,7 @@ def register_user():
         # Create credentials
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
         new_cred = DefUserCredential(
-            user_id  = user_id,
+            user_id  = new_user.user_id,
             password = hashed_password
         )
         db.session.add(new_cred)
@@ -1188,7 +1142,7 @@ def register_user():
         
 
         db.session.commit()
-        return jsonify({"message": "Added successfully", "user_id": user_id}), 201
+        return jsonify({"message": "Added successfully", "user_id": new_user.user_id}), 201
 
     except Exception as e:
         db.session.rollback()
@@ -1266,63 +1220,36 @@ def delete_specific_user(user_id):
     try:
         # Find the user record in the DefUser table
         user = DefUser.query.filter_by(user_id=user_id).first()
-        if user:
-            # Delete the DefPerson record if it exists and user_type is "person"
-            if user.user_type.lower() == "person":
-                person = DefPerson.query.filter_by(user_id=user_id).first()
-                if person:
-                    db.session.delete(person)
+        if not user:
+            return make_response(jsonify({'message': 'User not found'}), 404)
 
-            # Delete the DefUserCredential record if it exists
-            user_credential = DefUserCredential.query.filter_by(user_id=user_id).first()
-            if user_credential:
-                db.session.delete(user_credential)
+        access_profiles = DefAccessProfile.query.filter_by(user_id=user_id).all()
+        for profile in access_profiles:
+            db.session.delete(profile)
 
-            # Delete the DefUser record
-            db.session.delete(user)
-            db.session.commit()
 
-            return make_response(jsonify({'message': 'Deleted successfully'}), 200)
+        if user.user_type and user.user_type.lower() == "person":
+            person = DefPerson.query.filter_by(user_id=user_id).first()
+            if person:
+                db.session.delete(person)
 
-        return make_response(jsonify({'message': 'User not found'}), 404)
-    
+        user_credential = DefUserCredential.query.filter_by(user_id=user_id).first()
+        if user_credential:
+            db.session.delete(user_credential)
+
+
+        db.session.delete(user)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Deleted successfully'}), 200)
+
     except Exception as e:
-        db.session.rollback()  # Rollback in case of any error
-        return make_response(jsonify({'message': 'Error deleting user', 'error': str(e)}), 500)
+        db.session.rollback()
+        return make_response(jsonify({
+            'message': 'Error deleting user',
+            'error': str(e)
+        }), 500)
 
-
-# @flask_app.route('/users/<int:user_id>', methods=['DELETE'])
-# def delete_specific_user(user_id):
-#     try:
-#         user = DefUser.query.filter_by(user_id=user_id).first()
-#         if not user:
-#             return make_response(jsonify({'message': 'User not found'}), 404)
-
-#         # Delete DefPerson if user_type is "person"
-#         if user.user_type and user.user_type.lower() == "person":
-#             person = DefPerson.query.filter_by(user_id=user_id).first()
-#             if person:
-#                 db.session.delete(person)
-
-#         # Delete DefUserCredential if exists
-#         user_credential = DefUserCredential.query.filter_by(user_id=user_id).first()
-#         if user_credential:
-#             db.session.delete(user_credential)
-
-#         # Delete DefAccessProfile(s) if exist
-#         access_profiles = DefAccessProfile.query.filter_by(user_id=user_id).all()
-#         for profile in access_profiles:
-#             db.session.delete(profile)
-
-#         # Delete the DefUser record
-#         db.session.delete(user)
-#         db.session.commit()
-
-#         return make_response(jsonify({'message': 'User and related records deleted successfully'}), 200)
-
-#     except Exception as e:
-#         db.session.rollback()
-#         return make_response(jsonify({'message': 'Error deleting user', 'error': str(e)}), 500)
 
 
 @flask_app.route('/login', methods=['POST'])
@@ -6092,6 +6019,337 @@ def delete_control_environments():
         db.session.rollback()
         return make_response(jsonify({"message": "Error deleting control environments", "error": str(e)}), 500)
 
+
+
+# Invitation
+
+# @flask_app.route("/invitation/email", methods=["POST"])
+# @jwt_required()
+# def invitation_via_email():
+#     """Send invitation via email (plain link in email)"""
+#     try:
+#         current_user = get_jwt_identity()
+#         data = request.get_json() or {}
+#         invited_by = data.get("invited_by") or current_user
+#         email = data.get("email")
+
+#         if not invited_by or not email:
+#             return jsonify({"error": "Inviter ID and email required"}), 400
+
+#         # Check if user already exists
+#         if DefUser.query.filter_by(email_address=email).first():
+#             return jsonify({"message": "User with this email already exists"}), 200
+
+#         expires = timedelta(hours=invitation_expire_time)
+#         token = create_access_token(identity=str(invited_by), expires_delta=expires)
+
+#         # Check existing active invitation
+#         existing_invite = NewUserInvitation.query.filter_by(
+#             email=email,
+#             status="PENDING",
+#             type="EMAIL"
+#         ).first()
+
+#         if existing_invite and existing_invite.expires_at > datetime.utcnow():
+#             invite_link = f"{request.host_url}invitation/{existing_invite.user_invitation_id}/{existing_invite.token}"
+#             return jsonify({
+#                 "invitation_id": existing_invite.user_invitation_id,
+#                 "token": existing_invite.token,
+#                 "invitation_link": invite_link,
+#                 "message": "Pending invitation already exists"
+#             }), 200
+#         elif existing_invite:
+#             existing_invite.status = "EXPIRED"
+#             db.session.commit()
+
+#         # Create new invitation (not committed yet)
+#         expires_at = datetime.utcnow() + expires
+#         new_invite = NewUserInvitation(
+#             invited_by=invited_by,
+#             email=email,
+#             token=token,
+#             status="PENDING",
+#             type="EMAIL",
+#             created_at=current_timestamp(),
+#             expires_at=expires_at
+#         )
+#         db.session.add(new_invite)
+#         db.session.flush()  # get new_invite.user_invitation_id without committing
+
+#         # Generate the invitation link
+#         invite_link = f"{request.host_url}invitation/accept?user_invitation_id={new_invite.user_invitation_id}&token={new_invite.token}"
+
+#         # Prepare and send email before committing
+#         msg = MailMessage(
+#         subject="You’re Invited to join PROCG",
+#         recipients=[email],
+#         html=f"""
+#         <p>Hello,</p>
+#         <p>We are excited to invite you to join PROCG App!</p>
+#         <p>Click the link below to accept your invitation and get started:</p>
+#         <p><a href="{invite_link}">Click here to register a user</a></p>
+#         <p>Please note, this link will expire in {invitation_expire_time} hour(s).</p>
+#         <p>We look forward to having you on board!</p>
+#         <p>Best regards,</p>
+#         <p>The PROCG Team</p>
+#         """
+#     )
+
+#         try:
+#             mail.send(msg)
+#         except Exception as mail_error:
+#             db.session.rollback()
+#             return jsonify({
+#                 "error": str(mail_error),
+#                 "message": "Failed to send email."
+#             }), 500
+
+#         # If mail succeeds, commit the DB changes
+#         db.session.commit()
+#         return jsonify({
+#             "success": True,
+#             "invitation_id": new_invite.user_invitation_id,
+#             "token": new_invite.token,
+#             "invitation_link": invite_link,
+#             "message": "Invitation email sent successfully"
+#         }), 201
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({"error": str(e), "message": "Failed to send invitation"}), 500
+
+
+# @flask_app.route("/invitation/link", methods=["POST"])
+# @jwt_required()
+# def invitation_via_link():
+#     """Generate invitation link only (plain URL)"""
+#     try:
+#         current_user = get_jwt_identity()
+#         # data = request.get_json() or {}
+#         invited_by = current_user
+
+#         if not invited_by:
+#             return jsonify({"error": "Inviter ID required"}), 400
+
+#         # Token expiration
+#         expires = timedelta(hours=invitation_expire_time)
+#         token = create_access_token(identity=str(invited_by), expires_delta=expires)
+#         expires_at = datetime.utcnow() + expires
+
+#         new_invite = NewUserInvitation(
+#             invited_by=invited_by,
+#             token=token,
+#             status="PENDING",
+#             type="LINK",
+#             created_at=current_timestamp(),
+#             expires_at=expires_at
+#         )
+#         db.session.add(new_invite)
+#         db.session.commit()
+
+#         # Plain URL format for frontend
+#         invite_link = f"{request.host_url}invitation/accept?user_invitation_id={new_invite.user_invitation_id}&token={new_invite.token}"
+
+#         return jsonify({
+#             "success": True,
+#             "invitation_link": invite_link,
+#             "message": "The invitation link was generated successfully"
+#         }), 201
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({"error": str(e)}), 500
+
+
+# @flask_app.route("/invitation/verify", methods=["GET"])
+# def verify_invitation():
+#     """Check if invitation link is valid using user_invitation_id and token"""
+#     try:
+#         user_invitation_id = request.args.get("user_invitation_id", type=int)
+#         token = request.args.get("token")
+
+#         if not user_invitation_id or not token:
+#             return jsonify({"valid": False, "message": "Invitation ID and token are required"}), 400
+
+#         # Decode JWT token
+#         try:
+#             decoded = decode_token(token)
+#         except Exception as e:
+#             msg = str(e).lower()
+#             if "expired" in msg:
+#                 return jsonify({"valid": False, "message": "The invitation has expired"}), 401
+#             return jsonify({"valid": False, "message": "Invalid token"}), 403
+
+#         invited_by = decoded.get("sub")
+#         if not invited_by:
+#             return jsonify({"valid": False, "message": "Invalid token: missing inviter info"}), 403
+
+#         # Query invitation in DB
+#         invite = NewUserInvitation.query.filter_by(
+#             user_invitation_id=user_invitation_id,
+#             invited_by=invited_by,
+#             token=token
+#         ).first()
+
+#         if not invite:
+#             return jsonify({"valid": False, "message": "No invitation found"}), 404
+
+#         if invite.status in ["EXPIRED", "ACCEPTED"] or (invite.expires_at and invite.expires_at < datetime.utcnow()):
+#             invite.status = "EXPIRED"
+#             db.session.commit()
+#             return jsonify({"valid": False, "message": "The invitation has expired"}), 200
+
+#         return jsonify({
+#             "valid": True,
+#             "invited_by": invite.invited_by,
+#             "email": invite.email,
+#             "type": invite.type,
+#             "message": "Invitation link is valid"
+#         }), 200
+
+#     except Exception as e:
+#         return jsonify({"valid": False, "message": f"Error verifying invitation: {str(e)}"}), 500
+
+
+# @flask_app.route("/invitation/accept", methods=["POST"])
+# def accept_invitation():
+#     try:
+#         data = request.get_json() or {}
+#         invitation_id = data.get("user_invitation_id")
+#         token = data.get("token")
+
+#         if not invitation_id or not token:
+#             return jsonify({"message": "Invitation ID and token are required"}), 400
+
+#         # Decode JWT token
+#         try:
+#             decoded = decode_token(token)
+#         except Exception as e:
+#             msg = str(e).lower()
+#             if "expired" in msg:
+#                 return jsonify({"message": "Token has expired"}), 401
+#             return jsonify({"message": "Invalid token"}), 403
+
+#         inviter_id = decoded.get("sub")
+#         if not inviter_id:
+#             return jsonify({"message": "Missing inviter info in token"}), 403
+
+#         # Fetch invitation from DB
+#         invite = NewUserInvitation.query.filter_by(
+#             user_invitation_id=invitation_id,
+#             invited_by=inviter_id,
+#             token=token
+#         ).first()
+
+#         if not invite:
+#             return jsonify({"message": "No invitation found"}), 404
+
+#         if invite.status in ["ACCEPTED", "EXPIRED"] or (invite.expires_at and invite.expires_at < datetime.utcnow()):
+#             invite.status = "EXPIRED"
+#             db.session.commit()
+#             return jsonify({"message": "This invitation is not valid"}), 400
+
+#         def create_user(data, created_by=None):
+#             """
+#             Create a user (and optional person/credentials) from payload dict.
+#             Returns the created user's ID.
+#             """
+#             # user_id =  generate_user_id()
+#             user_name = data["user_name"]
+#             user_type = data["user_type"]
+#             email_address = data["email_address"]
+#             tenant_id = data["tenant_id"]
+#             first_name = data.get("first_name")
+#             middle_name = data.get("middle_name")
+#             last_name = data.get("last_name")
+#             job_title = data.get("job_title")
+#             password = data["password"]
+#             profile_picture = data.get("profile_picture") or {
+#                 "original": "uploads/profiles/default/profile.jpg",
+#                 "thumbnail": "uploads/profiles/default/thumbnail.jpg"
+#             }
+#             user_invitation_id = data.get("user_invitation_id")
+
+#             # Check existing username/email
+#             if DefUser.query.filter_by(user_name=user_name).first():
+#                 raise ValueError("Username already exists")
+#             if DefUser.query.filter_by(email_address=email_address).first():
+#                 raise ValueError("Email already exists")
+
+#             # Create user
+#             new_user = DefUser(
+#                 # user_id=user_id,
+#                 user_name=user_name,
+#                 user_type=user_type,
+#                 email_address=email_address,
+#                 created_by=created_by,
+#                 created_on=datetime.utcnow(),
+#                 last_updated_by=created_by,
+#                 last_updated_on=datetime.utcnow(),
+#                 tenant_id=tenant_id,
+#                 profile_picture=profile_picture,
+#                 user_invitation_id=user_invitation_id
+#             )
+#             db.session.add(new_user)
+
+#             # Create person if user_type is person
+#             if user_type.lower() == "person":
+#                 new_person = DefPerson(
+#                     user_id=new_user.user_id,
+#                     first_name=first_name,
+#                     middle_name=middle_name,
+#                     last_name=last_name,
+#                     job_title=job_title
+#                 )
+#                 db.session.add(new_person)
+
+#             # Create credentials
+#             hashed_password = generate_password_hash(password, method="pbkdf2:sha256", salt_length=16)
+#             new_cred = DefUserCredential(
+#                 user_id=new_user.user_id,
+#                 password=hashed_password
+#             )
+#             db.session.add(new_cred)
+
+#             db.session.commit()
+#             return new_user
+
+#         # Prepare user payload
+#         user_payload = {
+#             "user_name": data.get("user_name"),
+#             "user_type": data.get("user_type"),
+#             "email_address": data.get("email_address"),
+#             "tenant_id": data.get("tenant_id"),
+#             "first_name": data.get("first_name"),
+#             "middle_name": data.get("middle_name"),
+#             "last_name": data.get("last_name"),
+#             "job_title": data.get("job_title"),
+#             "password": data.get("password"),
+#             "created_by": inviter_id,
+#             "last_updated_by": inviter_id,
+#             "user_invitation_id": invitation_id
+#         }
+
+#         required_fields = ["user_name", "user_type", "email_address", "password", "tenant_id"]
+#         missing = [f for f in required_fields if not user_payload.get(f)]
+#         if missing:
+#             return jsonify({"message": f"Missing required fields: {', '.join(missing)}"}), 400
+
+#         # Create user
+#         try:
+#             new_user = create_user(user_payload, created_by=inviter_id)
+#             invite.status = "ACCEPTED"
+#             invite.accepted_at = datetime.utcnow()
+#             invite.registered_user_id = new_user.user_id
+#             db.session.commit()
+#             return jsonify({"message": "Invitation accepted, user created successfully", "user_id": new_user.user_id}), 201
+#         except Exception as e:
+#             db.session.rollback()
+#             return jsonify({"message": "User creation failed", "error": str(e)}), 400
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({"message": "Error processing invitation", "error": str(e)}), 500
 
 
 

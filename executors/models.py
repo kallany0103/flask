@@ -87,6 +87,7 @@ class DefUser(db.Model):
             'last_updated_by': self.last_updated_by,
             'last_updated_on': self.last_updated_on,
             'tenant_id'      : self.tenant_id,
+            'user_invitation_id': self.user_invitation_id,
             'profile_picture': self.profile_picture
         }
 
@@ -162,6 +163,7 @@ class DefUsersView(db.Model):
     last_updated_by = db.Column(db.Integer)
     last_updated_on = db.Column(db.String(50))
     tenant_id       = db.Column(db.Integer)
+    user_invitation_id = db.Column(db.Integer)
     profile_picture = db.Column(JSONB)
 
     def json(self):
@@ -178,6 +180,7 @@ class DefUsersView(db.Model):
             'last_updated_by': self.last_updated_by,
             'last_updated_on': self.last_updated_on,
             'tenant_id'      : self.tenant_id,
+            'user_invitation_id': self.user_invitation_id,
             'profile_picture': self.profile_picture
     }
         

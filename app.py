@@ -1252,68 +1252,23 @@ def delete_specific_user(user_id):
 
 
 
-# @flask_app.route('/login', methods=['POST'])
-# def login():
-#     try:
-#         data = request.get_json()
-#         email_or_username = data['email_or_username']
-#         password          = data['password']
-        
-#         if not email_or_username or not password:
-#             return make_response(jsonify({"message": "Invalid request. Please provide both email/username and password."}), 400)
-
-#         # Set a default value for user_profile
-#         user_profile = None
-
-#         # Check if the input is an email address or a username
-#         # if '@' in email_or_username:
-#         # # Cast JSON column to TEXT and use LIKE
-#         #     user_profile = DefUser.query.filter(cast(DefUser.email_addresses, Text).ilike(f"%{email_or_username}%")).first()
-#         # else:
-#         #     user_profile = DefUser.query.filter_by(user_name = email_or_username).first()
-
-#         if '@' in email_or_username:
-#             user_profile = DefUser.query.filter(
-#                 DefUser.email_address.ilike(f"%{email_or_username}%")
-#             ).first()
-#         else:
-#             user_profile = DefUser.query.filter_by(user_name=email_or_username).first()
-
-
-
-#         if user_profile and user_profile.user_id:
-#             user_credentials = DefUserCredential.query.filter_by(user_id = user_profile.user_id ).first()
-
-#             if user_credentials and check_password_hash(user_credentials.password, password):
-#                 access_token = create_access_token(identity = str(user_profile.user_id))
-#                 return make_response(jsonify({"access_token": access_token}), 200)
-#             else:
-#                 return make_response(jsonify({"message": "Invalid email/username or password"}), 401)
-#         else:
-#             return make_response(jsonify({"message": "User not found"}), 404)
-
-#     except Exception as e:
-#         return make_response(jsonify({"message": str(e)}), 500)
-
-
-
 @flask_app.route('/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
-        email_or_username = data.get('email_or_username', '').strip()
+        user = data.get('email_or_username', '').strip()
         password = data.get('password')
 
-        if not email_or_username or not password:
+        if not user or not password:
             return jsonify({"message": "Email/Username and Password are required."}), 400
 
         user_record = DefUser.query.filter(
-            (DefUser.email_address.ilike(f"%{email_or_username}%")) |
-            (DefUser.user_name == email_or_username)
+            (DefUser.email_address.ilike(f"%{user}%")) |
+            (DefUser.user_name == user)
         ).first()
 
         access_profile = DefAccessProfile.query.filter(
-            func.trim(DefAccessProfile.profile_id).ilike(f"%{email_or_username}%"),
+            func.trim(DefAccessProfile.profile_id).ilike(f"%{user}%"),
             func.trim(DefAccessProfile.profile_type).ilike("Email")
         ).first()
 
@@ -1345,15 +1300,70 @@ def login():
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
+# @flask_app.route('/access_profiles/<int:user_id>', methods=['POST'])
+# def create_access_profiles(user_id):
+#     try:
+#         profile_type = request.json.get('profile_type')  # Fixed incorrect key
+#         profile_id = request.json.get('profile_id')
+#         primary_yn = request.json.get('primary_yn', 'N')  # Default to 'N' if not provided
+
+#         if not profile_type or not profile_id:
+#             return make_response(jsonify({"message": "Missing required fields"}), 400)
+
+#         # Check if profile_id exists in DefAccessProfile or DefUser.email_address (treating profile_id as an email)
+#         existing_profile = DefAccessProfile.query.filter_by(profile_id=profile_id).first()
+#         if existing_profile:
+#             return make_response(jsonify({"message": f"Email '{profile_id}' already exists in DefAccessProfile"}), 409)
+
+#         existing_user = DefUser.query.filter_by(email_address=profile_id).first()
+#         if existing_user:
+#             return make_response(jsonify({"message": f"Email '{profile_id}' already exists in DefUser"}), 409)
+            
+#         new_profile = DefAccessProfile(
+#             user_id=user_id,
+#             profile_type=profile_type,
+#             profile_id=profile_id,
+#             primary_yn=primary_yn
+#         )
+
+#         db.session.add(new_profile)  # Fixed: Corrected session operation
+#         db.session.commit()
+#         return make_response(jsonify({"message": "Added successfully"}), 201)
+
+#     except IntegrityError as e:
+#         db.session.rollback()  
+#         print("IntegrityError:", str(e))  
+#         return make_response(jsonify({"message": "Error creating Access Profiles", "error": str(e)}), 409)
+
+#     except Exception as e:
+#         db.session.rollback()  
+#         print("General Exception:", str(e))  
+#         return make_response(jsonify({"message": "Error creating Access Profiles", "error": str(e)}), 500)
+
+
 @flask_app.route('/access_profiles/<int:user_id>', methods=['POST'])
 def create_access_profiles(user_id):
     try:
-        profile_type = request.json.get('profile_type')  # Fixed incorrect key
+        profile_type = request.json.get('profile_type') # Fixed incorrect key
         profile_id = request.json.get('profile_id')
-        primary_yn = request.json.get('primary_yn', 'N')  # Default to 'N' if not provided
+        primary_yn = request.json.get('primary_yn', 'N') # Default to 'N' if not provided
 
         if not profile_type or not profile_id:
             return make_response(jsonify({"message": "Missing required fields"}), 400)
+
+        # Check if user_id exists in def_users
+        user = DefUser.query.filter_by(user_id=user_id).first()
+        if not user:
+            return make_response(jsonify({"message": f"User with ID {user_id} not found in def_users"}), 404)
+
+        # Check if profile_id exists in DefAccessProfile or DefUser.email_address (case-insensitive)
+        existing_profile = DefAccessProfile.query.filter(func.lower(DefAccessProfile.profile_id) == profile_id.lower()).first()
+        if existing_profile:
+            return make_response(jsonify({"message": f"Email '{profile_id}' already exists in DefAccessProfile"}), 409)
+
+        existing_user = DefUser.query.filter(func.lower(DefUser.email_address) == profile_id.lower()).first()
+        if existing_user:
+            return make_response(jsonify({"message": f"Email '{profile_id}' already exists in DefUser"}), 409)
 
         new_profile = DefAccessProfile(
             user_id=user_id,
@@ -1362,19 +1372,22 @@ def create_access_profiles(user_id):
             primary_yn=primary_yn
         )
 
-        db.session.add(new_profile)  # Fixed: Corrected session operation
+        db.session.add(new_profile)
         db.session.commit()
         return make_response(jsonify({"message": "Added successfully"}), 201)
 
     except IntegrityError as e:
-        db.session.rollback()  
-        print("IntegrityError:", str(e))  
+        db.session.rollback()
+        print("IntegrityError:", str(e))
         return make_response(jsonify({"message": "Error creating Access Profiles", "error": str(e)}), 409)
 
     except Exception as e:
-        db.session.rollback()  
-        print("General Exception:", str(e))  
+        db.session.rollback()
+        print("General Exception:", str(e))
         return make_response(jsonify({"message": "Error creating Access Profiles", "error": str(e)}), 500)
+
+
+
 
 
 # Get all access profiles

@@ -1252,50 +1252,98 @@ def delete_specific_user(user_id):
 
 
 
+# @flask_app.route('/login', methods=['POST'])
+# def login():
+#     try:
+#         data = request.get_json()
+#         email_or_username = data['email_or_username']
+#         password          = data['password']
+        
+#         if not email_or_username or not password:
+#             return make_response(jsonify({"message": "Invalid request. Please provide both email/username and password."}), 400)
+
+#         # Set a default value for user_profile
+#         user_profile = None
+
+#         # Check if the input is an email address or a username
+#         # if '@' in email_or_username:
+#         # # Cast JSON column to TEXT and use LIKE
+#         #     user_profile = DefUser.query.filter(cast(DefUser.email_addresses, Text).ilike(f"%{email_or_username}%")).first()
+#         # else:
+#         #     user_profile = DefUser.query.filter_by(user_name = email_or_username).first()
+
+#         if '@' in email_or_username:
+#             user_profile = DefUser.query.filter(
+#                 DefUser.email_address.ilike(f"%{email_or_username}%")
+#             ).first()
+#         else:
+#             user_profile = DefUser.query.filter_by(user_name=email_or_username).first()
+
+
+
+#         if user_profile and user_profile.user_id:
+#             user_credentials = DefUserCredential.query.filter_by(user_id = user_profile.user_id ).first()
+
+#             if user_credentials and check_password_hash(user_credentials.password, password):
+#                 access_token = create_access_token(identity = str(user_profile.user_id))
+#                 return make_response(jsonify({"access_token": access_token}), 200)
+#             else:
+#                 return make_response(jsonify({"message": "Invalid email/username or password"}), 401)
+#         else:
+#             return make_response(jsonify({"message": "User not found"}), 404)
+
+#     except Exception as e:
+#         return make_response(jsonify({"message": str(e)}), 500)
+
+
+
 @flask_app.route('/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
-        email_or_username = data['email_or_username']
-        password          = data['password']
-        
+        email_or_username = data.get('email_or_username', '').strip()
+        password = data.get('password')
+
         if not email_or_username or not password:
-            return make_response(jsonify({"message": "Invalid request. Please provide both email/username and password."}), 400)
+            return jsonify({"message": "Email/Username and Password are required."}), 400
 
-        # Set a default value for user_profile
-        user_profile = None
+        user_record = DefUser.query.filter(
+            (DefUser.email_address.ilike(f"%{email_or_username}%")) |
+            (DefUser.user_name == email_or_username)
+        ).first()
 
-        # Check if the input is an email address or a username
-        # if '@' in email_or_username:
-        # # Cast JSON column to TEXT and use LIKE
-        #     user_profile = DefUser.query.filter(cast(DefUser.email_addresses, Text).ilike(f"%{email_or_username}%")).first()
-        # else:
-        #     user_profile = DefUser.query.filter_by(user_name = email_or_username).first()
+        access_profile = DefAccessProfile.query.filter(
+            func.trim(DefAccessProfile.profile_id).ilike(f"%{email_or_username}%"),
+            func.trim(DefAccessProfile.profile_type).ilike("Email")
+        ).first()
 
-        if '@' in email_or_username:
-            user_profile = DefUser.query.filter(
-                DefUser.email_address.ilike(f"%{email_or_username}%")
-            ).first()
-        else:
-            user_profile = DefUser.query.filter_by(user_name=email_or_username).first()
+        user_id = None
+        if user_record:
+            user_id = user_record.user_id
+        elif access_profile:
+            user_id = access_profile.user_id
+
+        if not user_id:
+            return jsonify({"message": "User not found."}), 404
+
+        user_cred = DefUserCredential.query.filter_by(user_id=user_id).first()
+        if not user_cred:
+            return jsonify({"message": "User credentials not found."}), 404
+
+        if not check_password_hash(user_cred.password, password):
+            return jsonify({"message": "Invalid email/username or password."}), 401
 
 
+        access_token = create_access_token(identity=str(user_id))
 
-        if user_profile and user_profile.user_id:
-            user_credentials = DefUserCredential.query.filter_by(user_id = user_profile.user_id ).first()
-
-            if user_credentials and check_password_hash(user_credentials.password, password):
-                access_token = create_access_token(identity = str(user_profile.user_id))
-                return make_response(jsonify({"access_token": access_token}), 200)
-            else:
-                return make_response(jsonify({"message": "Invalid email/username or password"}), 401)
-        else:
-            return make_response(jsonify({"message": "User not found"}), 404)
+        return jsonify({
+            "isLoggedIn": True,
+            "user_id": user_id,
+            "access_token": access_token
+        }), 200
 
     except Exception as e:
-        return make_response(jsonify({"message": str(e)}), 500)
-
-  
+        return jsonify({"message": str(e)}), 500
 
 @flask_app.route('/access_profiles/<int:user_id>', methods=['POST'])
 def create_access_profiles(user_id):

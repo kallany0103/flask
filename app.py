@@ -1300,45 +1300,7 @@ def login():
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
-# @flask_app.route('/access_profiles/<int:user_id>', methods=['POST'])
-# def create_access_profiles(user_id):
-#     try:
-#         profile_type = request.json.get('profile_type')  # Fixed incorrect key
-#         profile_id = request.json.get('profile_id')
-#         primary_yn = request.json.get('primary_yn', 'N')  # Default to 'N' if not provided
 
-#         if not profile_type or not profile_id:
-#             return make_response(jsonify({"message": "Missing required fields"}), 400)
-
-#         # Check if profile_id exists in DefAccessProfile or DefUser.email_address (treating profile_id as an email)
-#         existing_profile = DefAccessProfile.query.filter_by(profile_id=profile_id).first()
-#         if existing_profile:
-#             return make_response(jsonify({"message": f"Email '{profile_id}' already exists in DefAccessProfile"}), 409)
-
-#         existing_user = DefUser.query.filter_by(email_address=profile_id).first()
-#         if existing_user:
-#             return make_response(jsonify({"message": f"Email '{profile_id}' already exists in DefUser"}), 409)
-            
-#         new_profile = DefAccessProfile(
-#             user_id=user_id,
-#             profile_type=profile_type,
-#             profile_id=profile_id,
-#             primary_yn=primary_yn
-#         )
-
-#         db.session.add(new_profile)  # Fixed: Corrected session operation
-#         db.session.commit()
-#         return make_response(jsonify({"message": "Added successfully"}), 201)
-
-#     except IntegrityError as e:
-#         db.session.rollback()  
-#         print("IntegrityError:", str(e))  
-#         return make_response(jsonify({"message": "Error creating Access Profiles", "error": str(e)}), 409)
-
-#     except Exception as e:
-#         db.session.rollback()  
-#         print("General Exception:", str(e))  
-#         return make_response(jsonify({"message": "Error creating Access Profiles", "error": str(e)}), 500)
 
 
 @flask_app.route('/access_profiles/<int:user_id>', methods=['POST'])

@@ -53,7 +53,20 @@ class DefTenantEnterpriseSetupV(db.Model):
             'enterprise_type': self.enterprise_type
         }
 
+class DefJobTitle(db.Model):
+    __tablename__  = 'def_job_titles'
+    __table_args__ = {'schema': 'apps'}
 
+    job_title_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    job_title_name = db.Column(db.Text)
+    tenant_id      = db.Column(db.Integer)
+
+    def json(self):
+        return {
+            'job_title_id'  : self.job_title_id,
+            'job_title_name': self.job_title_name,
+            'tenant_id'     : self.tenant_id
+        }
 class DefUser(db.Model):
     __tablename__  = 'def_users'
     __table_args__ = {'schema': 'apps'}

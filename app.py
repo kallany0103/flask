@@ -537,6 +537,7 @@ def search_enterprises(page, limit):
 
 
 @flask_app.route('/job_titles', methods=['POST'])
+@jwt_required()
 def create_job_title():
     try:
         data = request.get_json()
@@ -563,6 +564,7 @@ def create_job_title():
 
 
 @flask_app.route('/job_titles', methods=['GET'])
+@jwt_required()
 def get_job_titles():
     try:
         job_title_id = request.args.get('job_title_id', type=int)
@@ -596,6 +598,7 @@ def get_job_titles():
 
 
 @flask_app.route('/job_titles', methods=['PUT'])
+@jwt_required()
 def update_job_title():
     try:
         job_title_id = request.args.get('job_title_id', type=int)
@@ -628,6 +631,7 @@ def update_job_title():
 
 
 @flask_app.route('/job_titles', methods=['DELETE'])
+@jwt_required()
 def delete_job_title():
     try:
         job_title_id = request.args.get('job_title_id', type=int)
@@ -654,6 +658,7 @@ def delete_job_title():
 # DELETE ALL TENANT
 
 @flask_app.route('/tenants/cascade_delete', methods=['DELETE'])
+@jwt_required()
 def delete_tenant_and_related():
     try:
         tenant_id = request.args.get('tenant_id', type=int)

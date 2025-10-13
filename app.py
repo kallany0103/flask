@@ -541,16 +541,24 @@ def search_enterprises(page, limit):
 def create_job_title():
     try:
         data = request.get_json()
-        job_title_name=data.get('job_title_name'),
-        tenant_id=data.get('tenant_id')
+        job_title_name = data.get('job_title_name')
+        tenant_id = data.get('tenant_id')
 
         tenant = DefTenant.query.filter_by(tenant_id=tenant_id).first()
         if not tenant:
             return jsonify({"message": "Invalid tenant_id. Tenant not found."}), 404
-        
+
+        existing_title = DefJobTitle.query.filter_by(job_title_name=job_title_name, tenant_id=tenant_id).first()
+        if existing_title:
+            return jsonify({"message": f"'{job_title_name}' already exists for this tenant."}), 409
+
         new_title = DefJobTitle(
-            job_title_name=job_title_name,
-            tenant_id=tenant_id
+            job_title_name = job_title_name,
+            tenant_id      = tenant_id,
+            created_by     = get_jwt_identity(),
+            created_on     = current_timestamp(),
+            last_updated_by= get_jwt_identity(),
+            last_updated_on= current_timestamp()
         )
         db.session.add(new_title)
         db.session.commit()
@@ -574,21 +582,11 @@ def get_job_titles():
             if not title:
                 return make_response(jsonify({"message": "Job title not found"}), 404)
 
-            return jsonify({
-                "job_title_id": title.job_title_id,
-                "job_title_name": title.job_title_name,
-                "tenant_id": title.tenant_id
-            }), 200
+            return jsonify(title.json()), 200
 
         # Fetch all job titles if no query param
         titles = DefJobTitle.query.order_by(DefJobTitle.job_title_id.desc()).all()
-        return jsonify([
-            {
-                "job_title_id": t.job_title_id,
-                "job_title_name": t.job_title_name,
-                "tenant_id": t.tenant_id
-            } for t in titles
-        ]), 200
+        return jsonify([t.json() for t in titles]), 200
 
     except Exception as e:
         return make_response(jsonify({
@@ -615,6 +613,8 @@ def update_job_title():
 
         title.job_title_name = data.get('job_title_name', title.job_title_name)
         title.tenant_id = data.get('tenant_id', title.tenant_id)
+        title.last_updated_by = get_jwt_identity()
+        title.last_updated_on = current_timestamp()
         db.session.commit()
 
         return jsonify({

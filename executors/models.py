@@ -14,12 +14,20 @@ class DefTenantEnterpriseSetup(db.Model):
     tenant_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     enterprise_name  = db.Column(db.String)
     enterprise_type  = db.Column(db.String)
+    created_by     = db.Column(db.Integer)
+    created_on     = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
             'tenant_id'       : self.tenant_id,
             'enterprise_name' : self.enterprise_name,
-            'enterprise_type' : self.enterprise_type
+            'enterprise_type' : self.enterprise_type,
+            'created_by'      : self.created_by,
+            'created_on'    : self.created_on,
+            'last_updated_by': self.last_updated_by,
+            'last_updated_on': self.last_updated_on
         }
 
 
@@ -29,10 +37,20 @@ class DefTenant(db.Model):
     
     tenant_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
     tenant_name = db.Column(db.String)
+    created_by = db.Column(db.Integer)
+    created_on = db.Column(db.DateTime, default=datetime.utcnow) 
+
+    last_updated_by = db.Column(db.Integer)
+    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)   
+    
 
     def json(self):
         return {'tenant_id'  : self.tenant_id,
-                'tenant_name': self.tenant_name
+                'tenant_name': self.tenant_name,
+                'created_by'    : self.created_by,
+                'created_on'    : self.created_on,
+                'last_updated_by': self.last_updated_by,
+                'last_updated_on': self.last_updated_on
            }
 
 
@@ -44,13 +62,21 @@ class DefTenantEnterpriseSetupV(db.Model):
     tenant_name = db.Column(db.Text)
     enterprise_name = db.Column(db.Text)
     enterprise_type = db.Column(db.Text)
+    created_by     = db.Column(db.Integer)
+    created_on     = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
             'tenant_id': self.tenant_id,
             'tenant_name': self.tenant_name,
             'enterprise_name': self.enterprise_name,
-            'enterprise_type': self.enterprise_type
+            'enterprise_type': self.enterprise_type,
+            'created_by'    : self.created_by,
+            'created_on'    : self.created_on,
+            'last_updated_by': self.last_updated_by,
+            'last_updated_on': self.last_updated_on
         }
 
 class DefJobTitle(db.Model):

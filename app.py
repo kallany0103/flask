@@ -219,9 +219,9 @@ def create_tenant():
        new_tenant  = DefTenant(
             tenant_name = tenant_name,
             created_by     = get_jwt_identity(),
-            created_on     = current_timestamp(),
+            created_on     = datetime.utcnow(),
             last_updated_by= get_jwt_identity(),
-            last_updated_on= current_timestamp()
+            last_updated_on= datetime.utcnow()
            )
        db.session.add(new_tenant)
        db.session.commit()
@@ -324,7 +324,7 @@ def update_tenant(tenant_id):
             data = request.get_json()
             tenant.tenant_name  = data['tenant_name']
             tenant.last_updated_by = get_jwt_identity()
-            tenant.last_updated_on = current_timestamp()
+            tenant.last_updated_on = datetime.utcnow()
 
             db.session.commit()
             return make_response(jsonify({"message": "Edited successfully"}), 200)
@@ -363,9 +363,9 @@ def create_enterprise(tenant_id):
             enterprise_name=enterprise_name,
             enterprise_type=enterprise_type,
             created_by     = get_jwt_identity(),
-            created_on     = current_timestamp(),
+            created_on     = datetime.utcnow(),
             last_updated_by= get_jwt_identity(),
-            last_updated_on= current_timestamp()
+            last_updated_on= datetime.utcnow()
         )
 
         db.session.add(new_enterprise)
@@ -393,7 +393,7 @@ def create_update_enterprise(tenant_id):
             existing_enterprise.enterprise_name = enterprise_name
             existing_enterprise.enterprise_type = enterprise_type
             existing_enterprise.last_updated_by = get_jwt_identity()
-            existing_enterprise.last_updated_on = current_timestamp()
+            existing_enterprise.last_updated_on = datetime.utcnow()
             message = "Edited successfully"
 
         else:
@@ -402,9 +402,9 @@ def create_update_enterprise(tenant_id):
                 enterprise_name=enterprise_name,
                 enterprise_type=enterprise_type,
                 created_by     = get_jwt_identity(),
-                created_on     = current_timestamp(),
+                created_on     = datetime.utcnow(),
                 last_updated_by = get_jwt_identity(),
-                last_updated_on = current_timestamp()
+                last_updated_on = datetime.utcnow()
             )
 
             db.session.add(new_enterprise)
@@ -478,7 +478,7 @@ def update_enterprise(tenant_id):
             setup.enterprise_name = data.get('enterprise_name', setup.enterprise_name)
             setup.enterprise_type = data.get('enterprise_type', setup.enterprise_type)
             setup.last_updated_by = get_jwt_identity()
-            setup.last_updated_on = current_timestamp()
+            setup.last_updated_on = datetime.utcnow()
             db.session.commit()
             return make_response(jsonify({"message": "Edited successfully"}), 200)
         return make_response(jsonify({"message": "Enterprise setup not found"}), 404)

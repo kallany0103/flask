@@ -37,10 +37,12 @@ class DefTenant(db.Model):
     
     tenant_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
     tenant_name = db.Column(db.String)
-    created_by     = db.Column(db.Integer)
-    created_on     = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer)
+    created_on = db.Column(db.DateTime, default=datetime.utcnow) 
+
     last_updated_by = db.Column(db.Integer)
-    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)   
+    
 
     def json(self):
         return {'tenant_id'  : self.tenant_id,

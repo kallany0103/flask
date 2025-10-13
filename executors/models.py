@@ -60,12 +60,20 @@ class DefJobTitle(db.Model):
     job_title_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
     job_title_name = db.Column(db.Text)
     tenant_id      = db.Column(db.Integer)
+    created_by     = db.Column(db.Integer)
+    created_on     = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
             'job_title_id'  : self.job_title_id,
             'job_title_name': self.job_title_name,
-            'tenant_id'     : self.tenant_id
+            'tenant_id'     : self.tenant_id,
+            'created_by'    : self.created_by,
+            'created_on'    : self.created_on,
+            'last_updated_by': self.last_updated_by,
+            'last_updated_on': self.last_updated_on
         }
 class DefUser(db.Model):
     __tablename__  = 'def_users'
@@ -229,32 +237,6 @@ class Message(db.Model):
             'readers'       : self.readers
         }
     
-
-
-
-# class DefAsyncExecutionMethods(db.Model):
-#     __tablename__ = 'def_async_execution_methods'
-
-#     execution_method = db.Column(db.String(255), unique=True, nullable=False)  # Unique execution method
-#     internal_execution_method = db.Column(db.String(255), primary_key=True) 
-#     executor = db.Column(db.String(100))  
-#     description = db.Column(db.String(255))  
-#     created_by = db.Column(db.Integer)  
-#     creation_date = db.Column(db.TIMESTAMP, default=datetime.utcnow)  
-#     last_updated_by = db.Column(db.Integer)  
-#     last_update_date = db.Column(db.TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)  
-
-#     def json(self):
-#         return {
-#             "execution_method": self.execution_method,
-#             "internal_execution_method": self.internal_execution_method,
-#             "executor": self.executor,
-#             "description": self.description,
-#             "created_by": self.created_by,
-#             "creation_date": self.creation_date,
-#             "last_updated_by": self.last_updated_by,
-#             "last_update_date": self.last_update_date,
-#         }
     
 
 class DefAsyncExecutionMethods(db.Model):

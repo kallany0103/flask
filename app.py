@@ -603,7 +603,6 @@ def get_job_titles():
 
         if job_title_id:  # Fetch specific job title
             title = DefJobTitle.query.get(job_title_id)
-            print(job_title_id)
             if not title:
                 return make_response(jsonify({"message": "Job title not found"}), 404)
 
@@ -646,10 +645,25 @@ def update_job_title():
         if not data:
             return make_response(jsonify({"message": "Missing JSON body"}), 400)
 
-        title.job_title_name = data.get('job_title_name', title.job_title_name)
-        title.tenant_id = data.get('tenant_id', title.tenant_id)
+        new_job_title_name = data.get('job_title_name', title.job_title_name)
+        new_tenant_id = data.get('tenant_id', title.tenant_id)
+
+        # Duplicate check — only if name or tenant is changing
+        existing_title = (
+            DefJobTitle.query.filter_by(job_title_name=new_job_title_name, tenant_id=new_tenant_id)
+            .filter(DefJobTitle.job_title_id != job_title_id)  # exclude current record
+            .first()
+        )
+        if existing_title:
+            return jsonify({
+                "message": f"'{new_job_title_name}' already exists for this tenant."
+            }), 409
+
+
+        title.job_title_name = new_job_title_name
+        title.tenant_id = new_tenant_id
         title.last_updated_by = get_jwt_identity()
-        title.last_updated_on = current_timestamp()
+        title.last_updated_on = datetime.utcnow()
         db.session.commit()
 
         return jsonify({
@@ -663,6 +677,7 @@ def update_job_title():
             "message": "Failed to update job title",
             "error": str(e)
         }), 500)
+
 
 
 @flask_app.route('/job_titles', methods=['DELETE'])

@@ -1360,10 +1360,27 @@ def update_specific_user(user_id):
         user = DefUser.query.filter_by(user_id=user_id).first()
         if not user:
             return make_response(jsonify({'message': 'User not found'}), 404)
+        
+
+        # --- Username & Email uniqueness check ---
+        new_user_name = data.get('user_name')
+        new_email_address = data.get('email_address')
+
+        if new_user_name or new_email_address:
+            conflict_user = DefUser.query.filter(
+                ((DefUser.user_name == new_user_name) | (DefUser.email_address == new_email_address)),
+                DefUser.user_id != user_id
+            ).first()
+            if conflict_user:
+                return make_response(jsonify({'message': 'Username or email already exists for another user'}), 400)
+
+         # Update username/email after uniqueness check
+        if new_user_name:
+            user.user_name = new_user_name
+        if new_email_address:
+            user.email_address = new_email_address
 
         # Update DefUser fields
-        user.user_name = data.get('user_name', user.user_name)
-        user.email_address = data.get('email_address', user.email_address)
         user.last_updated_on = datetime.utcnow()
         user.last_updated_by = get_jwt_identity()
 

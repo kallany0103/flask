@@ -598,13 +598,26 @@ def create_job_title():
 def get_job_titles():
     try:
         job_title_id = request.args.get('job_title_id', type=int)
+        tenant_id = request.args.get('tenant_id', type=int)
+
 
         if job_title_id:  # Fetch specific job title
             title = DefJobTitle.query.get(job_title_id)
+            print(job_title_id)
             if not title:
                 return make_response(jsonify({"message": "Job title not found"}), 404)
 
             return jsonify(title.json()), 200
+        
+        if tenant_id:
+            tenant_titles = DefJobTitle.query.filter_by(tenant_id=tenant_id).all()
+            
+            if not tenant_titles:
+                return make_response(jsonify({"message": "No job titles found for this tenant"}), 404)
+            
+            # Return a list of job titles as JSON
+            return jsonify([title.json() for title in tenant_titles]), 200
+
 
         # Fetch all job titles if no query param
         titles = DefJobTitle.query.order_by(DefJobTitle.job_title_id.desc()).all()

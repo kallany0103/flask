@@ -578,9 +578,9 @@ def create_job_title():
             job_title_name = job_title_name,
             tenant_id      = tenant_id,
             created_by     = get_jwt_identity(),
-            created_on     = current_timestamp(),
+            created_on     = datetime.utcnow(),
             last_updated_by= get_jwt_identity(),
-            last_updated_on= current_timestamp()
+            last_updated_on= datetime.utcnow()
         )
         db.session.add(new_title)
         db.session.commit()

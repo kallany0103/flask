@@ -722,9 +722,11 @@ def create_def_user():
         user_type       = data['user_type']
         email_address   = data['email_address']
         created_by      = data['created_by']
-        created_on      = current_timestamp()
+        # created_by      = get_jwt_identity()
+        created_on      = datetime.utcnow()
         last_updated_by = data['last_updated_by']
-        last_updated_on = current_timestamp()
+        # last_updated_by = get_jwt_identity()
+        last_updated_on = datetime.utcnow()
         tenant_id       = data['tenant_id']
         profile_picture = data.get('profile_picture') or {
             "original": "uploads/profiles/default/profile.jpg",
@@ -845,7 +847,7 @@ def update_user(user_id):
                 user.email_address = data['email_address']
             if 'last_updated_by' in data:
                 user.last_updated_by = data['last_updated_by']
-            user.last_updated_on = current_timestamp()
+            user.last_updated_on = datetime.utcnow()
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
         return make_response(jsonify({'message': 'User not found'}), 404)
@@ -1228,7 +1230,7 @@ def delete_user_credentials(user_id):
 
 
 @flask_app.route('/users', methods=['POST'])
-@jwt_required()
+
 def register_user():
     try:
         data = request.get_json()
@@ -1237,8 +1239,8 @@ def register_user():
         user_name       = data['user_name']
         user_type       = data['user_type']
         email_address = data['email_address']
-        # created_by      = data['created_by']
-        # last_updated_by = data['last_updated_by']
+        created_by      = data['created_by']
+        last_updated_by = data['last_updated_by']
         tenant_id       = data['tenant_id']
         # Extract person fields
         first_name      = data.get('first_name')
@@ -1277,10 +1279,10 @@ def register_user():
             user_name       = user_name,
             user_type       = user_type,
             email_address = email_address,
-            created_by      = get_jwt_identity(),
-            created_on      = current_timestamp(),
-            last_updated_by = get_jwt_identity(),
-            last_updated_on = current_timestamp(),
+            created_by      = created_by,
+            created_on      = datetime.utcnow(),
+            last_updated_by = last_updated_by,
+            last_updated_on = datetime.utcnow(),
             tenant_id       = tenant_id,
             profile_picture = profile_picture,
             user_invitation_id = user_invitation_id
@@ -1315,7 +1317,7 @@ def register_user():
 
                 user_invitation.registered_user_id = new_user.user_id
                 user_invitation.status = "ACCEPTED"
-                user_invitation.accepted_at = current_timestamp()
+                user_invitation.accepted_at = datetime.utcnow()
         
 
         db.session.commit()
@@ -1361,7 +1363,7 @@ def update_specific_user(user_id):
         # Update DefUser fields
         user.user_name = data.get('user_name', user.user_name)
         user.email_address = data.get('email_address', user.email_address)
-        user.last_updated_on = current_timestamp()
+        user.last_updated_on = datetime.utcnow()
 
         # Update DefPerson fields if user_type is "person"
         if user.user_type and user.user_type.lower() == "person":
@@ -1373,6 +1375,7 @@ def update_specific_user(user_id):
             person.middle_name = data.get('middle_name', person.middle_name)
             person.last_name = data.get('last_name', person.last_name)
             person.job_title = data.get('job_title', person.job_title)
+    
 
         # Password update logic
         password = data.get('password')

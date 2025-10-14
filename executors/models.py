@@ -101,6 +101,8 @@ class DefJobTitle(db.Model):
             'last_updated_by': self.last_updated_by,
             'last_updated_on': self.last_updated_on
         }
+    
+    
 class DefUser(db.Model):
     __tablename__  = 'def_users'
     __table_args__ = {'schema': 'apps'}

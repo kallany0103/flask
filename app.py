@@ -1230,7 +1230,7 @@ def delete_user_credentials(user_id):
 
 
 @flask_app.route('/users', methods=['POST'])
-
+@jwt_required()
 def register_user():
     try:
         data = request.get_json()
@@ -1239,8 +1239,8 @@ def register_user():
         user_name       = data['user_name']
         user_type       = data['user_type']
         email_address = data['email_address']
-        created_by      = data['created_by']
-        last_updated_by = data['last_updated_by']
+        created_by      = get_jwt_identity()
+        last_updated_by = get_jwt_identity()
         tenant_id       = data['tenant_id']
         # Extract person fields
         first_name      = data.get('first_name')
@@ -1328,7 +1328,7 @@ def register_user():
         return jsonify({"message": "Registration failed", "error": str(e)}), 500
 
 @flask_app.route('/users', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def defusers():
     try:
         defusers = DefUsersView.query.order_by(DefUsersView.user_id.desc()).all()
@@ -1338,7 +1338,7 @@ def defusers():
     
     
 @flask_app.route('/users/<int:user_id>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def get_specific_user(user_id):
     try:
         user = DefUsersView.query.filter_by(user_id=user_id).first()
@@ -1350,6 +1350,7 @@ def get_specific_user(user_id):
     
 
 @flask_app.route('/users/<int:user_id>', methods=['PUT'])
+@jwt_required()
 def update_specific_user(user_id):
     try:
         data = request.get_json()
@@ -1364,6 +1365,7 @@ def update_specific_user(user_id):
         user.user_name = data.get('user_name', user.user_name)
         user.email_address = data.get('email_address', user.email_address)
         user.last_updated_on = datetime.utcnow()
+        user.last_updated_by = get_jwt_identity()
 
         # Update DefPerson fields if user_type is "person"
         if user.user_type and user.user_type.lower() == "person":

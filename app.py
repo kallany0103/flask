@@ -4489,7 +4489,7 @@ def delete_element(dap_id):
 @flask_app.route('/def_data_sources', methods=['POST'])
 def create_def_data_source():
     try:
-        new_ds = DefDataSource(
+        new_datasource = DefDataSource(
             datasource_name=request.json.get('datasource_name'),
             description=request.json.get('description'),
             application_type=request.json.get('application_type'),
@@ -4500,9 +4500,11 @@ def create_def_data_source():
             last_transaction_synchronization_status=request.json.get('last_transaction_synchronization_status'),
             default_datasource=request.json.get('default_datasource'),
             created_by=request.json.get('created_by'),
-            last_updated_by=request.json.get('last_updated_by')
+            last_updated_by=request.json.get('last_updated_by'),
+            creation_date=datetime.utcnow(),
+            last_update_date=datetime.utcnow()
         )
-        db.session.add(new_ds)
+        db.session.add(new_datasource)
         db.session.commit()
         return make_response(jsonify({'message': 'Added successfully'}), 201)
     except Exception as e:
@@ -4584,8 +4586,8 @@ def update_def_data_source(id):
             ds.last_transaction_synchronization_date = request.json.get('last_transaction_synchronization_date', ds.last_transaction_synchronization_date)
             ds.last_transaction_synchronization_status = request.json.get('last_transaction_synchronization_status', ds.last_transaction_synchronization_status)
             ds.default_datasource = request.json.get('default_datasource', ds.default_datasource)
-            ds.created_by = request.json.get('created_by', ds.created_by)
             ds.last_updated_by = request.json.get('last_updated_by', ds.last_updated_by)
+            ds.last_update_date = datetime.utcnow()
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
         return make_response(jsonify({'message': 'Data source not found'}), 404)

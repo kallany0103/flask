@@ -4533,6 +4533,7 @@ def delete_element(dap_id):
 
 #Def_Data_Sources
 @flask_app.route('/def_data_sources', methods=['POST'])
+@jwt_required()
 def create_def_data_source():
     try:
         new_datasource = DefDataSource(
@@ -4545,8 +4546,8 @@ def create_def_data_source():
             last_transaction_synchronization_date=request.json.get('last_transaction_synchronization_date'),
             last_transaction_synchronization_status=request.json.get('last_transaction_synchronization_status'),
             default_datasource=request.json.get('default_datasource'),
-            created_by=request.json.get('created_by'),
-            last_updated_by=request.json.get('last_updated_by'),
+            created_by=get_jwt_identity(),
+            last_updated_by=get_jwt_identity(),
             creation_date=datetime.utcnow(),
             last_update_date=datetime.utcnow()
         )
@@ -4596,6 +4597,7 @@ def search_def_data_sources(page, limit):
         return make_response(jsonify({'message': 'Error searching data sources', 'error': str(e)}), 500)
 
 @flask_app.route('/def_data_sources/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
 def get_paginated_def_data_sources(page, limit):
     try:
         paginated = DefDataSource.query.order_by(DefDataSource.def_data_source_id.desc()).paginate(page=page, per_page=limit, error_out=False)
@@ -4609,6 +4611,7 @@ def get_paginated_def_data_sources(page, limit):
         return make_response(jsonify({'message': 'Error fetching paginated data sources', 'error': str(e)}), 500)
 
 @flask_app.route('/def_data_sources/<int:id>', methods=['GET'])
+@jwt_required()
 def get_def_data_source_by_id(id):
     try:
         ds = DefDataSource.query.filter_by(def_data_source_id=id).first()
@@ -4619,6 +4622,7 @@ def get_def_data_source_by_id(id):
         return make_response(jsonify({'message': 'Error fetching data source', 'error': str(e)}), 500)
 
 @flask_app.route('/def_data_sources/<int:id>', methods=['PUT'])
+@jwt_required()
 def update_def_data_source(id):
     try:
         ds = DefDataSource.query.filter_by(def_data_source_id=id).first()
@@ -4632,7 +4636,7 @@ def update_def_data_source(id):
             ds.last_transaction_synchronization_date = request.json.get('last_transaction_synchronization_date', ds.last_transaction_synchronization_date)
             ds.last_transaction_synchronization_status = request.json.get('last_transaction_synchronization_status', ds.last_transaction_synchronization_status)
             ds.default_datasource = request.json.get('default_datasource', ds.default_datasource)
-            ds.last_updated_by = request.json.get('last_updated_by', ds.last_updated_by)
+            ds.last_updated_by = get_jwt_identity()
             ds.last_update_date = datetime.utcnow()
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
@@ -4642,6 +4646,7 @@ def update_def_data_source(id):
 
 
 @flask_app.route('/def_data_sources/<int:id>', methods=['DELETE'])
+@jwt_required()
 def delete_def_data_source(id):
     try:
         ds = DefDataSource.query.filter_by(def_data_source_id=id).first()

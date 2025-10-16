@@ -107,17 +107,17 @@ class DefUser(db.Model):
     __tablename__  = 'def_users'
     __table_args__ = {'schema': 'apps'}
 
-    user_id         = db.Column(db.Integer, primary_key=True)
-    user_name       = db.Column(db.String(40), unique=True, nullable=True)
-    user_type       = db.Column(db.String(50))
-    email_address   = db.Column(Text, nullable=False)
-    created_by      = db.Column(db.Integer, nullable=False)
-    created_on      = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by = db.Column(db.Integer)
-    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    tenant_id       = db.Column(db.Integer, db.ForeignKey('apps.def_tenants.tenant_id'), nullable=False)
+    user_id            = db.Column(db.Integer, primary_key=True)
+    user_name          = db.Column(db.String(40), unique=True, nullable=True)
+    user_type          = db.Column(db.String(50))
+    email_address      = db.Column(Text, nullable=False)
+    created_by         = db.Column(db.Integer, nullable=False)
+    creation_date      = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by    = db.Column(db.Integer)
+    last_update_date   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    tenant_id          = db.Column(db.Integer, db.ForeignKey('apps.def_tenants.tenant_id'), nullable=False)
     user_invitation_id = db.Column(db.Integer) 
-    profile_picture = db.Column(
+    profile_picture    = db.Column(
     JSONB,
     default=lambda: {
         "original": "uploads/profiles/default/profile.jpg",
@@ -127,17 +127,17 @@ class DefUser(db.Model):
 
     def json(self):
         return {
-            'user_id'        : self.user_id,
-            'user_name'      : self.user_name,
-            'user_type'      : self.user_type,
-            'email_address'  : self.email_address,
-            'created_by'     : self.created_by,
-            'created_on'     : self.created_on,
-            'last_updated_by': self.last_updated_by,
-            'last_updated_on': self.last_updated_on,
-            'tenant_id'      : self.tenant_id,
+            'user_id'           : self.user_id,
+            'user_name'         : self.user_name,
+            'user_type'         : self.user_type,
+            'email_address'     : self.email_address,
+            'created_by'        : self.created_by,
+            'creation_date'     : self.creation_date,
+            'last_updated_by'   : self.last_updated_by,
+            'last_update_date'  : self.last_update_date,
+            'tenant_id'         : self.tenant_id,
             'user_invitation_id': self.user_invitation_id,
-            'profile_picture': self.profile_picture
+            'profile_picture'   : self.profile_picture
         }
 
 
@@ -146,19 +146,27 @@ class DefPerson(db.Model):
     __tablename__ = 'def_persons'
     __table_args__ = {'schema': 'apps'}
 
-    user_id     = db.Column(db.Integer, primary_key=True)
-    first_name  = db.Column(db.String(40))
-    middle_name = db.Column(db.String(30))
-    last_name   = db.Column(db.String(30))
-    job_title   = db.Column(db.String(50))
+    user_id          = db.Column(db.Integer, primary_key=True)
+    first_name       = db.Column(db.String(40))
+    middle_name      = db.Column(db.String(30))
+    last_name        = db.Column(db.String(30))
+    job_title        = db.Column(db.String(50))
+    created_by       = db.Column(db.Integer, nullable=False)
+    creation_date    = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by  = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
-            'user_id'    : self.user_id,
-            'first_name' : self.first_name,
-            'middle_name': self.middle_name,
-            'last_name'  : self.last_name,
-            'job_title'  : self.job_title
+            'user_id'         : self.user_id,
+            'first_name'      : self.first_name,
+            'middle_name'     : self.middle_name,
+            'last_name'       : self.last_name,
+            'job_title'       : self.job_title,
+            'created_by'      : self.created_by,
+            'creation_date'   : self.creation_date,
+            'last_updated_by' : self.last_updated_by,
+            'last_update_date': self.last_update_date
         }
     
 
@@ -167,32 +175,50 @@ class DefUserCredential(db.Model):
     __tablename__  = 'def_user_credentials'
     __table_args__ = {'schema': 'apps'}
 
-    user_id  = db.Column(db.Integer, primary_key=True)
-    password = db.Column(db.String(50), unique=True, nullable=False)
+    user_id          = db.Column(db.Integer, primary_key=True)
+    password         = db.Column(db.String(50), unique=True, nullable=False)
+    created_by       = db.Column(db.Integer, nullable=False)
+    creation_date    = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by  = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
-        {'user_id' : self.user_id,
-         'password': self.password}
-        
+        return {
+            'user_id'         : self.user_id,
+            'password'        : self.password,
+            'created_by'      : self.created_by,
+            'creation_date'   : self.creation_date,
+            'last_updated_by' : self.last_updated_by,
+            'last_update_date': self.last_update_date
+        }
+
 
 class DefAccessProfile(db.Model):
     __tablename__ = 'def_access_profiles'
     __table_args__ = {'schema': 'apps'}
 
-    serial_number = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('apps.def_users.user_id'))
-    profile_type = db.Column(db.String(50), nullable=False)
-    profile_id = db.Column(db.String(100), nullable=False)
-    primary_yn = db.Column(db.CHAR(1), default='N')
+    serial_number    = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id          = db.Column(db.Integer, db.ForeignKey('apps.def_users.user_id'))
+    profile_type     = db.Column(db.String(50), nullable=False)
+    profile_id       = db.Column(db.String(100), nullable=False)
+    primary_yn       = db.Column(db.CHAR(1), default='N')
+    created_by       = db.Column(db.Integer, nullable=False)
+    creation_date    = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by  = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
     def json(self):
         return {
-            'serial_number': self.serial_number,
-            'user_id': self.user_id,
-            'profile_type': self.profile_type,
-            'profile_id': self.profile_id,
-            'primary_yn': self.primary_yn
+            'serial_number'   : self.serial_number,
+            'user_id'         : self.user_id,
+            'profile_type'    : self.profile_type,
+            'profile_id'      : self.profile_id,
+            'primary_yn'      : self.primary_yn,
+            'created_by'      : self.created_by,
+            'creation_date'   : self.creation_date,
+            'last_updated_by' : self.last_updated_by,
+            'last_update_date': self.last_update_date
         }
          
         
@@ -200,37 +226,39 @@ class DefUsersView(db.Model):
     __tablename__ = 'def_users_v'
     __table_args__ = {'schema': 'apps'}
     
-    user_id         = db.Column(db.Integer(), primary_key = True)
-    user_name       = db.Column(db.String(50))
-    first_name      = db.Column(db.String(30))
-    middle_name     = db.Column(db.String(30))
-    last_name       = db.Column(db.String(30))
-    email_address   = db.Column(db.Text)
-    job_title       = db.Column(db.String(50))
-    created_by      = db.Column(db.Integer)
-    created_on      = db.Column(db.DateTime)
-    last_updated_by = db.Column(db.Integer)
-    last_updated_on = db.Column(db.DateTime)
-    tenant_id       = db.Column(db.Integer)
+    user_id            = db.Column(db.Integer(), primary_key = True)
+    user_name          = db.Column(db.String(50))
+    first_name         = db.Column(db.String(30))
+    middle_name        = db.Column(db.String(30))
+    last_name          = db.Column(db.String(30))
+    email_address      = db.Column(db.Text)
+    job_title          = db.Column(db.String(50))
+    user_type          = db.Column(db.String(30))
+    created_by         = db.Column(db.Integer)
+    creation_date      = db.Column(db.DateTime)
+    last_updated_by    = db.Column(db.Integer)
+    last_update_date   = db.Column(db.DateTime)
+    tenant_id          = db.Column(db.Integer)
     user_invitation_id = db.Column(db.Integer)
-    profile_picture = db.Column(JSONB)
+    profile_picture    = db.Column(JSONB)
 
     def json(self):
         return {
-            'user_id'        : self.user_id, 
-            'user_name'      : self.user_name,
-            'first_name'     : self.first_name,
-            'middle_name'    : self.middle_name,
-            'last_name'      : self.last_name,
-            'email_address': self.email_address,
-            'job_title'      : self.job_title,
-            'created_by'     : self.created_by,
-            'created_on'     : self.created_on,
-            'last_updated_by': self.last_updated_by,
-            'last_updated_on': self.last_updated_on,
-            'tenant_id'      : self.tenant_id,
+            'user_id'           : self.user_id, 
+            'user_name'         : self.user_name,
+            'first_name'        : self.first_name,
+            'middle_name'       : self.middle_name,
+            'last_name'         : self.last_name,
+            'email_address'     : self.email_address,
+            'job_title'         : self.job_title,
+            'user_type'         : self.user_type,
+            'created_by'        : self.created_by,
+            'creation_date'     : self.creation_date,
+            'last_updated_by'   : self.last_updated_by,
+            'last_update_date'  : self.last_update_date,
+            'tenant_id'         : self.tenant_id,
             'user_invitation_id': self.user_invitation_id,
-            'profile_picture': self.profile_picture
+            'profile_picture'   : self.profile_picture
     }
         
         

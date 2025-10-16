@@ -741,6 +741,7 @@ def delete_tenant_and_related():
 
 
 @flask_app.route('/defusers', methods=['POST'])
+@jwt_required()
 def create_def_user():
     try:
         # Parse data from the request body
@@ -749,12 +750,6 @@ def create_def_user():
         user_name       = data['user_name']
         user_type       = data['user_type']
         email_address   = data['email_address']
-        created_by      = data['created_by']
-        # created_by      = get_jwt_identity()
-        created_on      = datetime.utcnow()
-        last_updated_by = data['last_updated_by']
-        # last_updated_by = get_jwt_identity()
-        last_updated_on = datetime.utcnow()
         tenant_id       = data['tenant_id']
         profile_picture = data.get('profile_picture') or {
             "original": "uploads/profiles/default/profile.jpg",
@@ -772,10 +767,10 @@ def create_def_user():
           user_name       = user_name,
           user_type       = user_type,
           email_address   = email_address,  # Corrected variable name
-          created_by      = created_by,
-          created_on      = created_on,
-          last_updated_by = last_updated_by,
-          last_updated_on = last_updated_on,
+          created_by      = get_jwt_identity(),
+          creation_date   = datetime.utcnow(),
+          last_updated_by = get_jwt_identity(),
+          last_update_date= datetime.utcnow(),
           tenant_id       = tenant_id,
           profile_picture = profile_picture,
           user_invitation_id = user_invitation_id
@@ -795,6 +790,7 @@ def create_def_user():
 
 
 @flask_app.route('/defusers', methods=['GET'])
+@jwt_required()
 def get_users():
     try:
         users = DefUser.query.all()
@@ -853,6 +849,7 @@ def search_def_users(page, limit):
 
 # get a user by id
 @flask_app.route('/defusers/<int:user_id>', methods=['GET'])
+@jwt_required()
 def get_user(user_id):
     try:
         user = DefUser.query.filter_by(user_id=user_id).first()
@@ -864,6 +861,7 @@ def get_user(user_id):
     
     
 @flask_app.route('/defusers/<int:user_id>', methods=['PUT'])
+@jwt_required()
 def update_user(user_id):
     try:
         user = DefUser.query.filter_by(user_id=user_id).first()
@@ -873,9 +871,8 @@ def update_user(user_id):
                 user.user_name = data['user_name']
             if 'email_address' in data:
                 user.email_address = data['email_address']
-            if 'last_updated_by' in data:
-                user.last_updated_by = data['last_updated_by']
-            user.last_updated_on = datetime.utcnow()
+            user.last_updated_by = get_jwt_identity()
+            user.last_update_date = datetime.utcnow()
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
         return make_response(jsonify({'message': 'User not found'}), 404)
@@ -884,6 +881,7 @@ def update_user(user_id):
 
 
 @flask_app.route('/defusers/<int:user_id>', methods=['DELETE'])
+@jwt_required()
 def delete_user(user_id):
     try:
         user = DefUser.query.filter_by(user_id=user_id).first()
@@ -934,6 +932,7 @@ def search_combined_users(page, limit):
 
 
 @flask_app.route('/defpersons', methods=['POST'])
+@jwt_required()
 def create_arc_person():
     try:
         data = request.get_json()
@@ -945,11 +944,15 @@ def create_arc_person():
         
         # create arc persons object 
         person =  DefPerson(
-            user_id     = user_id,
-            first_name  = first_name,
-            middle_name = middle_name,
-            last_name   = last_name,
-            job_title   = job_title
+            user_id          = user_id,
+            first_name       = first_name,
+            middle_name      = middle_name,
+            last_name        = last_name,
+            job_title        = job_title,
+            created_by       = get_jwt_identity(),
+            creation_date    = datetime.utcnow(),
+            last_updated_by  = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         ) 
         
         # Add arc persons data to the database session
@@ -964,6 +967,7 @@ def create_arc_person():
     
     
 @flask_app.route('/defpersons', methods=['GET'])
+@jwt_required()
 def get_persons():
     try:
         persons = DefPerson.query.all()
@@ -1024,6 +1028,7 @@ def search_def_persons(page, limit):
 
 
 @flask_app.route('/defpersons/<int:user_id>', methods=['GET'])
+@jwt_required()
 def get_person(user_id):
     try:
         person = DefPerson.query.filter_by(user_id=user_id).first()
@@ -1035,6 +1040,7 @@ def get_person(user_id):
 
 
 @flask_app.route('/defpersons/<int:user_id>', methods=['PUT'])
+@jwt_required()
 def update_person(user_id):
     try:
         person = DefPerson.query.filter_by(user_id=user_id).first()
@@ -1049,6 +1055,8 @@ def update_person(user_id):
                 person.last_name = data['last_name']
             if 'job_title' in data:
                 person.job_title = data['job_title']
+            person.last_updated_by = get_jwt_identity()
+            person.last_udpate_date = datetime.utcnow()
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
         return make_response(jsonify({'message': 'Person not found'}), 404)
@@ -1057,6 +1065,7 @@ def update_person(user_id):
     
     
 @flask_app.route('/defpersons/<int:user_id>', methods=['DELETE'])
+@jwt_required()
 def delete_person(user_id):
     try:
         person = DefPerson.query.filter_by(user_id=user_id).first()
@@ -1071,6 +1080,7 @@ def delete_person(user_id):
 
     
 @flask_app.route('/def_user_credentials', methods=['POST'])
+@jwt_required()
 def create_user_credential():
     try:
         # Parse data from the request body
@@ -1078,10 +1088,16 @@ def create_user_credential():
         user_id  = data['user_id']
         password = data['password']
 
+
         # Create a new DefUserCredentials object
         credential = DefUserCredential(
-            user_id  = user_id,
-            password = password
+            user_id          = user_id,
+            password         = password,
+            created_by       = get_jwt_identity(),
+            creation_date    = datetime.utcnow(),
+            last_updated_by  = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
+
         )
 
         # Add the new credentials to the database session
@@ -1117,6 +1133,7 @@ def reset_user_password():
     
     hashed_new_password = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
     user.password = hashed_new_password
+    user.last_update_date = datetime.utcnow()
     
     db.session.commit()
     
@@ -1124,6 +1141,7 @@ def reset_user_password():
 
 
 @flask_app.route('/def_user_credentials/<int:user_id>', methods=['DELETE'])
+@jwt_required()
 def delete_user_credentials(user_id):
     try:
         credential = DefUserCredential.query.filter_by(user_id=user_id).first()
@@ -1266,7 +1284,7 @@ def register_user():
         # user_id         = generate_user_id()
         user_name       = data['user_name']
         user_type       = data['user_type']
-        email_address = data['email_address']
+        email_address   = data['email_address']
         created_by      = get_jwt_identity()
         last_updated_by = get_jwt_identity()
         tenant_id       = data['tenant_id']
@@ -1304,15 +1322,15 @@ def register_user():
         # Create user
         new_user = DefUser(
             # user_id         = user_id,
-            user_name       = user_name,
-            user_type       = user_type,
-            email_address = email_address,
-            created_by      = created_by,
-            created_on      = datetime.utcnow(),
-            last_updated_by = last_updated_by,
-            last_updated_on = datetime.utcnow(),
-            tenant_id       = tenant_id,
-            profile_picture = profile_picture,
+            user_name          = user_name,
+            user_type          = user_type,
+            email_address      = email_address,
+            created_by         = created_by,
+            creation_date      = datetime.utcnow(),
+            last_updated_by    = last_updated_by,
+            last_update_date   = datetime.utcnow(),
+            tenant_id          = tenant_id,
+            profile_picture    = profile_picture,
             user_invitation_id = user_invitation_id
         )
         db.session.add(new_user)
@@ -1321,11 +1339,15 @@ def register_user():
         # Create person if user_type is person
         if user_type.lower() == "person" :
             new_person = DefPerson(
-                user_id     = new_user.user_id,
-                first_name  = first_name,
-                middle_name = middle_name,
-                last_name   = last_name,
-                job_title   = job_title
+                user_id          = new_user.user_id,
+                first_name       = first_name,
+                middle_name      = middle_name,
+                last_name        = last_name,
+                job_title        = job_title,
+                created_by       = created_by,
+                creation_date    = datetime.utcnow(),
+                last_updated_by  = last_updated_by,
+                last_update_date = datetime.utcnow()
             )
             db.session.add(new_person)
 
@@ -1334,8 +1356,14 @@ def register_user():
         # Create credentials
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
         new_cred = DefUserCredential(
-            user_id  = new_user.user_id,
-            password = hashed_password
+            user_id          = new_user.user_id,
+            password         = hashed_password,
+            created_by       = created_by,
+            creation_date    = datetime.utcnow(),
+            last_updated_by  = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
+
+
         )
         db.session.add(new_cred)
 
@@ -1344,8 +1372,8 @@ def register_user():
             if user_invitation:
 
                 user_invitation.registered_user_id = new_user.user_id
-                user_invitation.status = "ACCEPTED"
-                user_invitation.accepted_at = datetime.utcnow()
+                user_invitation.status             = "ACCEPTED"
+                user_invitation.accepted_at        = datetime.utcnow()
         
 
         db.session.commit()
@@ -1371,7 +1399,7 @@ def get_specific_user(user_id):
     try:
         user = DefUsersView.query.filter_by(user_id=user_id).first()
         if user:
-            return make_response(jsonify({'user': user.json()}), 200)
+            return make_response(jsonify(user.json()), 200)
         return make_response(jsonify({'message': 'User not found'}), 404)
     except Exception as e:
         return make_response(jsonify({'message': 'Error getting User', 'error': str(e)}), 500)  
@@ -1391,7 +1419,7 @@ def update_specific_user(user_id):
         
 
         # --- Username & Email uniqueness check ---
-        new_user_name = data.get('user_name')
+        new_user_name     = data.get('user_name')
         new_email_address = data.get('email_address')
 
         if new_user_name or new_email_address:
@@ -1409,8 +1437,8 @@ def update_specific_user(user_id):
             user.email_address = new_email_address
 
         # Update DefUser fields
-        user.last_updated_on = datetime.utcnow()
-        user.last_updated_by = get_jwt_identity()
+        user.last_update_date = datetime.utcnow()
+        user.last_updated_by  = get_jwt_identity()
 
         # Update DefPerson fields if user_type is "person"
         if user.user_type and user.user_type.lower() == "person":
@@ -1418,10 +1446,12 @@ def update_specific_user(user_id):
             if not person:
                 return make_response(jsonify({'message': 'Person not found'}), 404)
 
-            person.first_name = data.get('first_name', person.first_name)
-            person.middle_name = data.get('middle_name', person.middle_name)
-            person.last_name = data.get('last_name', person.last_name)
-            person.job_title = data.get('job_title', person.job_title)
+            person.first_name       = data.get('first_name', person.first_name)
+            person.middle_name      = data.get('middle_name', person.middle_name)
+            person.last_name        = data.get('last_name', person.last_name)
+            person.job_title        = data.get('job_title', person.job_title)
+            person.last_update_date = datetime.utcnow()
+            person.last_updated_by  = get_jwt_identity()
     
 
         # Password update logic
@@ -1431,7 +1461,9 @@ def update_specific_user(user_id):
             if not user_cred:
                 return make_response(jsonify({'message': 'User credentials not found'}), 404)
 
-            user_cred.password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
+            user_cred.password        = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
+            user_cred.last_update_date= datetime.utcnow()
+            user_cred.last_updated_by = get_jwt_identity()
 
         db.session.commit()
         return make_response(jsonify({'message': 'Edited successfully'}), 200)
@@ -1443,6 +1475,7 @@ def update_specific_user(user_id):
 
 
 @flask_app.route('/users/<int:user_id>', methods=['DELETE'])
+@jwt_required()
 def delete_specific_user(user_id):
     try:
         # Find the user record in the DefUser table
@@ -1531,11 +1564,13 @@ def login():
 
 
 @flask_app.route('/access_profiles/<int:user_id>', methods=['POST'])
+@jwt_required()
 def create_access_profiles(user_id):
     try:
         profile_type = request.json.get('profile_type') # Fixed incorrect key
         profile_id = request.json.get('profile_id')
         primary_yn = request.json.get('primary_yn', 'N') # Default to 'N' if not provided
+
 
         if not profile_type or not profile_id:
             return make_response(jsonify({"message": "Missing required fields"}), 400)
@@ -1555,10 +1590,15 @@ def create_access_profiles(user_id):
             return make_response(jsonify({"message": f"Email '{profile_id}' already exists in DefUser"}), 409)
 
         new_profile = DefAccessProfile(
-            user_id=user_id,
-            profile_type=profile_type,
-            profile_id=profile_id,
-            primary_yn=primary_yn
+            user_id          = user_id,
+            profile_type     = profile_type,
+            profile_id       = profile_id,
+            primary_yn       = primary_yn,
+            created_by       = get_jwt_identity(),
+            creation_date    = datetime.utcnow(),
+            last_updated_by  = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
+
         )
 
         db.session.add(new_profile)
@@ -1581,6 +1621,7 @@ def create_access_profiles(user_id):
 
 # Get all access profiles
 @flask_app.route('/access_profiles', methods=['GET'])
+@jwt_required()
 def get_users_access_profiles():
     try:
         profiles = DefAccessProfile.query.all()
@@ -1590,6 +1631,7 @@ def get_users_access_profiles():
 
 
 @flask_app.route('/access_profiles/<int:user_id>', methods=['GET'])
+@jwt_required()
 def get_user_access_profiles_(user_id):
     try:
         profiles = DefAccessProfile.query.filter_by(user_id=user_id).all()
@@ -1603,6 +1645,7 @@ def get_user_access_profiles_(user_id):
 
 
 @flask_app.route('/access_profiles/<int:user_id>/<int:serial_number>', methods=['PUT'])
+@jwt_required()
 def update_access_profile(user_id, serial_number):
     try:
         # Retrieve the existing access profile
@@ -1619,6 +1662,8 @@ def update_access_profile(user_id, serial_number):
             profile.profile_id = data['profile_id']
         if 'primary_yn' in data:
             profile.primary_yn = data['primary_yn']
+        profile.last_updated_by = get_jwt_identity()
+        profile.last_update_date = datetime.utcnow()
 
         # Commit changes to DefAccessProfile
         db.session.commit()
@@ -1632,6 +1677,7 @@ def update_access_profile(user_id, serial_number):
 
 # Delete an access profile
 @flask_app.route('/access_profiles/<int:user_id>/<int:serial_number>', methods=['DELETE'])
+@jwt_required()
 def delete_access_profile(user_id, serial_number):
     try:
         profile = DefAccessProfile.query.filter_by(user_id=user_id, serial_number=serial_number).first()

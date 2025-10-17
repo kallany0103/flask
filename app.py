@@ -575,12 +575,12 @@ def create_job_title():
             return jsonify({"message": f"'{job_title_name}' already exists for this tenant."}), 409
 
         new_title = DefJobTitle(
-            job_title_name = job_title_name,
-            tenant_id      = tenant_id,
-            created_by     = get_jwt_identity(),
-            created_on     = datetime.utcnow(),
-            last_updated_by= get_jwt_identity(),
-            last_updated_on= datetime.utcnow()
+            job_title_name   = job_title_name,
+            tenant_id        = tenant_id,
+            created_by       = get_jwt_identity(),
+            creation_date    = datetime.utcnow(),
+            last_updated_by  = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
         db.session.add(new_title)
         db.session.commit()
@@ -599,34 +599,58 @@ def get_job_titles():
     try:
         job_title_id = request.args.get('job_title_id', type=int)
         tenant_id = request.args.get('tenant_id', type=int)
+        page = request.args.get('page', type=int)
+        limit = request.args.get('limit', type=int, default=10)
 
-
-        if job_title_id:  # Fetch specific job title
-            title = DefJobTitle.query.get(job_title_id)
-            if not title:
+        #If job_title_id is provided → return single object
+        if job_title_id:
+            job = DefJobTitle.query.filter(DefJobTitle.job_title_id == job_title_id).first()
+            if not job:
                 return make_response(jsonify({"message": "Job title not found"}), 404)
+            return make_response(jsonify(job.json()), 200)
 
-            return jsonify(title.json()), 200
-        
+        #If tenant_id is provided → filter by tenant, optionally paginate
         if tenant_id:
-            tenant_titles = DefJobTitle.query.filter_by(tenant_id=tenant_id).all()
+            query = DefJobTitle.query.filter(DefJobTitle.tenant_id == tenant_id)\
+                                     .order_by(DefJobTitle.job_title_id.desc())
             
-            if not tenant_titles:
-                return make_response(jsonify({"message": "No job titles found for this tenant"}), 404)
-            
-            # Return a list of job titles as JSON
-            return jsonify([title.json() for title in tenant_titles]), 200
+            if page:
+                paginated = query.paginate(page=page, per_page=limit, error_out=False)
+                return make_response(jsonify({
+                    "items": [item.json() for item in paginated.items],
+                    "total": paginated.total,
+                    "pages": paginated.pages,
+                    "page": paginated.page
+                }), 200)
 
+            # No pagination but still tenant filtered
+            items = query.all()
+            if not items:
+                return make_response(jsonify({"message": "No job titles found for tenant"}), 404)
+            return make_response(jsonify([item.json() for item in items]), 200)
 
-        # Fetch all job titles if no query param
-        titles = DefJobTitle.query.order_by(DefJobTitle.job_title_id.desc()).all()
-        return jsonify([t.json() for t in titles]), 200
+        #If neither job_title_id nor tenant_id → require pagination
+        if page:
+            query = DefJobTitle.query.order_by(DefJobTitle.job_title_id.desc())
+            paginated = query.paginate(page=page, per_page=limit, error_out=False)
+            return make_response(jsonify({
+                "items": [item.json() for item in paginated.items],
+                "total": paginated.total,
+                "pages": paginated.pages,
+                "page": paginated.page
+            }), 200)
+
+        #Otherwise — no valid params
+        return make_response(jsonify({
+            "message": "Please provide job_title_id, tenant_id, or pagination parameters"
+        }), 400)
 
     except Exception as e:
         return make_response(jsonify({
             "message": "Failed to retrieve job titles",
             "error": str(e)
         }), 500)
+
 
 
 @flask_app.route('/job_titles', methods=['PUT'])
@@ -660,10 +684,10 @@ def update_job_title():
             }), 409
 
 
-        title.job_title_name = new_job_title_name
-        title.tenant_id = new_tenant_id
-        title.last_updated_by = get_jwt_identity()
-        title.last_updated_on = datetime.utcnow()
+        title.job_title_name   = new_job_title_name
+        title.tenant_id        = new_tenant_id
+        title.last_updated_by  = get_jwt_identity()
+        title.last_update_date = datetime.utcnow()
         db.session.commit()
 
         return jsonify({
@@ -1083,29 +1107,24 @@ def delete_person(user_id):
 @jwt_required()
 def create_user_credential():
     try:
-        # Parse data from the request body
         data = request.get_json()
-        user_id  = data['user_id']
+        user_id = data['user_id']
         password = data['password']
 
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
 
-        # Create a new DefUserCredentials object
         credential = DefUserCredential(
             user_id          = user_id,
-            password         = password,
+            password         = hashed_password,
             created_by       = get_jwt_identity(),
             creation_date    = datetime.utcnow(),
             last_updated_by  = get_jwt_identity(),
             last_update_date = datetime.utcnow()
-
         )
 
-        # Add the new credentials to the database session
         db.session.add(credential)
-        # Commit the changes to the database
         db.session.commit()
 
-        # Return a success response
         return make_response(jsonify({"message": "Added successfully!"}), 201)
 
     except Exception as e:
@@ -1116,28 +1135,32 @@ def create_user_credential():
     
     
 @flask_app.route('/reset_user_password', methods=['PUT'])
-#@jwt_required()
+@jwt_required()
 def reset_user_password():
-    #current_user_id = get_jwt_identity()
-    data = request.get_json()
-    current_user_id = data['user_id']
-    old_password = data['old_password']
-    new_password = data['new_password']
-    
-    user = DefUserCredential.query.get(current_user_id)
-    if not user:
-        return jsonify({'message': 'User not found'}), 404
-    
-    if not check_password_hash(user.password, old_password):
-        return jsonify({'message': 'Invalid old password'}), 401
-    
-    hashed_new_password = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
-    user.password = hashed_new_password
-    user.last_update_date = datetime.utcnow()
-    
-    db.session.commit()
-    
-    return jsonify({'message': 'Edited successfully'}), 200
+    try:
+        data = request.get_json()
+        current_user_id = data['user_id']
+        old_password = data['old_password']
+        new_password = data['new_password']
+
+        user = DefUserCredential.query.get(current_user_id)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+
+        if not check_password_hash(user.password, old_password):
+            return jsonify({'message': 'Invalid old password'}), 401
+
+        hashed_new_password   = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
+        user.password         = hashed_new_password
+        user.last_update_date = datetime.utcnow()
+        user.last_updated_by  = get_jwt_identity()
+
+        db.session.commit()
+
+        return jsonify({'message': 'Edited successfully'}), 200
+
+    except Exception as e:
+        return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
 
 
 @flask_app.route('/def_user_credentials/<int:user_id>', methods=['DELETE'])

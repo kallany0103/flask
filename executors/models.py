@@ -83,23 +83,23 @@ class DefJobTitle(db.Model):
     __tablename__  = 'def_job_titles'
     __table_args__ = {'schema': 'apps'}
 
-    job_title_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    job_title_name = db.Column(db.Text)
-    tenant_id      = db.Column(db.Integer)
-    created_by     = db.Column(db.Integer)
-    created_on     = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by = db.Column(db.Integer)
-    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    job_title_id     = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    job_title_name   = db.Column(db.Text)
+    tenant_id        = db.Column(db.Integer)
+    created_by       = db.Column(db.Integer)
+    creation_date    = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by  = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
-            'job_title_id'  : self.job_title_id,
-            'job_title_name': self.job_title_name,
-            'tenant_id'     : self.tenant_id,
-            'created_by'    : self.created_by,
-            'created_on'    : self.created_on,
-            'last_updated_by': self.last_updated_by,
-            'last_updated_on': self.last_updated_on
+            'job_title_id'    : self.job_title_id,
+            'job_title_name'  : self.job_title_name,
+            'tenant_id'       : self.tenant_id,
+            'created_by'      : self.created_by,
+            'creation_date'   : self.creation_date,
+            'last_updated_by' : self.last_updated_by,
+            'last_update_date': self.last_update_date
         }
     
     

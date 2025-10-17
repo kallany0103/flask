@@ -559,17 +559,18 @@ class DefAccessModel(db.Model):
     __table_args__ = {'schema': 'apps'}
 
     def_access_model_id = db.Column(db.Integer, primary_key=True)  
-    model_name         = db.Column(db.Text)                       
-    description        = db.Column(db.Text)                       
-    type               = db.Column(db.Text)                       
-    run_status         = db.Column(db.Text)                       
-    state              = db.Column(db.Text)                       
-    last_run_date      = db.Column(db.DateTime, default=datetime.utcnow)                       
-    created_by         = db.Column(db.Integer)                       
-    last_updated_by    = db.Column(db.Integer)                       
-    last_updated_date  = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)                       
-    revision           = db.Column(db.Integer)                    
-    revision_date      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    model_name = db.Column(db.Text)                       
+    description = db.Column(db.Text)                       
+    type = db.Column(db.Text)                       
+    run_status = db.Column(db.Text)                       
+    state = db.Column(db.Text)                       
+    last_run_date = db.Column(db.DateTime, default=datetime.utcnow)                       
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)                       
+    last_updated_by = db.Column(db.Integer)                       
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)                       
+    revision = db.Column(db.Integer)                    
+    revision_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     datasource_name = db.Column(db.Text, db.ForeignKey('apps.def_data_sources.datasource_name', name='datasource_name'), nullable=True)                       
 
 
@@ -585,8 +586,9 @@ class DefAccessModel(db.Model):
             "state": self.state,
             "last_run_date": self.last_run_date.isoformat() if self.last_run_date else None,
             "created_by": self.created_by,
+            "creation_date": self.creation_date.isoformat() if self.creation_date else None,
             "last_updated_by": self.last_updated_by,
-            "last_updated_date": self.last_updated_date.isoformat() if self.last_updated_date else None,
+            "last_update_date": self.last_update_date.isoformat() if self.last_update_date else None,
             "revision": self.revision,
             "revision_date": self.revision_date.isoformat() if self.revision_date else None,
             "datasource_name": self.datasource_name
@@ -597,12 +599,16 @@ class DefAccessModelLogic(db.Model):
     __table_args__ = {'schema': 'apps'}
 
     def_access_model_logic_id = db.Column(db.Integer, primary_key=True) 
-    def_access_model_id       = db.Column(db.Integer, db.ForeignKey('apps.def_access_models.def_access_model_id'), nullable=False)  # Foreign key to def_access_models
-    filter                    = db.Column(db.Text)                       
-    object                    = db.Column(db.Text)                       
-    attribute                 = db.Column(db.Text)                       
-    condition                 = db.Column(db.Text)                       
-    value                     = db.Column(db.Text)                       
+    def_access_model_id = db.Column(db.Integer, db.ForeignKey('apps.def_access_models.def_access_model_id'), nullable=False)
+    filter = db.Column(db.Text)
+    object = db.Column(db.Text)
+    attribute = db.Column(db.Text)
+    condition = db.Column(db.Text)
+    value = db.Column(db.Text)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     
     # model = db.relationship("DefAccessModel", back_populates="logics")
@@ -616,17 +622,25 @@ class DefAccessModelLogic(db.Model):
             "object": self.object,
             "attribute": self.attribute,
             "condition": self.condition,
-            "value": self.value
+            "value": self.value,
+            "created_by": self.created_by,
+            "creation_date": self.creation_date,
+            "last_updated_by": self.last_updated_by,
+            "last_update_date": self.last_update_date
         }
 
 class DefAccessModelLogicAttribute(db.Model):
     __tablename__ = 'def_access_model_logic_attributes'
     __table_args__ = {'schema': 'apps'}
 
-    id                        = db.Column(db.Integer, primary_key=True)  
+    id = db.Column(db.Integer, primary_key=True)
     def_access_model_logic_id = db.Column(db.Integer, db.ForeignKey('apps.def_access_model_logics.def_access_model_logic_id'), nullable=False)  # Foreign key to def_access_model_logics
-    widget_position           = db.Column(db.Integer)                    
-    widget_state              = db.Column(db.Integer)                    
+    widget_position = db.Column(db.Integer)
+    widget_state = db.Column(db.Integer)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     
     # logic = db.relationship("DefAccessModelLogic", back_populates="attributes")
@@ -636,7 +650,11 @@ class DefAccessModelLogicAttribute(db.Model):
             "id": self.id,
             "def_access_model_logic_id": self.def_access_model_logic_id,
             "widget_position": self.widget_position,
-            "widget_state": self.widget_state
+            "widget_state": self.widget_state,
+            "created_by": self.created_by,
+            "creation_date": self.creation_date,
+            "last_updated_by": self.last_updated_by,
+            "last_update_date": self.last_update_date
         }
     
 
@@ -645,18 +663,26 @@ class DefGlobalCondition(db.Model):
     __table_args__ = {'schema': 'apps'}
 
     def_global_condition_id = db.Column(db.Integer, primary_key=True)
-    name        = db.Column(db.Text)
-    datasource  = db.Column(db.Text)
+    name = db.Column(db.Text)
+    datasource = db.Column(db.Text)
     description = db.Column(db.Text)
-    status      = db.Column(db.Text)
+    status = db.Column(db.Text)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
             'def_global_condition_id': self.def_global_condition_id,
-            'name'       : self.name,
-            'datasource' : self.datasource,
+            'name': self.name,
+            'datasource': self.datasource,
             'description': self.description,
-            'status'     : self.status
+            'status': self.status,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
         }
     
 class DefGlobalConditionLogic(db.Model):
@@ -664,20 +690,28 @@ class DefGlobalConditionLogic(db.Model):
     __table_args__ = {'schema': 'apps'}
 
     def_global_condition_logic_id = db.Column(db.Integer, primary_key=True)
-    def_global_condition_id       = db.Column(db.Integer, db.ForeignKey('apps.def_global_conditions.def_global_condition_id'), nullable=False)
-    object     = db.Column(db.Text)
-    attribute  = db.Column(db.Text)
-    condition  = db.Column(db.Text)
-    value      = db.Column(db.Text)
+    def_global_condition_id = db.Column(db.Integer, db.ForeignKey('apps.def_global_conditions.def_global_condition_id'), nullable=False)
+    object = db.Column(db.Text)
+    attribute = db.Column(db.Text)
+    condition = db.Column(db.Text)
+    value = db.Column(db.Text)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
             'def_global_condition_logic_id': self.def_global_condition_logic_id,
-            'def_global_condition_id'     : self.def_global_condition_id,
-            'object'     : self.object,
-            'attribute'  : self.attribute,
-            'condition'  : self.condition,
-            'value'      : self.value
+            'def_global_condition_id': self.def_global_condition_id,
+            'object': self.object,
+            'attribute': self.attribute,
+            'condition': self.condition,
+            'value': self.value,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
         }
     
 class DefGlobalConditionLogicAttribute(db.Model):
@@ -688,14 +722,22 @@ class DefGlobalConditionLogicAttribute(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     def_global_condition_logic_id = db.Column(db.Integer, db.ForeignKey('apps.def_global_condition_logics.def_global_condition_logic_id'), nullable=False)
     widget_position = db.Column(db.Integer)
-    widget_state    = db.Column(db.Integer)
+    widget_state = db.Column(db.Integer)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
             'id': self.id,
             'def_global_condition_logic_id' : self.def_global_condition_logic_id,
             'widget_position' : self.widget_position,
-            'widget_state'    : self.widget_state
+            'widget_state': self.widget_state,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
         }
     
 
@@ -703,20 +745,20 @@ class DefDataSource(db.Model):
     __tablename__ = 'def_data_sources'
     __table_args__ = {'schema': 'apps'}
 
-    def_data_source_id                     = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    datasource_name                        = db.Column(db.String(50))
-    description                            = db.Column(db.String(250))
-    application_type                       = db.Column(db.String(50))
-    application_type_version               = db.Column(db.String(50))
-    last_access_synchronization_date       = db.Column(db.DateTime)
-    last_access_synchronization_status     = db.Column(db.String(50))
-    last_transaction_synchronization_date  = db.Column(db.DateTime)
+    def_data_source_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    datasource_name = db.Column(db.String(50))
+    description = db.Column(db.String(250))
+    application_type = db.Column(db.String(50))
+    application_type_version = db.Column(db.String(50))
+    last_access_synchronization_date = db.Column(db.DateTime)
+    last_access_synchronization_status = db.Column(db.String(50))
+    last_transaction_synchronization_date = db.Column(db.DateTime)
     last_transaction_synchronization_status= db.Column(db.String(50))
-    default_datasource                     = db.Column(db.String(50))
-    created_by                             = db.Column(db.Integer)
-    creation_date                          = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by                        = db.Column(db.Integer)
-    last_update_date                       = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    default_datasource = db.Column(db.String(50))
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {

@@ -3254,6 +3254,7 @@ def combined_tasks_v3(page, limit):
 
 #def_access_models
 @flask_app.route('/def_access_models', methods=['POST'])
+@jwt_required()
 def create_def_access_models():
     try:
         datasource_name = request.json.get('datasource_name', None)
@@ -3270,9 +3271,10 @@ def create_def_access_models():
             run_status = request.json.get('run_status'),
             state = request.json.get('state'),
             last_run_date = datetime.utcnow(),
-            created_by = request.json.get('created_by'),
-            last_updated_by = request.json.get('last_updated_by'),
-            last_updated_date = datetime.utcnow(),
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow(),
             revision = 0,
             revision_date = datetime.utcnow(),
             datasource_name = datasource_name  # FK assignment
@@ -3284,6 +3286,7 @@ def create_def_access_models():
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
     
 @flask_app.route('/def_access_models', methods=['GET'])
+@jwt_required()
 def get_def_access_models():
     try:
         models = DefAccessModel.query.order_by(DefAccessModel.def_access_model_id.desc()).all()
@@ -3292,6 +3295,7 @@ def get_def_access_models():
         return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
 
 @flask_app.route('/def_access_models/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
 def get_paginated_def_access_models(page, limit):
     try:
         query = DefAccessModel.query.order_by(DefAccessModel.def_access_model_id.desc())
@@ -3339,6 +3343,7 @@ def search_def_access_models(page, limit):
 
 
 @flask_app.route('/def_access_models/<int:model_id>', methods=['GET'])
+@jwt_required()
 def get_def_access_model(model_id):
     try:
         model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
@@ -3348,6 +3353,7 @@ def get_def_access_model(model_id):
 
 
 @flask_app.route('/def_access_models/<int:model_id>', methods=['PUT'])
+@jwt_required()
 def update_def_access_model(model_id):
     try:
         model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
@@ -3370,8 +3376,8 @@ def update_def_access_model(model_id):
             model.run_status        = data.get('run_status', model.run_status)
             model.state             = data.get('state', model.state)
             model.last_run_date     = datetime.utcnow()
-            model.last_updated_by   = data.get('last_updated_by', model.last_updated_by)
-            model.last_updated_date = datetime.utcnow()
+            model.last_updated_by   = get_jwt_identity()
+            model.last_update_date  = datetime.utcnow()
             model.revision          = model.revision + 1
             model.revision_date     = datetime.utcnow()
 
@@ -3383,6 +3389,7 @@ def update_def_access_model(model_id):
         return make_response(jsonify({'message': 'Error Editing Access Model', 'error': str(e)}), 500)
 
 @flask_app.route('/def_access_models/<int:model_id>', methods=['DELETE'])
+@jwt_required()
 def delete_def_access_model(model_id):
     try:
         model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
@@ -3400,6 +3407,7 @@ def delete_def_access_model(model_id):
 
 #def_access_model_logics
 @flask_app.route('/def_access_model_logics', methods=['POST'])
+@jwt_required()
 def create_def_access_model_logic():
     try:
         def_access_model_logic_id = request.json.get('def_access_model_logic_id')
@@ -3424,13 +3432,17 @@ def create_def_access_model_logic():
             return make_response(jsonify({'message': f'def_access_model_id {def_access_model_id} does not exist'}), 400)
 
         new_logic = DefAccessModelLogic(
-            def_access_model_logic_id=def_access_model_logic_id,
-            def_access_model_id=def_access_model_id,
-            filter=filter_text,
-            object=object_text,
-            attribute=attribute,
-            condition=condition,
-            value=value
+            def_access_model_logic_id = def_access_model_logic_id,
+            def_access_model_id = def_access_model_id,
+            filter = filter_text,
+            object = object_text,
+            attribute = attribute,
+            condition = condition,
+            value = value,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
         db.session.add(new_logic)
         db.session.commit()
@@ -3439,6 +3451,7 @@ def create_def_access_model_logic():
         return make_response(jsonify({'message': f'Error: {str(e)}'}), 500)
 
 @flask_app.route('/def_access_model_logics/upsert', methods=['POST'])
+@jwt_required()
 def upsert_def_access_model_logics():
     try:
         data_list = request.get_json()
@@ -3455,7 +3468,7 @@ def upsert_def_access_model_logics():
             filter_text = data.get('filter')
             object_text = data.get('object')
             attribute = data.get('attribute')
-            condition = data.get('condition')
+            condition  = data.get('condition')
             value = data.get('value')
 
             existing_logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
@@ -3484,6 +3497,10 @@ def upsert_def_access_model_logics():
                 existing_logic.attribute = attribute
                 existing_logic.condition = condition
                 existing_logic.value = value
+                existing_logic.last_updated_by = get_jwt_identity()
+                existing_logic.last_update_date = datetime.utcnow()
+
+
                 db.session.add(existing_logic)
 
                 # response.append({
@@ -3515,12 +3532,16 @@ def upsert_def_access_model_logics():
 
                 new_logic = DefAccessModelLogic(
                     def_access_model_logic_id = def_access_model_logic_id,
-                    def_access_model_id=model_id,
-                    filter=filter_text,
-                    object=object_text,
-                    attribute=attribute,
-                    condition=condition,
-                    value=value
+                    def_access_model_id = model_id,
+                    filter = filter_text,
+                    object = object_text,
+                    attribute = attribute,
+                    condition = condition,
+                    value = value,
+                    created_by = get_jwt_identity(),
+                    creation_date = datetime.utcnow(),
+                    last_updated_by = get_jwt_identity(),
+                    last_update_date = datetime.utcnow()
                 )
                 db.session.add(new_logic)
                 db.session.flush()
@@ -3551,6 +3572,7 @@ def upsert_def_access_model_logics():
 
 
 @flask_app.route('/def_access_model_logics', methods=['GET'])
+@jwt_required()
 def get_def_access_model_logics():
     try:
         logics = DefAccessModelLogic.query.order_by(DefAccessModelLogic.def_access_model_logic_id.desc()).all()
@@ -3559,10 +3581,11 @@ def get_def_access_model_logics():
         return make_response(jsonify({'message': 'Error retrieving access model logics', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_model_logics/<int:logic_id>', methods=['GET'])
-def get_def_access_model_logic(logic_id):
+@flask_app.route('/def_access_model_logics/<int:def_access_model_logic_id>', methods=['GET'])
+@jwt_required()
+def get_def_access_model_logic(def_access_model_logic_id):
     try:
-        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=logic_id).first()
+        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
         if logic:
             return make_response(jsonify(logic.json()), 200)
         else:
@@ -3571,10 +3594,11 @@ def get_def_access_model_logic(logic_id):
         return make_response(jsonify({'message': 'Error retrieving access model logic', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_model_logics/<int:logic_id>', methods=['PUT'])
-def update_def_access_model_logic(logic_id):
+@flask_app.route('/def_access_model_logics/<int:def_access_model_logic_id>', methods=['PUT'])
+@jwt_required()
+def update_def_access_model_logic(def_access_model_logic_id):
     try:
-        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=logic_id).first()
+        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
         if logic:
             # logic.def_access_model_id = request.json.get('def_access_model_id', logic.def_access_model_id)
             logic.filter = request.json.get('filter', logic.filter)
@@ -3582,6 +3606,8 @@ def update_def_access_model_logic(logic_id):
             logic.attribute = request.json.get('attribute', logic.attribute)
             logic.condition = request.json.get('condition', logic.condition)
             logic.value = request.json.get('value', logic.value)
+            logic.last_updated_by = get_jwt_identity()
+            logic.last_update_date = datetime.utcnow()
 
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
@@ -3591,10 +3617,11 @@ def update_def_access_model_logic(logic_id):
         return make_response(jsonify({'message': 'Error editing Access Model Logic', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_model_logics/<int:logic_id>', methods=['DELETE'])
-def delete_def_access_model_logic(logic_id):
+@flask_app.route('/def_access_model_logics/<int:def_access_model_logic_id>', methods=['DELETE'])
+@jwt_required()
+def delete_def_access_model_logic(def_access_model_logic_id):
     try:
-        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=logic_id).first()
+        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
         if logic:
             db.session.delete(logic)
             db.session.commit()
@@ -3610,6 +3637,7 @@ def delete_def_access_model_logic(logic_id):
 
 #def_access_model_logic_attributes
 @flask_app.route('/def_access_model_logic_attributes', methods=['POST'])
+@jwt_required()
 def create_def_access_model_logic_attribute():
     try:
         id = request.json.get('id')
@@ -3631,9 +3659,13 @@ def create_def_access_model_logic_attribute():
         
         new_attribute = DefAccessModelLogicAttribute(
             id = id,
-            def_access_model_logic_id=def_access_model_logic_id,
-            widget_position=widget_position,
-            widget_state=widget_state
+            def_access_model_logic_id = def_access_model_logic_id,
+            widget_position = widget_position,
+            widget_state = widget_state,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
         db.session.add(new_attribute)
         db.session.commit()
@@ -3643,6 +3675,7 @@ def create_def_access_model_logic_attribute():
 
 
 @flask_app.route('/def_access_model_logic_attributes', methods=['GET'])
+@jwt_required()
 def get_def_access_model_logic_attributes():
     try:
         attributes = DefAccessModelLogicAttribute.query.order_by(DefAccessModelLogicAttribute.id.desc()).all()
@@ -3653,6 +3686,7 @@ def get_def_access_model_logic_attributes():
 
 
 @flask_app.route('/def_access_model_logic_attributes/upsert', methods=['POST'])
+@jwt_required()
 def upsert_def_access_model_logic_attributes():
     try:
         data_list = request.get_json()
@@ -3691,6 +3725,9 @@ def upsert_def_access_model_logic_attributes():
 
                 existing_attribute.widget_position = widget_position
                 existing_attribute.widget_state = widget_state
+                existing_attribute.last_updated_by = get_jwt_identity()
+                existing_attribute.last_update_date = datetime.utcnow()
+
                 db.session.add(existing_attribute)
 
                 # response.append({
@@ -3727,9 +3764,13 @@ def upsert_def_access_model_logic_attributes():
 
                 new_attribute = DefAccessModelLogicAttribute(
                     id = id,
-                    def_access_model_logic_id=def_access_model_logic_id,
-                    widget_position=widget_position,
-                    widget_state=widget_state
+                    def_access_model_logic_id = def_access_model_logic_id,
+                    widget_position = widget_position,
+                    widget_state = widget_state,
+                    created_by = get_jwt_identity(),
+                    creation_date = datetime.utcnow(),
+                    last_updated_by = get_jwt_identity(),
+                    last_update_date = datetime.utcnow()
                 )
                 db.session.add(new_attribute)
                 db.session.flush()
@@ -3760,10 +3801,11 @@ def upsert_def_access_model_logic_attributes():
 
 
 
-@flask_app.route('/def_access_model_logic_attributes/<int:attr_id>', methods=['GET'])
-def get_def_access_model_logic_attribute(attr_id):
+@flask_app.route('/def_access_model_logic_attributes/<int:id>', methods=['GET'])
+@jwt_required()
+def get_def_access_model_logic_attribute(id):
     try:
-        attribute = DefAccessModelLogicAttribute.query.filter_by(id=attr_id).first()
+        attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
         if attribute:
             return make_response(jsonify(attribute.json()), 200)
         else:
@@ -3772,14 +3814,17 @@ def get_def_access_model_logic_attribute(attr_id):
         return make_response(jsonify({"message": "Error retrieving attribute", "error": str(e)}), 500)
 
 
-@flask_app.route('/def_access_model_logic_attributes/<int:attr_id>', methods=['PUT'])
-def update_def_access_model_logic_attribute(attr_id):
+@flask_app.route('/def_access_model_logic_attributes/<int:id>', methods=['PUT'])
+@jwt_required()
+def update_def_access_model_logic_attribute(id):
     try:
-        attribute = DefAccessModelLogicAttribute.query.filter_by(id=attr_id).first()
+        attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
         if attribute:
             # attribute.def_access_model_logic_id = request.json.get('def_access_model_logic_id', attribute.def_access_model_logic_id)
-            attribute.widget_position = request.json.get('widget_position', attribute.widget_position)
-            attribute.widget_state = request.json.get('widget_state', attribute.widget_state)
+            attribute.widget_position  = request.json.get('widget_position', attribute.widget_position)
+            attribute.widget_state     = request.json.get('widget_state', attribute.widget_state)
+            attribute.last_updated_by  = get_jwt_identity()
+            attribute.last_update_date = datetime.utcnow()
 
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
@@ -3789,10 +3834,11 @@ def update_def_access_model_logic_attribute(attr_id):
         return make_response(jsonify({'message': 'Error editing attribute', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_model_logic_attributes/<int:attr_id>', methods=['DELETE'])
-def delete_def_access_model_logic_attribute(attr_id):
+@flask_app.route('/def_access_model_logic_attributes/<int:id>', methods=['DELETE'])
+@jwt_required()
+def delete_def_access_model_logic_attribute(id):
     try:
-        attribute = DefAccessModelLogicAttribute.query.filter_by(id=attr_id).first()
+        attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
         if attribute:
             db.session.delete(attribute)
             db.session.commit()
@@ -3808,6 +3854,7 @@ def delete_def_access_model_logic_attribute(attr_id):
 
 # def_global_conditions
 @flask_app.route('/def_global_conditions', methods=['POST'])
+@jwt_required()
 def create_def_global_condition():
     try:
         name        = request.json.get('name')
@@ -3819,7 +3866,11 @@ def create_def_global_condition():
             name        = name,
             datasource  = datasource,
             description = description,
-            status      = status
+            status      = status,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
 
         db.session.add(new_condition)
@@ -3830,6 +3881,7 @@ def create_def_global_condition():
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
 
 @flask_app.route('/def_global_conditions', methods=['GET'])
+@jwt_required()
 def get_def_global_conditions():
     try:
         conditions = DefGlobalCondition.query.order_by(DefGlobalCondition.def_global_condition_id.desc()).all()
@@ -3872,6 +3924,7 @@ def search_def_global_conditions(page, limit):
 
 
 @flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['GET'])
+@jwt_required()
 def get_def_global_condition(def_global_condition_id):
     try:
         condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
@@ -3883,6 +3936,7 @@ def get_def_global_condition(def_global_condition_id):
 
 
 @flask_app.route('/def_global_conditions/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
 def get_paginated_def_global_conditions(page, limit):
     try:
         query = DefGlobalCondition.query.order_by(DefGlobalCondition.def_global_condition_id.desc())
@@ -3903,6 +3957,7 @@ def get_paginated_def_global_conditions(page, limit):
 
 
 @flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['PUT'])
+@jwt_required()
 def update_def_global_condition(def_global_condition_id):
     try:
         condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
@@ -3911,6 +3966,8 @@ def update_def_global_condition(def_global_condition_id):
             condition.datasource  = request.json.get('datasource', condition.datasource)
             condition.description = request.json.get('description', condition.description)
             condition.status      = request.json.get('status', condition.status)
+            condition.last_updated_by = get_jwt_identity()
+            condition.last_update_date = datetime.utcnow()
 
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
@@ -3919,6 +3976,7 @@ def update_def_global_condition(def_global_condition_id):
         return make_response(jsonify({'message': 'Error editing Global Condition', 'error': str(e)}), 500)
 
 @flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['DELETE'])
+@jwt_required()
 def delete_def_global_condition(def_global_condition_id):
     try:
         condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
@@ -3935,6 +3993,7 @@ def delete_def_global_condition(def_global_condition_id):
 
 # def_global_condition_logics
 @flask_app.route('/def_global_condition_logics', methods=['POST'])
+@jwt_required()
 def create_def_global_condition_logic():
     try:
         def_global_condition_logic_id = request.json.get('def_global_condition_logic_id')
@@ -3962,7 +4021,11 @@ def create_def_global_condition_logic():
             object = object,
             attribute = attribute,
             condition = condition,
-            value = value
+            value = value,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
         db.session.add(new_logic)
         db.session.commit()
@@ -3973,6 +4036,7 @@ def create_def_global_condition_logic():
         return make_response(jsonify({"message": f"Error: {str(e)}"}), 500)
 
 @flask_app.route('/def_global_condition_logics/upsert', methods=['POST'])
+@jwt_required()
 def upsert_def_global_condition_logics():
     try:
         data_list = request.get_json()
@@ -4007,6 +4071,10 @@ def upsert_def_global_condition_logics():
                 existing_logic.attribute = attribute
                 existing_logic.condition = condition
                 existing_logic.value = value
+                existing_logic.last_updated_by = get_jwt_identity()
+                existing_logic.last_update_date = datetime.utcnow()
+
+
                 db.session.add(existing_logic)
 
                 # response.append({
@@ -4037,12 +4105,16 @@ def upsert_def_global_condition_logics():
                     continue
 
                 new_logic = DefGlobalConditionLogic(
-                    def_global_condition_logic_id=def_global_condition_logic_id,
-                    def_global_condition_id=def_global_condition_id,
-                    object=object_text,
-                    attribute=attribute,
-                    condition=condition,
-                    value=value
+                    def_global_condition_logic_id = def_global_condition_logic_id,
+                    def_global_condition_id = def_global_condition_id,
+                    object = object_text,
+                    attribute = attribute,
+                    condition = condition,
+                    value = value,
+                    created_by = get_jwt_identity(),
+                    creation_date = datetime.utcnow(),
+                    last_updated_by = get_jwt_identity(),
+                    last_update_date = datetime.utcnow()
                 )
                 db.session.add(new_logic)
                 db.session.flush()
@@ -4071,6 +4143,7 @@ def upsert_def_global_condition_logics():
 
 
 @flask_app.route('/def_global_condition_logics', methods=['GET'])
+@jwt_required()
 def get_def_global_condition_logics():
     try:
         logics = DefGlobalConditionLogic.query.order_by(DefGlobalConditionLogic.def_global_condition_logic_id.desc()).all()
@@ -4081,6 +4154,7 @@ def get_def_global_condition_logics():
 
 
 @flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['GET'])
+@jwt_required()
 def get_def_global_condition_logic(def_global_condition_logic_id):
     try:
         logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
@@ -4092,15 +4166,18 @@ def get_def_global_condition_logic(def_global_condition_logic_id):
 
 
 @flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['PUT'])
+@jwt_required()
 def update_def_global_condition_logic(def_global_condition_logic_id):
     try:
         logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
         if logic:
             logic.def_global_condition_id = request.json.get('def_global_condition_id', logic.def_global_condition_id)
-            logic.object                  = request.json.get('object', logic.object)
-            logic.attribute               = request.json.get('attribute', logic.attribute)
-            logic.condition               = request.json.get('condition', logic.condition)
-            logic.value                   = request.json.get('value', logic.value)
+            logic.object = request.json.get('object', logic.object)
+            logic.attribute = request.json.get('attribute', logic.attribute)
+            logic.condition = request.json.get('condition', logic.condition)
+            logic.value = request.json.get('value', logic.value)
+            logic.last_updated_by = get_jwt_identity()
+            logic.last_update_date = datetime.utcnow()
 
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
@@ -4110,6 +4187,7 @@ def update_def_global_condition_logic(def_global_condition_logic_id):
 
 
 @flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['DELETE'])
+@jwt_required()
 def delete_def_global_condition_logic(def_global_condition_logic_id):
     try:
         logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
@@ -4127,6 +4205,7 @@ def delete_def_global_condition_logic(def_global_condition_logic_id):
 
 # def_global_condition_logics_attributes
 @flask_app.route('/def_global_condition_logic_attributes', methods=['POST'])
+@jwt_required()
 def create_def_global_condition_logic_attribute():
     try:
         id = request.json.get('id')
@@ -4154,10 +4233,14 @@ def create_def_global_condition_logic_attribute():
 
         # Create new record
         new_attr = DefGlobalConditionLogicAttribute(
-            id=id,
-            def_global_condition_logic_id=def_global_condition_logic_id,
-            widget_position=widget_position,
-            widget_state=widget_state
+            id = id,
+            def_global_condition_logic_id = def_global_condition_logic_id,
+            widget_position = widget_position,
+            widget_state = widget_state,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
 
         db.session.add(new_attr)
@@ -4179,6 +4262,7 @@ def create_def_global_condition_logic_attribute():
 
 
 @flask_app.route('/def_global_condition_logic_attributes', methods=['GET'])
+@jwt_required()
 def get_all_def_global_condition_logic_attributes():
     try:
         attributes = DefGlobalConditionLogicAttribute.query.order_by(DefGlobalConditionLogicAttribute.id.desc()).all()
@@ -4188,6 +4272,7 @@ def get_all_def_global_condition_logic_attributes():
 
 
 @flask_app.route('/def_global_condition_logic_attributes/<int:id>', methods=['GET'])
+@jwt_required()
 def get_def_global_condition_logic_attribute(id):
     try:
         attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
@@ -4199,7 +4284,7 @@ def get_def_global_condition_logic_attribute(id):
     
 
 @flask_app.route('/def_global_condition_logic_attributes/<int:page>/<int:limit>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def get_paginated_def_global_condition_logic_attributes(page, limit):
     try:
         query = DefGlobalConditionLogicAttribute.query.order_by(DefGlobalConditionLogicAttribute.id.desc())
@@ -4220,6 +4305,7 @@ def get_paginated_def_global_condition_logic_attributes(page, limit):
 
 
 @flask_app.route('/def_global_condition_logic_attributes/upsert', methods=['POST'])
+@jwt_required()
 def upsert_def_global_condition_logic_attributes():
     try:
         data_list = request.get_json()
@@ -4250,6 +4336,9 @@ def upsert_def_global_condition_logic_attributes():
 
                 existing_attr.widget_position = widget_position
                 existing_attr.widget_state = widget_state
+                existing_attr.last_updated_by = get_jwt_identity()
+                existing_attr.last_update_date = datetime.utcnow()
+
                 db.session.add(existing_attr)
 
                 # response.append({
@@ -4289,9 +4378,13 @@ def upsert_def_global_condition_logic_attributes():
 
                 new_attr = DefGlobalConditionLogicAttribute(
                     id=id,
-                    def_global_condition_logic_id=def_global_condition_logic_id,
-                    widget_position=widget_position,
-                    widget_state=widget_state
+                    def_global_condition_logic_id = def_global_condition_logic_id,
+                    widget_position = widget_position,
+                    widget_state = widget_state,
+                    created_by = get_jwt_identity(),
+                    creation_date = datetime.utcnow(),
+                    last_updated_by = get_jwt_identity(),
+                    last_update_date = datetime.utcnow()
                 )
                 db.session.add(new_attr)
                 db.session.flush()
@@ -4320,6 +4413,7 @@ def upsert_def_global_condition_logic_attributes():
 
 
 @flask_app.route('/def_global_condition_logic_attributes/<int:id>', methods=['PUT'])
+@jwt_required()
 def update_def_global_condition_logic_attribute(id):
     try:
         data = request.get_json()
@@ -4331,6 +4425,8 @@ def update_def_global_condition_logic_attribute(id):
         # Update allowed fields
         attribute.widget_position = data.get('widget_position', attribute.widget_position)
         attribute.widget_state = data.get('widget_state', attribute.widget_state)
+        attribute.last_updated_by = get_jwt_identity()
+        attribute.last_update_date = datetime.utcnow()
 
         db.session.commit()
 
@@ -4347,6 +4443,7 @@ def update_def_global_condition_logic_attribute(id):
 
 
 @flask_app.route('/def_global_condition_logic_attributes/<int:id>', methods=['DELETE'])
+@jwt_required()
 def delete_def_global_condition_logic_attribute(id):
     try:
         attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()

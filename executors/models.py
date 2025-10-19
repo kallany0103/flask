@@ -14,10 +14,10 @@ class DefTenantEnterpriseSetup(db.Model):
     tenant_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     enterprise_name  = db.Column(db.String)
     enterprise_type  = db.Column(db.String)
-    created_by     = db.Column(db.Integer)
-    created_on     = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by = db.Column(db.Integer)
-    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by       = db.Column(db.Integer)
+    creation_date    = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by  = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
@@ -25,9 +25,9 @@ class DefTenantEnterpriseSetup(db.Model):
             'enterprise_name' : self.enterprise_name,
             'enterprise_type' : self.enterprise_type,
             'created_by'      : self.created_by,
-            'created_on'    : self.created_on,
+            'creation_date'   : self.creation_date,
             'last_updated_by': self.last_updated_by,
-            'last_updated_on': self.last_updated_on
+            'last_update_date': self.last_update_date
         }
 
 
@@ -38,19 +38,17 @@ class DefTenant(db.Model):
     tenant_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
     tenant_name = db.Column(db.String)
     created_by = db.Column(db.Integer)
-    created_on = db.Column(db.DateTime, default=datetime.utcnow) 
-
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated_by = db.Column(db.Integer)
-    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)   
-    
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {'tenant_id'  : self.tenant_id,
                 'tenant_name': self.tenant_name,
                 'created_by'    : self.created_by,
-                'created_on'    : self.created_on,
+                'creation_date' : self.creation_date,
                 'last_updated_by': self.last_updated_by,
-                'last_updated_on': self.last_updated_on
+                'last_update_date': self.last_update_date
            }
 
 
@@ -63,9 +61,9 @@ class DefTenantEnterpriseSetupV(db.Model):
     enterprise_name = db.Column(db.Text)
     enterprise_type = db.Column(db.Text)
     created_by     = db.Column(db.Integer)
-    created_on     = db.Column(db.DateTime, default=datetime.utcnow)
+    creation_date  = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated_by = db.Column(db.Integer)
-    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
@@ -74,9 +72,9 @@ class DefTenantEnterpriseSetupV(db.Model):
             'enterprise_name': self.enterprise_name,
             'enterprise_type': self.enterprise_type,
             'created_by'    : self.created_by,
-            'created_on'    : self.created_on,
+            'creation_date' : self.creation_date,
             'last_updated_by': self.last_updated_by,
-            'last_updated_on': self.last_updated_on
+            'last_update_date': self.last_update_date
         }
 
 class DefJobTitle(db.Model):
@@ -792,9 +790,9 @@ class DefAccessPointElement(db.Model):
     change_control       = db.Column(db.String(10))
     audit                = db.Column(db.String(50))
     created_by           = db.Column(db.Integer)  
-    created_on           = db.Column(db.DateTime, default=datetime.utcnow)
+    creation_date        = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated_by      = db.Column(db.Integer) 
-    last_updated_on      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_update_date     = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
@@ -808,9 +806,9 @@ class DefAccessPointElement(db.Model):
             "change_control": self.change_control,
             "audit": self.audit,
             "created_by": self.created_by,
-            "created_on": self.created_on,
+            "creation_date": self.creation_date,
             "last_updated_by": self.last_updated_by,
-            "last_updated_on": self.last_updated_on
+            "last_update_date": self.last_update_date
         }
 
 class DefAccessEntitlement(db.Model):
@@ -826,9 +824,9 @@ class DefAccessEntitlement(db.Model):
     revision = db.Column(db.String(10))                            
     revision_date = db.Column(db.Date)                            
     created_by = db.Column(db.Integer)                          
-    created_on = db.Column(db.DateTime, default=datetime.utcnow)   
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)   
     last_updated_by = db.Column(db.Integer)                     
-    last_updated_on = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
@@ -841,9 +839,9 @@ class DefAccessEntitlement(db.Model):
             "revision": self.revision,
             "revision_date": self.revision_date,
             "created_by": self.created_by,
-            "created_on": self.created_on,
+            "creation_date": self.creation_date,
             "last_updated_by": self.last_updated_by,
-            "last_updated_on": self.last_updated_on
+            "last_update_date": self.last_update_date
         }
 
 class DefControl(db.Model):
@@ -857,16 +855,17 @@ class DefControl(db.Model):
     control_type         = db.Column(db.Text)
     priority             = db.Column(db.Integer)
     datasources          = db.Column(db.Text)
-    last_run_date        = db.Column(db.DateTime)
-    last_updated_date    = db.Column(db.DateTime)
+    last_run_date        = db.Column(db.DateTime, default=datetime.utcnow)
     status               = db.Column(db.Text)
     state                = db.Column(db.Text)
     result_investigator  = db.Column(db.Text)
     authorized_data      = db.Column(db.Text)
     revision             = db.Column(db.Integer)
-    revision_date        = db.Column(db.DateTime)
+    revision_date        = db.Column(db.DateTime, default=datetime.utcnow)
     created_by           = db.Column(db.Integer)
-    created_date         = db.Column(db.DateTime)
+    creation_date        = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by      = db.Column(db.Integer)
+    last_update_date     = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
@@ -878,7 +877,6 @@ class DefControl(db.Model):
             "priority": self.priority,
             "datasources": self.datasources,
             "last_run_date": self.last_run_date,
-            "last_updated_date": self.last_updated_date,
             "status": self.status,
             "state": self.state,
             "result_investigator": self.result_investigator,
@@ -886,7 +884,9 @@ class DefControl(db.Model):
             "revision": self.revision,
             "revision_date": self.revision_date,
             "created_by": self.created_by,
-            "created_date": self.created_date
+            "creation_date": self.creation_date,
+            "last_updated_by": self.last_updated_by,
+            "last_update_date": self.last_update_date
         }
 
 

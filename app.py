@@ -219,9 +219,9 @@ def create_tenant():
        new_tenant  = DefTenant(
             tenant_name = tenant_name,
             created_by     = get_jwt_identity(),
-            created_on     = datetime.utcnow(),
-            last_updated_by= get_jwt_identity(),
-            last_updated_on= datetime.utcnow()
+            creation_date  = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
            )
        db.session.add(new_tenant)
        db.session.commit()
@@ -324,7 +324,7 @@ def update_tenant(tenant_id):
             data = request.get_json()
             tenant.tenant_name  = data['tenant_name']
             tenant.last_updated_by = get_jwt_identity()
-            tenant.last_updated_on = datetime.utcnow()
+            tenant.last_update_date = datetime.utcnow()
 
             db.session.commit()
             return make_response(jsonify({"message": "Edited successfully"}), 200)
@@ -363,9 +363,9 @@ def create_enterprise(tenant_id):
             enterprise_name=enterprise_name,
             enterprise_type=enterprise_type,
             created_by     = get_jwt_identity(),
-            created_on     = datetime.utcnow(),
+            creation_date  = datetime.utcnow(),
             last_updated_by= get_jwt_identity(),
-            last_updated_on= datetime.utcnow()
+            last_update_date= datetime.utcnow()
         )
 
         db.session.add(new_enterprise)
@@ -393,18 +393,18 @@ def create_update_enterprise(tenant_id):
             existing_enterprise.enterprise_name = enterprise_name
             existing_enterprise.enterprise_type = enterprise_type
             existing_enterprise.last_updated_by = get_jwt_identity()
-            existing_enterprise.last_updated_on = datetime.utcnow()
+            existing_enterprise.last_update_date = datetime.utcnow()
             message = "Edited successfully"
 
         else:
             new_enterprise = DefTenantEnterpriseSetup(
-                tenant_id=tenant_id,
-                enterprise_name=enterprise_name,
-                enterprise_type=enterprise_type,
+                tenant_id = tenant_id,
+                enterprise_name = enterprise_name,
+                enterprise_type = enterprise_type,
                 created_by     = get_jwt_identity(),
-                created_on     = datetime.utcnow(),
+                creation_date   = datetime.utcnow(),
                 last_updated_by = get_jwt_identity(),
-                last_updated_on = datetime.utcnow()
+                last_update_date = datetime.utcnow()
             )
 
             db.session.add(new_enterprise)
@@ -478,7 +478,7 @@ def update_enterprise(tenant_id):
             setup.enterprise_name = data.get('enterprise_name', setup.enterprise_name)
             setup.enterprise_type = data.get('enterprise_type', setup.enterprise_type)
             setup.last_updated_by = get_jwt_identity()
-            setup.last_updated_on = datetime.utcnow()
+            setup.last_update_date = datetime.utcnow()
             db.session.commit()
             return make_response(jsonify({"message": "Edited successfully"}), 200)
         return make_response(jsonify({"message": "Enterprise setup not found"}), 404)
@@ -1735,10 +1735,14 @@ def Create_ExecutionMethod():
 
         # Create a new execution method object
         new_method = DefAsyncExecutionMethods(
-            execution_method=execution_method,
-            internal_execution_method=internal_execution_method,
-            executor=executor,
-            description=description
+            execution_method = execution_method,
+            internal_execution_method = internal_execution_method,
+            executor = executor,
+            description = description,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
 
         # Add to session and commit
@@ -1860,7 +1864,7 @@ def Update_ExecutionMethod(internal_execution_method):
             if 'description' in request.json:
                 execution_method.description = request.json.get('description')
 
-            execution_method.last_updated_by = 101
+            execution_method.last_updated_by = get_jwt_identity()
 
             # Update the last update timestamp
             execution_method.last_update_date = datetime.utcnow()
@@ -1923,8 +1927,10 @@ def Create_Task():
             cancelled_yn = 'N',
             srs = srs,
             sf  = sf,
-            created_by = 101
-            #last_updated_by=last_updated_by
+            created_by = get_jwt_identity(),
+            last_updated_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_update_date = datetime.utcnow()
 
         )
         db.session.add(new_task)
@@ -2033,11 +2039,8 @@ def Update_Task(task_name):
                 task.srs = request.json.get('srs')
             if 'sf' in request.json:
                 task.sf = request.json.get('sf')
-            if 'last_updated_by' in request.json:
-                task.last_updated_by = request.json.get('last_updated_by')
-
-            # Update the timestamps to reflect the modification time
-            task.updated_at = datetime.utcnow()
+            task.last_updated_by = get_jwt_identity()
+            task.last_update_date = datetime.utcnow()
 
             db.session.commit()
             return make_response(jsonify({"message": "Edited successfully"}), 200)
@@ -2096,7 +2099,7 @@ def Add_TaskParams(task_name):
             parameter_name = param.get('parameter_name')
             data_type = param.get('data_type')
             description = param.get('description')
-            created_by = request.json.get('created_by')
+            
 
             # Validate required fields
             if not (parameter_name and data_type):
@@ -2104,12 +2107,14 @@ def Add_TaskParams(task_name):
 
             # Create a new parameter object
             new_param = DefAsyncTaskParam(
-                task_name=task_name,
-                #seq=seq,
-                parameter_name=parameter_name,
-                data_type=data_type,
-                description=description,
-                created_by=created_by
+                task_name = task_name,
+                parameter_name = parameter_name,
+                data_type = data_type,
+                description = description,
+                created_by = get_jwt_identity(),
+                creation_date = datetime.utcnow(),
+                last_updated_by = get_jwt_identity(),
+                last_update_date = datetime.utcnow()
             )
             new_params.append(new_param)
 
@@ -2174,7 +2179,6 @@ def Update_TaskParams(task_name, def_param_id):
         parameter_name = request.json.get('parameter_name')
         data_type = request.json.get('data_type')
         description = request.json.get('description')
-        last_updated_by = 101
 
         # Find the task parameter by task_name and seq
         param = DefAsyncTaskParam.query.filter_by(task_name=task_name, def_param_id=def_param_id).first()
@@ -2190,8 +2194,8 @@ def Update_TaskParams(task_name, def_param_id):
             param.data_type = data_type
         if description:
             param.description = description
-        if last_updated_by:
-            param.last_updated_by = last_updated_by
+        param.last_updated_by = get_jwt_identity()
+        param.last_update_date = datetime.utcnow()
 
         # Commit the changes to the database
         db.session.commit()
@@ -2229,138 +2233,7 @@ def Delete_TaskParams(task_name, def_param_id):
 
 
 
-# @flask_app.route('/api/v1/Create_TaskSchedule', methods=['POST'])
-# def Create_TaskSchedule_v1():
-#     try:
-#         user_schedule_name = request.json.get('user_schedule_name', 'Immediate')
-#         task_name = request.json.get('task_name')
-#         parameters = request.json.get('parameters', {})
-#         schedule_type = request.json.get('schedule_type')
-#         schedule_data = request.json.get('schedule', {})
 
-#         if not task_name:
-#             return jsonify({'error': 'Task name is required'}), 400
-
-#         # Fetch task details from the database
-#         task = DefAsyncTask.query.filter_by(task_name=task_name).first()
-#         if not task:
-#             return jsonify({'error': f'No task found with task_name: {task_name}'}), 400
-
-#         user_task_name = task.user_task_name
-#         executor = task.executor
-#         script_name = task.script_name
-
-#         schedule_name = str(uuid.uuid4())
-#         redbeat_schedule_name = f"{user_schedule_name}_{schedule_name}"
-#         args = [script_name, user_task_name, task_name, user_schedule_name, redbeat_schedule_name, schedule_data]
-#         kwargs = {}
-
-#         # Validate task parameters
-#         task_params = DefAsyncTaskParam.query.filter_by(task_name=task_name).all()
-#         for param in task_params:
-#             param_name = param.parameter_name
-#             if param_name in parameters:
-#                 kwargs[param_name] = parameters[param_name]
-#             else:
-#                 return jsonify({'error': f'Missing value for parameter: {param_name}'}), 400
-
-#         # Handle scheduling based on schedule type
-#         cron_schedule = None
-#         schedule_minutes = None
-
-#         if schedule_type == "WEEKLY_SPECIFIC_DAYS":
-#             values = schedule_data.get('VALUES', [])  # e.g., ["Monday", "Wednesday"]
-#             day_map = {
-#                 "SUN": 0, "MON": 1, "TUE": 2, "WED": 3,
-#                 "THU": 4, "FRI": 5, "SAT": 6
-#             }
-#             days_of_week = ",".join(str(day_map[day.upper()]) for day in values if day.upper() in day_map)
-#             cron_schedule = crontab(minute=0, hour=0, day_of_week=days_of_week)
-
-#         elif schedule_type == "MONTHLY_SPECIFIC_DATES":
-#             values = schedule_data.get('VALUES', [])  # e.g., ["5", "15"]
-#             dates_of_month = ",".join(values)
-#             cron_schedule = crontab(minute=0, hour=0, day_of_month=dates_of_month)
-
-#         elif schedule_type == "ONCE":
-#             one_time_date = schedule_data.get('VALUES')  # e.g., {"date": "2025-03-01 14:30"}
-#             if not one_time_date:
-#                 return jsonify({'error': 'Date is required for one-time execution'}), 400
-#             dt = datetime.strptime(one_time_date, "%Y-%m-%d %H:%M")
-#             cron_schedule = crontab(minute=dt.minute, hour=dt.hour, day_of_month=dt.day, month_of_year=dt.month)
-
-#         elif schedule_type == "PERIODIC":
-#             frequency_type = schedule_data.get('FREQUENCY_TYPE', 'minutes').lower()
-#             frequency = schedule_data.get('FREQUENCY', 1)
-
-#             if frequency_type == 'month':
-#                 schedule_minutes = frequency * 30 * 24 * 60
-#             elif frequency_type == 'day':
-#                 schedule_minutes = frequency * 24 * 60
-#             elif frequency_type == 'hour':
-#                 schedule_minutes = frequency * 60
-#             else:
-#                 schedule_minutes = frequency  # Default to minutes
-
-#         # Handle Ad-hoc Requests
-#         elif schedule_type == "IMMEDIATE":
-#             try:
-#                 result = execute_ad_hoc_task_v1(
-#                     user_schedule_name=user_schedule_name,
-#                     executor=executor,
-#                     task_name=task_name,
-#                     args=args,
-#                     kwargs=kwargs,
-#                     schedule_type=schedule_type,
-#                     cancelled_yn='N',
-#                     created_by=101
-#                 )
-#                 return jsonify(result), 201
-#             except Exception as e:
-#                 return jsonify({"error": "Failed to execute ad-hoc task", "details": str(e)}), 500
-
-#         else:
-#             return jsonify({'error': 'Invalid schedule type'}), 400
-#         # Handle Scheduled Tasks
-#         try:
-#             create_redbeat_schedule(
-#                 schedule_name=redbeat_schedule_name,
-#                 executor=executor,
-#                 schedule_minutes=schedule_minutes if schedule_minutes else None,
-#                 cron_schedule=cron_schedule if cron_schedule else None,
-#                 args=args,
-#                 kwargs=kwargs,
-#                 celery_app=celery
-#             )
-#         except Exception as e:
-#             return jsonify({"error": "Failed to create RedBeat schedule", "details": str(e)}), 500
-
-#         # Store schedule in DB
-#         new_schedule = DefAsyncTaskScheduleNew(
-#             user_schedule_name=user_schedule_name,
-#             redbeat_schedule_name=redbeat_schedule_name,
-#             task_name=task_name,
-#             args=args,
-#             kwargs=kwargs,
-#             parameters=kwargs,
-#             schedule_type=schedule_type,
-#             schedule=schedule_data,
-#             ready_for_redbeat="N",
-#             cancelled_yn='N',
-#             created_by=101
-#         )
-
-#         db.session.add(new_schedule)
-#         db.session.commit()
-
-#         return jsonify({
-#             "message": "Task schedule created successfully!",
-#             "schedule_id": new_schedule.def_task_sche_id
-#         }), 201
-
-#     except Exception as e:
-#         db.session.rollback()
-#         return jsonify({"error": "Failed to create task schedule", "details": str(e)}), 500
 
 @flask_app.route('/Create_TaskSchedule', methods=['POST'])
 @jwt_required()
@@ -2545,14 +2418,17 @@ def Create_TaskSchedule():
         elif schedule_type == "IMMEDIATE":
             try:
                 result = execute_ad_hoc_task_v1(
-                    user_schedule_name=user_schedule_name,
-                    executor=executor,
-                    task_name=task_name,
-                    args=args,
-                    kwargs=kwargs,
-                    schedule_type=schedule_type,
-                    cancelled_yn='N',
-                    created_by=101
+                    user_schedule_name = user_schedule_name,
+                    executor = executor,
+                    task_name = task_name,
+                    args = args,
+                    kwargs = kwargs,
+                    schedule_type = schedule_type,
+                    cancelled_yn = 'N',
+                    created_by = get_jwt_identity(),
+                    creation_date = datetime.utcnow(),
+                    last_updated_by = get_jwt_identity(),
+                    last_update_date = datetime.utcnow()
                 )
                 return jsonify(result), 201
             except Exception as e:
@@ -2577,17 +2453,19 @@ def Create_TaskSchedule():
         # if schedule_type != "IMMEDIATE":
         # Store schedule in DB
         new_schedule = DefAsyncTaskScheduleNew(
-            user_schedule_name=user_schedule_name,
-            redbeat_schedule_name=redbeat_schedule_name,
-            task_name=task_name,
-            args=args,
-            kwargs=kwargs,
-            parameters=kwargs,
-            schedule_type=schedule_type,
-            schedule=schedule_data,
-            # ready_for_redbeat="N",
-            cancelled_yn='N',
-            created_by=101
+            user_schedule_name = user_schedule_name,
+            redbeat_schedule_name = redbeat_schedule_name,
+            task_name = task_name,
+            args = args,
+            kwargs = kwargs,
+            parameters = kwargs,
+            schedule_type = schedule_type,
+            schedule = schedule_data,
+            cancelled_yn = 'N',
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_udpated_by = get_jwt_identity(),
+            last_udpate_date = datetime.utcnow()
         )
 
         db.session.add(new_schedule)
@@ -2690,51 +2568,6 @@ def Show_TaskSchedule(task_name):
 
 
 
-# @flask_app.route('/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
-# def Update_TaskSchedule(task_name):
-
-#     try:
-#         # Retrieve redbeat_schedule_name from request payload
-#         redbeat_schedule_name = request.json.get('redbeat_schedule_name')
-#         if not redbeat_schedule_name:
-#             return make_response(jsonify({"message": "redbeat_schedule_name is required in the payload"}), 400)
-
-#         # Retrieve the schedule from the database
-#         schedule = DefAsyncTaskScheduleNew.query.filter_by(
-#             task_name=task_name, redbeat_schedule_name=redbeat_schedule_name
-#         ).first()
-
-#         # Check if schedule exists
-#         if not schedule:
-#             return make_response(jsonify({"message": f"Task Periodic Schedule for {redbeat_schedule_name} not found"}), 404)
-
-#         # Check if ready_for_redbeat is 'N' (allow updates only if it's 'N')
-#         if schedule.ready_for_redbeat != 'N':
-#             return make_response(jsonify({
-#                 "message": f"Task Periodic Schedule for {redbeat_schedule_name} is not marked as 'N'. Update is not allowed."
-#             }), 400)
-
-#         # Update database fields based on the request data
-#         if 'parameters' in request.json:
-#             schedule.parameters = request.json.get('parameters')
-#             schedule.kwargs = request.json.get('parameters')
-#         if 'schedule_type' in request.json:
-#             schedule.schedule_type = request.json.get('schedule_type')
-#         if 'schedule' in request.json:
-#             schedule.schedule = request.json.get('schedule')
-
-#         schedule.last_updated_by = 102  # Static user ID
-
-#         # Commit changes to the database
-#         db.session.commit()
-
-#         return make_response(jsonify({
-#             "message": f"Task Periodic Schedule for {redbeat_schedule_name} updated successfully in the database"
-#         }), 200)
-
-#     except Exception as e:
-#         db.session.rollback()  # Rollback in case of an error
-#         return make_response(jsonify({"message": "Error updating Task Periodic Schedule", "error": str(e)}), 500)
 
 
 @flask_app.route('/Update_TaskSchedule/<string:task_name>', methods=['PUT'])
@@ -2763,7 +2596,8 @@ def Update_TaskSchedule(task_name):
         schedule.kwargs = request.json.get('parameters', schedule.kwargs)
         schedule.schedule_type = request.json.get('schedule_type', schedule.schedule_type)
         schedule.schedule = request.json.get('schedule', schedule.schedule)
-        schedule.last_updated_by = 102  # Static user ID
+        schedule.last_updated_by = get_jwt_identity()
+        schedule.last_update_date = datetime.utcnow()
 
         # Handle scheduling logic
         cron_schedule = None
@@ -2805,13 +2639,13 @@ def Update_TaskSchedule(task_name):
         # Update RedBeat schedule
         try:
             update_redbeat_schedule(
-                schedule_name=redbeat_schedule_name,
-                task=executors.executor,
-                schedule_minutes=schedule_minutes,
-                cron_schedule=cron_schedule,
-                args=schedule.args,
-                kwargs=schedule.kwargs,
-                celery_app=celery
+                schedule_name = redbeat_schedule_name,
+                task = executors.executor,
+                schedule_minutes = schedule_minutes,
+                cron_schedule = cron_schedule,
+                args = schedule.args,
+                kwargs = schedule.kwargs,
+                celery_app = celery
             )
         except Exception as e:
             db.session.rollback()
@@ -4474,6 +4308,7 @@ def delete_def_global_condition_logic_attribute(id):
 
 #Def_access_point_elements
 @flask_app.route('/def_access_point_elements', methods=['POST'])
+@jwt_required()
 def create_def_access_point_element():
     try:
         def_data_source_id = request.json.get('def_data_source_id')
@@ -4484,8 +4319,6 @@ def create_def_access_point_element():
         access_control = request.json.get('access_control')
         change_control = request.json.get('change_control')
         audit = request.json.get('audit')
-        created_by = request.json.get('created_by')
-        last_updated_by = request.json.get('last_updated_by')
 
         if not def_data_source_id:
             return make_response(jsonify({'message': 'def_data_source_id is required'}), 400)
@@ -4495,16 +4328,18 @@ def create_def_access_point_element():
             return make_response(jsonify({'message': 'Invalid def_data_source_id — referenced source not found'}), 404)
 
         new_element = DefAccessPointElement(
-            def_data_source_id=def_data_source_id,
-            element_name=element_name,
-            description=description,
-            platform=platform,
-            element_type=element_type,
-            access_control=access_control,
-            change_control=change_control,
-            audit=audit,
-            created_by=created_by,
-            last_updated_by=last_updated_by
+            def_data_source_id = def_data_source_id,
+            element_name = element_name,
+            description = description,
+            platform = platform,
+            element_type = element_type,
+            access_control = access_control,
+            change_control = change_control,
+            audit = audit,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
 
         db.session.add(new_element)
@@ -4515,6 +4350,7 @@ def create_def_access_point_element():
     
 
 @flask_app.route('/def_access_point_elements', methods=['GET'])
+@jwt_required()
 def get_all_def_access_point_elements():
     try:
         elements = DefAccessPointElement.query.order_by(
@@ -4525,11 +4361,12 @@ def get_all_def_access_point_elements():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
     
-@flask_app.route('/def_access_point_elements/<int:dap_id>', methods=['GET'])
-def get_def_access_point_element_by_id(dap_id):
+@flask_app.route('/def_access_point_elements/<int:def_access_point_id>', methods=['GET'])
+@jwt_required()
+def get_def_access_point_element_by_id(def_access_point_id):
     try:
-        element = DefAccessPointElement.query.get(dap_id)
-        
+        element = DefAccessPointElement.query.get(def_access_point_id)
+
         if element is None:
             return jsonify({"error": "Element not found"}), 404
 
@@ -4573,6 +4410,7 @@ def search_def_access_point_elements(page, limit):
 
 
 @flask_app.route('/def_access_point_elements/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
 def get_paginated_elements(page, limit):
     try:
         query = DefAccessPointElement.query.order_by(DefAccessPointElement.def_access_point_id.desc())
@@ -4590,10 +4428,11 @@ def get_paginated_elements(page, limit):
         return make_response(jsonify({'message': 'Error fetching elements', 'error': str(e)}), 500)
 
     
-@flask_app.route('/def_access_point_elements/<int:dap_id>', methods=['PUT'])
-def update_def_access_point_element(dap_id):
+@flask_app.route('/def_access_point_elements/<int:def_access_point_id>', methods=['PUT'])
+@jwt_required()
+def update_def_access_point_element(def_access_point_id):
     try:
-        element = DefAccessPointElement.query.filter_by(def_access_point_id=dap_id).first()
+        element = DefAccessPointElement.query.filter_by(def_access_point_id=def_access_point_id).first()
         if not element:
             return make_response(jsonify({'message': 'Access Point Element not found'}), 404)
 
@@ -4614,8 +4453,8 @@ def update_def_access_point_element(dap_id):
         element.access_control = request.json.get('access_control', element.access_control)
         element.change_control = request.json.get('change_control', element.change_control)
         element.audit = request.json.get('audit', element.audit)
-        element.created_by = request.json.get('created_by', element.created_by)
-        element.last_updated_by = request.json.get('last_updated_by', element.last_updated_by)
+        element.last_updated_by = get_jwt_identity()
+        element.last_update_date = datetime.utcnow()
 
         db.session.commit()
         return make_response(jsonify({'message': 'Edited successfully'}), 200)
@@ -4625,10 +4464,11 @@ def update_def_access_point_element(dap_id):
         return make_response(jsonify({'message': 'Error editing Access Point Element', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_point_elements/<int:dap_id>', methods=['DELETE'])
-def delete_element(dap_id):
+@flask_app.route('/def_access_point_elements/<int:def_access_point_id>', methods=['DELETE'])
+@jwt_required()
+def delete_element(def_access_point_id):
     try:
-        element = DefAccessPointElement.query.filter_by(def_access_point_id=dap_id).first()
+        element = DefAccessPointElement.query.filter_by(def_access_point_id=def_access_point_id).first()
 
         if element:
             db.session.delete(element)
@@ -4790,6 +4630,7 @@ def delete_def_data_source(id):
 
 #def_access_entitlements
 @flask_app.route('/def_access_entitlements', methods=['GET'])
+@jwt_required()
 def get_all_entitlements():
     try:
         entitlements = DefAccessEntitlement.query.order_by(DefAccessEntitlement.def_entitlement_id.desc()).all()
@@ -4828,6 +4669,7 @@ def search_def_access_entitlements(page, limit):
         return make_response(jsonify({'message': 'Error searching entitlements', 'error': str(e)}), 500)
 
 @flask_app.route('/def_access_entitlements/<int:page>/<int:limit>', methods=['GET'])
+@jwt_required()
 def get_paginated_entitlements(page, limit):
     try:
         paginated = DefAccessEntitlement.query.order_by(DefAccessEntitlement.def_entitlement_id.desc()).paginate(page=page, per_page=limit, error_out=False)
@@ -4841,30 +4683,34 @@ def get_paginated_entitlements(page, limit):
         return make_response(jsonify({'message': 'Error fetching entitlements', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_entitlements/<int:id>', methods=['GET'])
-def get_entitlement_by_id(id):
+@flask_app.route('/def_access_entitlements/<int:def_entitlement_id>', methods=['GET'])
+@jwt_required()
+def get_entitlement_by_id(def_entitlement_id):
     try:
-        e = DefAccessEntitlement.query.filter_by(def_entitlement_id=id).first()
-        if e:
-            return make_response(jsonify(e.json()), 200)
+        entitlement = DefAccessEntitlement.query.filter_by(def_entitlement_id=def_entitlement_id).first()
+        if entitlement:
+            return make_response(jsonify(entitlement.json()), 200)
         return make_response(jsonify({'message': 'Entitlement not found'}), 404)
     except Exception as e:
         return make_response(jsonify({'message': 'Error fetching entitlement', 'error': str(e)}), 500)
 
 
 @flask_app.route('/def_access_entitlements', methods=['POST'])
+@jwt_required()
 def create_entitlement():
     try:
         new_e = DefAccessEntitlement(
-            entitlement_name=request.json.get('entitlement_name'),
-            description=request.json.get('description'),
-            comments=request.json.get('comments'),
-            status=request.json.get('status'),
-            effective_date= datetime.utcnow().date(),
-            revision= 0,
-            revision_date= datetime.utcnow().date(),
-            created_by=request.json.get('created_by'),
-            last_updated_by=request.json.get('last_updated_by')
+            entitlement_name = request.json.get('entitlement_name'),
+            description = request.json.get('description'),
+            comments = request.json.get('comments'),
+            status = request.json.get('status'),
+            effective_date = datetime.utcnow(),
+            revision = 0,
+            revision_date = datetime.utcnow(),
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
         db.session.add(new_e)
         db.session.commit()
@@ -4873,20 +4719,22 @@ def create_entitlement():
         return make_response(jsonify({'message': 'Error creating entitlement', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_entitlements/<int:id>', methods=['PUT'])
-def update_entitlement(id):
+@flask_app.route('/def_access_entitlements/<int:def_entitlement_id>', methods=['PUT'])
+@jwt_required()
+def update_entitlement(def_entitlement_id):
     try:
-        e = DefAccessEntitlement.query.filter_by(def_entitlement_id=id).first()
-        if e:
-            e.entitlement_name = request.json.get('entitlement_name', e.entitlement_name)
-            e.description = request.json.get('description', e.description)
-            e.comments = request.json.get('comments', e.comments)
-            e.status = request.json.get('status', e.status)
-            e.effective_date = datetime.utcnow().date()
-            e.revision =  e.revision + 1
-            e.revision_date = datetime.utcnow().date()
-            e.created_by = request.json.get('created_by', e.created_by)
-            e.last_updated_by = request.json.get('last_updated_by', e.last_updated_by)
+        entitlement = DefAccessEntitlement.query.filter_by(def_entitlement_id=def_entitlement_id).first()
+        if entitlement:
+            entitlement.entitlement_name = request.json.get('entitlement_name', entitlement.entitlement_name)
+            entitlement.description = request.json.get('description', entitlement.description)
+            entitlement.comments = request.json.get('comments', entitlement.comments)
+            entitlement.status = request.json.get('status', entitlement.status)
+            entitlement.effective_date = datetime.utcnow()
+            entitlement.revision =  entitlement.revision + 1
+            entitlement.revision_date = datetime.utcnow()
+            entitlement.last_updated_by = get_jwt_identity()
+            entitlement.last_update_date = datetime.utcnow()
+
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
         return make_response(jsonify({'message': 'Entitlement not found'}), 404)
@@ -4894,12 +4742,13 @@ def update_entitlement(id):
         return make_response(jsonify({'message': 'Error editing entitlement', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_entitlements/<int:id>', methods=['DELETE'])
-def delete_entitlement(id):
+@flask_app.route('/def_access_entitlements/<int:def_entitlement_id>', methods=['DELETE'])
+@jwt_required()
+def delete_entitlement(def_entitlement_id):
     try:
-        e = DefAccessEntitlement.query.filter_by(def_entitlement_id=id).first()
-        if e:
-            db.session.delete(e)
+        entitlement = DefAccessEntitlement.query.filter_by(def_entitlement_id=def_entitlement_id).first()
+        if entitlement:
+            db.session.delete(entitlement)
             db.session.commit()
             return make_response(jsonify({'message': 'Deleted successfully'}), 200)
         return make_response(jsonify({'message': 'Entitlement not found'}), 404)
@@ -5239,11 +5088,11 @@ def search_controls(page, limit):
         return make_response(jsonify({'message': 'Error searching controls', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_controls/<int:control_id>', methods=['GET'])
+@flask_app.route('/def_controls/<int:def_control_id>', methods=['GET'])
 @jwt_required()
-def get_control_by_id(control_id):
+def get_control_by_id(def_control_id):
     try:
-        control = DefControl.query.filter_by(def_control_id=control_id).first()
+        control = DefControl.query.filter_by(def_control_id=def_control_id).first()
         if control:
             return make_response(jsonify(control.json()), 200)
         return make_response(jsonify({'message': 'Control not found'}), 404)
@@ -5256,22 +5105,23 @@ def get_control_by_id(control_id):
 def create_control():
     try:
         new_control = DefControl(
-            control_name=request.json.get('control_name'),
-            description=request.json.get('description'),
-            pending_results_count=request.json.get('pending_results_count'),
-            control_type=request.json.get('control_type'),
-            priority=request.json.get('priority'),
-            datasources=request.json.get('datasources'),
-            last_run_date=request.json.get('last_run_date'),
-            last_updated_date=request.json.get('last_updated_date'),
-            status=request.json.get('status'),
-            state=request.json.get('state'),
-            result_investigator=request.json.get('result_investigator'),
-            authorized_data=request.json.get('authorized_data'),
-            revision=0,
-            revision_date=datetime.utcnow().date(),
+            control_name = request.json.get('control_name'),
+            description = request.json.get('description'),
+            pending_results_count = request.json.get('pending_results_count'),
+            control_type = request.json.get('control_type'),
+            priority = request.json.get('priority'),
+            datasources = request.json.get('datasources'),
+            last_run_date = datetime.utcnow(),
+            status = request.json.get('status'),
+            state = request.json.get('state'),
+            result_investigator = request.json.get('result_investigator'),
+            authorized_data = request.json.get('authorized_data'),
+            revision = 0,
+            revision_date = datetime.utcnow(),
             created_by = get_jwt_identity(),
-            created_date=datetime.utcnow().date()
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
         db.session.add(new_control)
         db.session.commit()
@@ -5279,11 +5129,11 @@ def create_control():
     except Exception as e:
         return make_response(jsonify({'message': 'Error adding control', 'error': str(e)}), 500)
 
-@flask_app.route('/def_controls/<int:control_id>', methods=['PUT'])
+@flask_app.route('/def_controls/<int:def_control_id>', methods=['PUT'])
 @jwt_required()
-def update_control(control_id):
+def update_control(def_control_id):
     try:
-        control = DefControl.query.filter_by(def_control_id=control_id).first()
+        control = DefControl.query.filter_by(def_control_id=def_control_id).first()
         if control:
             control.control_name = request.json.get('control_name', control.control_name)
             control.description = request.json.get('description', control.description)
@@ -5291,16 +5141,17 @@ def update_control(control_id):
             control.control_type = request.json.get('control_type', control.control_type)
             control.priority = request.json.get('priority', control.priority)
             control.datasources = request.json.get('datasources', control.datasources)
-            control.last_run_date = request.json.get('last_run_date', control.last_run_date)
-            control.last_updated_date = request.json.get('last_updated_date', control.last_updated_date)
+            control.last_run_date = datetime.utcnow()
             control.status = request.json.get('status', control.status)
             control.state = request.json.get('state', control.state)
             control.result_investigator = request.json.get('result_investigator', control.result_investigator)
             control.authorized_data = request.json.get('authorized_data', control.authorized_data)
             control.revision += 1
-            control.revision_date = datetime.utcnow().date()
+            control.revision_date = datetime.utcnow()
             control.created_by = get_jwt_identity()
-            control.created_date = request.json.get('created_date', control.created_date)
+            control.creation_date = datetime.utcnow()
+            control.last_updated_by = get_jwt_identity()
+            control.last_update_date = datetime.utcnow()
 
             db.session.commit()
             return make_response(jsonify({'message': 'Edited successfully'}), 200)
@@ -5309,11 +5160,11 @@ def update_control(control_id):
         return make_response(jsonify({'message': 'Error editing control', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_controls/<int:control_id>', methods=['DELETE'])
+@flask_app.route('/def_controls/<int:def_control_id>', methods=['DELETE'])
 @jwt_required()
-def delete_control(control_id):
+def delete_control(def_control_id):
     try:
-        control = DefControl.query.filter_by(def_control_id=control_id).first()
+        control = DefControl.query.filter_by(def_control_id=def_control_id).first()
         if control:
             db.session.delete(control)
             db.session.commit()

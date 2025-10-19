@@ -897,12 +897,20 @@ class DefProcess(db.Model):
     process_id = db.Column(db.Integer, primary_key=True)
     process_name = db.Column(db.String(150), nullable=False)
     process_structure = db.Column(JSONB)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
             "process_id": self.process_id,
             "process_name": self.process_name,
-            "process_structure": self.process_structure
+            "process_structure": self.process_structure,
+            "created_by": self.created_by,
+            "creation_date": self.creation_date,
+            "last_updated_by": self.last_updated_by,
+            "last_update_date": self.last_update_date
         }
 
 
@@ -917,7 +925,6 @@ class DefNotification(db.Model):
     recipients = db.Column(JSONB)
     subject = db.Column(db.Text)
     notification_body = db.Column(db.Text)
-    creation_date = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
     status = db.Column(db.Text)  # SENT, DRAFT, DELETED
     parent_notification_id = db.Column(db.Text)
     involved_users = db.Column(JSONB)
@@ -926,6 +933,10 @@ class DefNotification(db.Model):
     recycle_bin = db.Column(JSONB)
     action_item_id = db.Column(db.Integer)
     alert_id = db.Column(db.Integer)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
@@ -935,7 +946,6 @@ class DefNotification(db.Model):
             'recipients': self.recipients,
             'subject': self.subject,
             'notification_body': self.notification_body,
-            'creation_date': self.creation_date.isoformat() if self.creation_date else None,
             'status': self.status,
             'parent_notification_id': self.parent_notification_id,
             'involved_users': self.involved_users,
@@ -943,7 +953,11 @@ class DefNotification(db.Model):
             'holders': self.holders,
             'recycle_bin': self.recycle_bin,
             'action_item_id': self.action_item_id,
-            'alert_id': self.alert_id
+            'alert_id': self.alert_id,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
         }
 
 

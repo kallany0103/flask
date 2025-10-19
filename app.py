@@ -5512,11 +5512,13 @@ def create_action_item():
         #         return make_response(jsonify({"message": "Invalid notification_id"}), 400)
 
         new_action_item = DefActionItem(
-            action_item_name=action_item_name,
-            description=description,
-            created_by=created_by,
-            last_updated_by=created_by,
-            notification_id=notification_id
+            action_item_name = action_item_name,
+            description = description,
+            created_by = created_by,
+            creation_date = datetime.utcnow(),
+            last_updated_by = created_by,
+            last_update_date = datetime.utcnow(),
+            notification_id = notification_id
         )
 
         db.session.add(new_action_item)
@@ -5525,11 +5527,13 @@ def create_action_item():
         # Add assignments
         for uid in user_ids:
             assignment = DefActionItemAssignment(
-                action_item_id=new_action_item.action_item_id,
-                user_id=uid,
-                status=status,
-                created_by=created_by,
-                last_updated_by=created_by
+                action_item_id = new_action_item.action_item_id,
+                user_id = uid,
+                status = status,
+                created_by = created_by,
+                creation_date = datetime.utcnow(),
+                last_updated_by = created_by,
+                last_update_date = datetime.utcnow()
             )
             db.session.add(assignment)
 
@@ -5641,11 +5645,13 @@ def upsert_action_item():
             #     return jsonify({"message": "Action item name already exists"}), 400
 
             action_item = DefActionItem(
-                action_item_name=action_item_name,
-                description=data.get('description'),
-                created_by=current_user,
-                last_updated_by=current_user,
-                notification_id=data.get('notification_id')
+                action_item_name = action_item_name,
+                description = data.get('description'),
+                created_by = current_user,
+                creation_date = datetime.utcnow(),
+                last_updated_by = current_user,
+                last_update_date = datetime.utcnow(),
+                notification_id = data.get('notification_id')
             )
             db.session.add(action_item)
             db.session.flush()  # get the ID before assignments
@@ -5688,7 +5694,6 @@ def upsert_action_item():
 def update_action_item(action_item_id):
     try:
         data = request.get_json()
-        created_by = get_jwt_identity()
 
         # Get the action item
         action_item = DefActionItem.query.get(action_item_id)
@@ -5705,7 +5710,8 @@ def update_action_item(action_item_id):
         if 'notification_id' in data:
             action_item.notification_id = data['notification_id']
 
-        action_item.last_updated_by = created_by
+        action_item.last_updated_by = get_jwt_identity()
+        action_item.last_update_date = datetime.utcnow()
 
         # Handle assignments update (based on user_ids list)
         if 'user_ids' in data:
@@ -5723,7 +5729,8 @@ def update_action_item(action_item_id):
                 for assignment in existing_assignments:
                     if assignment.user_id in new_user_ids:
                         assignment.status = new_status
-                        assignment.last_updated_by = created_by
+                        assignment.last_updated_by = get_jwt_identity()
+                        assignment.last_update_date = datetime.utcnow()
 
             # Users to remove (in DB but not in new list)
             to_remove = existing_user_ids - new_user_ids
@@ -5740,8 +5747,8 @@ def update_action_item(action_item_id):
                     action_item_id=action_item_id,
                     user_id=uid,
                     status=new_status,
-                    created_by=created_by,
-                    last_updated_by=created_by
+                    last_updated_by=get_jwt_identity(),
+                    last_update_date=datetime.utcnow()
                 )
                 db.session.add(assignment)
 
@@ -5797,11 +5804,13 @@ def create_action_item_assignments():
         created_assignments = []
         for uid in user_ids:
             assignment = DefActionItemAssignment(
-                action_item_id=action_item_id,
-                user_id=uid,
-                status= status,
-                created_by=get_jwt_identity(),
-                last_updated_by=get_jwt_identity()
+                action_item_id = action_item_id,
+                user_id = uid,
+                status = status,
+                created_by = get_jwt_identity(),
+                creation_date = datetime.utcnow(),
+                last_updated_by = get_jwt_identity(),
+                last_update_date = datetime.utcnow()
             )
             db.session.add(assignment)
             created_assignments.append(assignment)
@@ -5853,6 +5862,7 @@ def update_action_item_assignment_status(user_id, action_item_id):
         # Update only the status
         assignment.status = data['status']
         assignment.last_updated_by = get_jwt_identity()
+        assignment.last_update_date = datetime.utcnow()
 
         db.session.commit()
         return make_response(jsonify({"message": "Status Updated Successfully"}), 200)

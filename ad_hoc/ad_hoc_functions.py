@@ -10,7 +10,7 @@ from executors.extensions import db
 from executors.models import DefAsyncTask, DefAsyncTaskParam, DefAsyncTaskSchedule, DefAsyncTaskScheduleNew
 
 
-def execute_ad_hoc_task(user_schedule_name, task_name, executor, args, kwargs, cancelled_yn, created_by):
+def execute_ad_hoc_task(user_schedule_name, task_name, executor, args, kwargs, cancelled_yn, created_by, creation_date=None, last_updated_by=None, last_update_date=None):
     """
     Executes a task immediately using Celery and logs the execution in the database.
 
@@ -39,12 +39,15 @@ def execute_ad_hoc_task(user_schedule_name, task_name, executor, args, kwargs, c
 
         # Log the execution in the database
         new_schedule = DefAsyncTaskSchedule(
-            user_schedule_name=user_schedule_name,
-            task_name=task_name,
-            args=args,
-            kwargs=kwargs,
-            cancelled_yn=cancelled_yn,
-            created_by=created_by
+            user_schedule_name = user_schedule_name,
+            task_name = task_name,
+            args = args,
+            kwargs = kwargs,
+            cancelled_yn = cancelled_yn,
+            created_by = created_by,
+            creation_date = creation_date,
+            last_updated_by = last_updated_by,
+            last_update_date = last_update_date
         )
         db.session.add(new_schedule)
         db.session.commit()
@@ -66,7 +69,7 @@ def execute_ad_hoc_task(user_schedule_name, task_name, executor, args, kwargs, c
 
 
 
-def execute_ad_hoc_task_v1(user_schedule_name, task_name, executor, args, kwargs, schedule_type, cancelled_yn, created_by):
+def execute_ad_hoc_task_v1(user_schedule_name, task_name, executor, args, kwargs, schedule_type, cancelled_yn, created_by, creation_date=None, last_updated_by=None, last_update_date=None):
     """
     Executes a task immediately using Celery and logs the execution in the database.
 
@@ -96,13 +99,16 @@ def execute_ad_hoc_task_v1(user_schedule_name, task_name, executor, args, kwargs
         # Log the execution in the database
         new_schedule = DefAsyncTaskScheduleNew(
             user_schedule_name = user_schedule_name,
-            task_name=task_name,
-            args=args,
-            kwargs=kwargs,
+            task_name = task_name,
+            args = args,
+            kwargs = kwargs,
             parameters = kwargs,
             schedule_type = schedule_type,
-            cancelled_yn=cancelled_yn,
-            created_by=created_by
+            cancelled_yn = cancelled_yn,
+            created_by = created_by,
+            creation_date = creation_date,
+            last_updated_by = last_updated_by,
+            last_update_date = last_update_date
         )
         db.session.add(new_schedule)
         db.session.commit()

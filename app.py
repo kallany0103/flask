@@ -2464,8 +2464,8 @@ def Create_TaskSchedule():
             cancelled_yn = 'N',
             created_by = get_jwt_identity(),
             creation_date = datetime.utcnow(),
-            last_udpated_by = get_jwt_identity(),
-            last_udpate_date = datetime.utcnow()
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
         )
 
         db.session.add(new_schedule)

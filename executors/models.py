@@ -844,6 +844,31 @@ class DefAccessEntitlement(db.Model):
             "last_update_date": self.last_update_date
         }
 
+
+
+
+class DefAccessEntitlementElement(db.Model):
+    __tablename__ = 'def_access_entitlement_elements'
+    __table_args__ = {'schema': 'apps'}
+
+    def_entitlement_id = db.Column(db.Integer, db.ForeignKey('apps.def_access_entitlements.def_entitlement_id'), primary_key=True, nullable=False)
+    def_access_point_id = db.Column(db.Integer, db.ForeignKey('apps.def_access_point_elements.def_access_point_id'), primary_key=True, nullable=False)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            'def_entitlement_id': self.def_entitlement_id,
+            'def_access_point_id': self.def_access_point_id,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
+        }
+    
+
 class DefControl(db.Model):
     __tablename__ = 'def_controls'
     __table_args__ = {'schema': 'apps'}
@@ -921,16 +946,11 @@ class DefNotification(db.Model):
 
     notification_id = db.Column(db.Text, primary_key=True, nullable=False)
     notification_type = db.Column(db.Text, nullable=False)
-    sender = db.Column(db.Integer) 
-    recipients = db.Column(JSONB)
     subject = db.Column(db.Text)
     notification_body = db.Column(db.Text)
     status = db.Column(db.Text)  # SENT, DRAFT, DELETED
     parent_notification_id = db.Column(db.Text)
     involved_users = db.Column(JSONB)
-    readers = db.Column(JSONB)
-    holders = db.Column(JSONB)
-    recycle_bin = db.Column(JSONB)
     action_item_id = db.Column(db.Integer)
     alert_id = db.Column(db.Integer)
     created_by = db.Column(db.Integer)
@@ -942,16 +962,11 @@ class DefNotification(db.Model):
         return {
             'notification_id': self.notification_id,
             'notification_type': self.notification_type,
-            'sender': self.sender,
-            'recipients': self.recipients,
             'subject': self.subject,
             'notification_body': self.notification_body,
             'status': self.status,
             'parent_notification_id': self.parent_notification_id,
             'involved_users': self.involved_users,
-            'readers': self.readers,
-            'holders': self.holders,
-            'recycle_bin': self.recycle_bin,
             'action_item_id': self.action_item_id,
             'alert_id': self.alert_id,
             'created_by': self.created_by,

@@ -776,28 +776,26 @@ class DefDataSource(db.Model):
             "last_update_date": self.last_update_date
         }
 
-class DefAccessPointElement(db.Model):
-    __tablename__ = 'def_access_point_elements'
-    __table_args__ = {'schema': 'apps'}
+class DefAccessPoint(db.Model):
+    __tablename__ = "def_access_points"
+    __table_args__ = {"schema": "apps"}
 
-    def_access_point_id  = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    def_data_source_id   = db.Column(db.Integer, db.ForeignKey('apps.def_data_sources.def_data_source_id'), nullable=False)
-    element_name         = db.Column(db.String(150))
-    description          = db.Column(db.String(250))
-    platform             = db.Column(db.String(50))
-    element_type         = db.Column(db.String(50))
-    access_control       = db.Column(db.String(10))
-    change_control       = db.Column(db.String(10))
-    audit                = db.Column(db.String(50))
-    created_by           = db.Column(db.Integer)  
-    creation_date        = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by      = db.Column(db.Integer) 
-    last_update_date     = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    def_access_point_id = db.Column(db.Integer, primary_key=True)
+    element_name = db.Column(db.String(150))
+    description = db.Column(db.String(250))
+    platform = db.Column(db.String(50))
+    element_type = db.Column(db.String(50))
+    access_control = db.Column(db.String(10))
+    change_control = db.Column(db.String(10))
+    audit = db.Column(db.String(50))
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def json(self):
         return {
             "def_access_point_id": self.def_access_point_id,
-            "def_data_source_id": self.def_data_source_id,
             "element_name": self.element_name,
             "description": self.description,
             "platform": self.platform,
@@ -810,6 +808,67 @@ class DefAccessPointElement(db.Model):
             "last_updated_by": self.last_updated_by,
             "last_update_date": self.last_update_date
         }
+
+
+class DefAccessPointsV(db.Model):
+    __tablename__ = "def_access_points_v"
+    __table_args__ = {"schema": "apps"}
+
+    def_access_point_id = db.Column(db.Integer, primary_key=True)
+    element_name = db.Column(db.String)
+    description = db.Column(db.String)
+    platform = db.Column(db.String)
+    element_type = db.Column(db.String)
+    access_control = db.Column(db.Boolean)
+    change_control = db.Column(db.Boolean)
+    audit = db.Column(db.Boolean)
+    def_data_source_id = db.Column(db.Integer)
+    datasource_name = db.Column(db.String)
+    created_by = db.Column(db.String)
+    creation_date = db.Column(db.DateTime())
+    last_updated_by = db.Column(db.String)
+    last_update_date = db.Column(db.DateTime())
+
+    def json(self):
+        return {
+            "def_access_point_id": self.def_access_point_id,
+            "element_name": self.element_name,
+            "description": self.description,
+            "platform": self.platform,
+            "element_type": self.element_type,
+            "access_control": self.access_control,
+            "change_control": self.change_control,
+            "audit": self.audit,
+            "def_data_source_id": self.def_data_source_id,
+            "datasource_name": self.datasource_name,
+            "created_by": self.created_by,
+            "creation_date": self.creation_date,
+            "last_updated_by": self.last_updated_by,
+            "last_update_date": self.last_update_date
+        }
+
+class DefAccessPointElement(db.Model):
+    __tablename__ = "def_access_point_elements"
+    __table_args__ = {"schema": "apps"}
+
+    def_access_point_element_id = db.Column(db.Integer, primary_key=True)
+    def_access_point_id = db.Column(db.Integer, db.ForeignKey("apps.def_access_points.def_access_point_id"))
+    def_data_source_id = db.Column(db.Integer, db.ForeignKey("apps.def_data_sources.def_data_source_id"))
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    def json(self):
+        return {
+            "def_access_point_element_id": self.def_access_point_element_id,
+            "def_access_point_id": self.def_access_point_id,
+            "def_data_source_id": self.def_data_source_id,
+            "created_by": self.created_by,
+            "creation_date": self.creation_date,
+            "last_updated_by": self.last_updated_by,
+            "last_update_date": self.last_update_date,
+        }
+
 
 class DefAccessEntitlement(db.Model):
     __tablename__ = 'def_access_entitlements'

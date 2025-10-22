@@ -55,6 +55,8 @@ from executors.models import (
     DefGlobalCondition,
     DefGlobalConditionLogic,
     DefGlobalConditionLogicAttribute,
+    DefAccessPoint,
+    DefAccessPointsV,
     DefAccessPointElement,
     DefDataSource,
     DefAccessEntitlement,
@@ -4551,11 +4553,235 @@ def delete_element(def_access_point_id):
         return make_response(jsonify({'message': 'Error deleting Access Point Element', 'error': str(e)}), 500)
 
 
+#def_access_points
+
+@flask_app.route("/def_access_points", methods=["POST"])
+@jwt_required()
+def create_access_point():
+    try:
+        data = request.get_json() or {}
+
+        element_name = data.get("element_name")
+        description = data.get("description")
+        platform = data.get("platform")
+        element_type = data.get("element_type")
+        access_control = data.get("access_control")
+        change_control = data.get("change_control")
+        audit = data.get("audit")
+        def_data_source_id = data.get("def_data_source_id")
+
+
+        data_source = DefDataSource.query.get(def_data_source_id)
+        if not data_source:
+            return make_response(jsonify({
+                "message": "Invalid data source ID",
+                "error": f"Data source with id {def_data_source_id} not found"
+            }), 400)
+
+        access_point = DefAccessPoint(
+            element_name = element_name,
+            description = description,
+            platform = platform,
+            element_type = element_type,
+            access_control = access_control,
+            change_control = change_control,
+            audit = audit,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
+        )
+
+        db.session.add(access_point)
+        db.session.flush()
+
+        element = DefAccessPointElement(
+            def_access_point_id = access_point.def_access_point_id,
+            def_data_source_id = def_data_source_id,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
+        )
+
+        db.session.add(element)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error creating access point', 'error': str(e)}), 500)
 
 
 
+@flask_app.route("/def_access_points", methods=["GET"])
+@jwt_required()
+def get_access_points():
+    try:
+        def_access_point_id = request.args.get("def_access_point_id", type=int)
+        page = request.args.get("page", type=int)
+        limit = request.args.get("limit", type=int)
+
+        query = DefAccessPoint.query
+
+        # Fetch single access point
+        if def_access_point_id:
+            access_point = query.filter_by(def_access_point_id=def_access_point_id).first()
+            if not access_point:
+                return make_response(jsonify({
+                    "message": f"Access point with id {def_access_point_id} not found"
+                }), 404)
+            return jsonify(access_point.json())
+
+        if page and limit:
+            pagination = query.order_by(DefAccessPoint.creation_date.desc()).paginate(
+                page=page, per_page=limit, error_out=False
+            )
+            access_points = pagination.items
+            results = [ap.json() for ap in access_points]
+            return jsonify({
+                "items": results,
+                "page": pagination.page,
+                "pages": pagination.pages,
+                "total": pagination.total
+            })
+        else:
+            access_points = query.order_by(DefAccessPoint.creation_date.desc()).all()
+            results = [ap.json() for ap in access_points]
+            return jsonify(results)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error fetching access points", "error": str(e)}), 500)
 
 
+@flask_app.route("/def_access_points_view", methods=["GET"])
+@jwt_required()
+def get_access_point_view():
+    try:
+        def_access_point_id = request.args.get("def_access_point_id", type=int)
+        page = request.args.get("page", type=int)
+        limit = request.args.get("limit", type=int)
+
+        query = DefAccessPointsV.query
+
+        # Fetch single access point
+        if def_access_point_id:
+            access_point = query.filter_by(def_access_point_id=def_access_point_id).first()
+            if not access_point:
+                return make_response(jsonify({
+                    "message": f"Access point with id {def_access_point_id} not found"
+                }), 404)
+            return jsonify(access_point.json())
+
+        if page and limit:
+            pagination = query.order_by(DefAccessPointsV.creation_date.desc()).paginate(
+                page=page, per_page=limit, error_out=False
+            )
+            access_points = pagination.items
+            results = [ap.json() for ap in access_points]
+            return jsonify({
+                "items": results,
+                "page": pagination.page,
+                "pages": pagination.pages,
+                "total": pagination.total
+            })
+        else:
+            access_points = query.order_by(DefAccessPointsV.creation_date.desc()).all()
+            results = [ap.json() for ap in access_points]
+            return jsonify(results)
+
+    except Exception as e:
+        return make_response(jsonify({"message": "Error fetching access points", "error": str(e)}), 500)
+    
+
+@flask_app.route("/def_access_points", methods=["PUT"])
+@jwt_required()
+def update_access_point():
+    try:
+        def_access_point_id = request.args.get("def_access_point_id", type=int)
+        if not def_access_point_id:
+            return make_response(jsonify({"message": "def_access_point_id is required"}), 400)
+
+        data = request.get_json() or {}
+
+        # Fetch the existing access point
+        ap = DefAccessPoint.query.get(def_access_point_id)
+        if not ap:
+            return make_response(jsonify({
+                "message": f"Access point with id {def_access_point_id} not found"
+            }), 404)
+
+        ap.element_name = data.get("element_name", ap.element_name)
+        ap.description = data.get("description", ap.description)
+        ap.platform = data.get("platform", ap.platform)
+        ap.element_type = data.get("element_type", ap.element_type)
+        ap.access_control = data.get("access_control", ap.access_control)
+        ap.change_control = data.get("change_control", ap.change_control)
+        ap.audit = data.get("audit", ap.audit)
+        ap.last_updated_by = get_jwt_identity()
+        ap.last_update_date = datetime.utcnow()
+
+        # Update associated element if def_data_source_id is provided
+        def_data_source_id = data.get("def_data_source_id")
+        if def_data_source_id is not None:
+            ds = DefDataSource.query.get(def_data_source_id)
+            if not ds:
+                return make_response(jsonify({
+                    "message": "Invalid data source ID",
+                    "error": f"Data source with id {def_data_source_id} not found"
+                }), 400)
+
+            element = DefAccessPointElement.query.filter_by(def_access_point_id=def_access_point_id).first()
+            if element:
+                element.def_data_source_id = def_data_source_id
+                element.last_updated_by = get_jwt_identity()
+                element.last_update_date = datetime.utcnow()
+            else:
+                element = DefAccessPointElement(
+                    def_access_point_id = def_access_point_id,
+                    def_data_source_id = def_data_source_id,
+                    created_by = get_jwt_identity(),
+                    creation_date = datetime.utcnow(),
+                    last_updated_by = get_jwt_identity(),
+                    last_update_date = datetime.utcnow()
+                )
+                db.session.add(element)
+
+        db.session.commit()
+
+        return jsonify({"message": "Edited successfully",})
+
+    except Exception as e:
+        return make_response(jsonify({'message': 'Error editing access point', 'error': str(e)}), 500)
+
+
+@flask_app.route("/def_access_points", methods=["DELETE"])
+@jwt_required()
+def delete_access_point():
+    try:
+        # Get the access point ID from query params
+        def_access_point_id = request.args.get("def_access_point_id", type=int)
+        if not def_access_point_id:
+            return make_response(jsonify({"message": "def_access_point_id is required"}), 400)
+
+        # Fetch the access point
+        access_point = DefAccessPoint.query.get(def_access_point_id)
+        if not access_point:
+            return make_response(jsonify({
+                "message": f"Access point with id {def_access_point_id} not found"
+            }), 404)
+
+        # Delete the access point
+        db.session.delete(access_point)
+        db.session.commit()
+
+        return jsonify({"message": "Deleted successfully"})
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "message": "Error deleting access point",
+            "error": str(e)
+        }), 500)
 
 
 

@@ -68,7 +68,8 @@ from executors.models import (
     DefProcess,
     DefControlEnvironment,
     NewUserInvitation,
-    DefJobTitle
+    DefJobTitle,
+    DefAccessEntitlementElement
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -3176,21 +3177,21 @@ def search_def_access_models(page, limit):
         return make_response(jsonify({"message": "Error searching access models", "error": str(e)}), 500)
 
 
-@flask_app.route('/def_access_models/<int:model_id>', methods=['GET'])
+@flask_app.route('/def_access_models/<int:def_access_model_id>', methods=['GET'])
 @jwt_required()
-def get_def_access_model(model_id):
+def get_def_access_model(def_access_model_id):
     try:
-        model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
+        model = DefAccessModel.query.filter_by(def_access_model_id=def_access_model_id).first()
         return make_response(jsonify(model.json()), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
 
 
-@flask_app.route('/def_access_models/<int:model_id>', methods=['PUT'])
+@flask_app.route('/def_access_models/<int:def_access_model_id>', methods=['PUT'])
 @jwt_required()
-def update_def_access_model(model_id):
+def update_def_access_model(def_access_model_id):
     try:
-        model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
+        model = DefAccessModel.query.filter_by(def_access_model_id=def_access_model_id).first()
         if model:
             data = request.get_json()
             # Handle datasource_name FK update with case-insensitive and space-insensitive matching
@@ -3222,11 +3223,11 @@ def update_def_access_model(model_id):
     except Exception as e:
         return make_response(jsonify({'message': 'Error Editing Access Model', 'error': str(e)}), 500)
 
-@flask_app.route('/def_access_models/<int:model_id>', methods=['DELETE'])
+@flask_app.route('/def_access_models/<int:def_access_model_id>', methods=['DELETE'])
 @jwt_required()
-def delete_def_access_model(model_id):
+def delete_def_access_model(def_access_model_id):
     try:
-        model = DefAccessModel.query.filter_by(def_access_model_id=model_id).first()
+        model = DefAccessModel.query.filter_by(def_access_model_id=def_access_model_id).first()
         if model:
             db.session.delete(model)
             db.session.commit()
@@ -3235,6 +3236,42 @@ def delete_def_access_model(model_id):
             return make_response(jsonify({'message': 'Access Model not found'}), 404)
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting Access Model', 'error': str(e)}), 500)
+
+
+@flask_app.route('/def_access_models/cascade', methods=['DELETE'])
+@jwt_required()
+def cascade_delete_access_model():
+    try:
+        # Get the access model ID from query params
+        def_access_model_id = request.args.get('def_access_model_id', type=int)
+        if not def_access_model_id:
+            return jsonify({'error': 'def_access_model_id is required'}), 400
+
+
+        access_model_exists = db.session.query(
+            db.exists().where(DefAccessModel.def_access_model_id == def_access_model_id)
+        ).scalar()
+
+        access_model_logic_exists = db.session.query(
+            db.exists().where(DefAccessModelLogic.def_access_model_id == def_access_model_id)
+        ).scalar()
+
+        if not access_model_exists and not access_model_logic_exists:
+            return jsonify({'error': f'No records found in def_access_models or def_access_model_logics for ID {def_access_model_id}'}), 404
+
+        DefAccessModel.query.filter_by(def_access_model_id=def_access_model_id).delete(synchronize_session=False)
+
+        # Delete all related logic records
+        DefAccessModelLogic.query.filter_by(def_access_model_id=def_access_model_id).delete(synchronize_session=False)
+
+        db.session.commit()
+
+        return jsonify({'message': 'Deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 
 
 
@@ -3822,6 +3859,39 @@ def delete_def_global_condition(def_global_condition_id):
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting Global Condition', 'error': str(e)}), 500)
 
+
+
+@flask_app.route('/def_global_conditions/cascade', methods=['DELETE'])
+@jwt_required()
+def cascade_delete_global_condition():
+    try:
+        # Get condition ID from query parameter
+        def_global_condition_id = request.args.get('def_global_condition_id', type=int)
+        if not def_global_condition_id:
+            return jsonify({'error': 'def_global_condition_id is required'}), 400
+        
+        global_condition_exists = db.session.query(
+            db.exists().where(DefGlobalCondition.def_global_condition_id == def_global_condition_id)
+        ).scalar()
+
+        global_condition_logic_exists = db.session.query(
+            db.exists().where(DefGlobalConditionLogic.def_global_condition_id == def_global_condition_id)
+        ).scalar()
+
+        if not global_condition_exists and not global_condition_logic_exists:
+            return jsonify({'error': f'No records found in def_global_conditions or def_global_condition_logics for ID {def_global_condition_id}'}), 404
+
+        DefGlobalConditionLogic.query.filter_by(def_global_condition_id=def_global_condition_id).delete(synchronize_session=False)
+
+        DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).delete(synchronize_session=False)
+
+        db.session.commit()
+
+        return jsonify({'message': 'Deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 
@@ -4755,6 +4825,131 @@ def delete_entitlement(def_entitlement_id):
     except Exception as e:
         return make_response(jsonify({'message': 'Error deleting entitlement', 'error': str(e)}), 500)
 
+
+@flask_app.route('/def_access_entitlements/cascade', methods=['DELETE'])
+@jwt_required()
+def cascade_delete_entitlement():
+    try:
+        def_entitlement_id = request.args.get('def_entitlement_id', type=int)
+        if not def_entitlement_id:
+            return jsonify({'message': 'def_entitlement_id is required'}), 400
+
+        entitlement_exists = db.session.query(db.exists().where(DefAccessEntitlement.def_entitlement_id == def_entitlement_id)).scalar()
+
+        entitlement_elements_exists = db.session.query(db.exists().where(DefAccessEntitlementElement.def_access_entitlement_id == def_entitlement_id)).scalar()
+
+        if not entitlement_exists and not entitlement_elements_exists:
+            return jsonify({'error': f'No records found in def_access_entitlements or def_access_entitlement_elements for ID {def_entitlement_id}'}), 404
+
+        DefAccessEntitlement.query.filter_by(def_entitlement_id=def_entitlement_id).delete(synchronize_session=False)
+
+        DefAccessEntitlementElement.query.filter_by(def_entitlement_id=def_entitlement_id).delete(synchronize_session=False)
+
+
+        db.session.commit()
+
+        return jsonify({'message': 'Deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+
+
+#Def_access_entitlement_elements
+
+@flask_app.route('/def_access_entitlement_elements/<int:def_entitlement_id>', methods=['POST'])
+@jwt_required()
+def create_entitlement_element(def_entitlement_id):
+    try:
+        data = request.get_json()
+        user_id = get_jwt_identity()
+
+        # Check if def_entitlement_id exists
+        entitlement = db.session.get(DefAccessEntitlement, def_entitlement_id)
+        if not entitlement:
+            return make_response(jsonify({'error': 'Invalid def_entitlement_id'}), 400)
+
+        # Check if def_access_point_id exists
+        access_point_id = data.get('def_access_point_id')
+        access_point = db.session.get(DefAccessPointElement, access_point_id)
+        if not access_point:
+            return make_response(jsonify({'error': 'Invalid def_access_point_id'}), 400)
+
+        # Optionally, prevent duplicates
+        existing = (
+            db.session.query(DefAccessEntitlementElement)
+            .filter_by(def_entitlement_id=def_entitlement_id, def_access_point_id=access_point_id)
+            .first()
+        )
+        if existing:
+            return make_response(jsonify({'error': 'This access point is already assigned to the entitlement'}), 400)
+
+        # Create the element
+        element = DefAccessEntitlementElement(
+            def_entitlement_id = def_entitlement_id,
+            def_access_point_id = access_point_id,
+            created_by = user_id,
+            last_updated_by = user_id,
+            creation_date = datetime.utcnow(),
+            last_update_date = datetime.utcnow()
+        )
+        db.session.add(element)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({'error': str(e)}), 400)
+
+
+
+@flask_app.route('/def_access_entitlement_elements', methods=['GET'])
+@jwt_required()
+def get_entitlement_elements():
+    try:
+        # Query parameters
+        def_entitlement_id = request.args.get('def_entitlement_id', type=int)
+        # def_access_point_id = request.args.get('def_access_point_id', type=int)
+
+        query = DefAccessEntitlementElement.query
+
+        if def_entitlement_id:
+            query = query.filter(DefAccessEntitlementElement.def_entitlement_id == def_entitlement_id)
+        # if def_access_point_id:
+        #     query = query.filter(DefAccessEntitlementElement.def_access_point_id == def_access_point_id)
+
+        # Return all filtered records (or all if no filter)
+        elements = query.order_by(DefAccessEntitlementElement.creation_date.desc()).all()
+        return make_response(jsonify([e.json() for e in elements]), 200)
+
+    except Exception as e:
+        return make_response(jsonify({'error': str(e)}), 400)
+
+
+
+@flask_app.route('/def_access_entitlement_elements', methods=['DELETE'])
+@jwt_required()
+def delete_entitlement_element():
+    try:
+        def_entitlement_id = request.args.get('def_entitlement_id', type=int)
+        def_access_point_id = request.args.get('def_access_point_id', type=int)
+
+        if not def_entitlement_id or not def_access_point_id:
+            return make_response(jsonify({'message': 'def_entitlement_id and def_access_point_id required'}), 400)
+
+        element = DefAccessEntitlementElement.query.get((def_entitlement_id, def_access_point_id))
+        if not element:
+            return make_response(jsonify({'message': 'Not found'}), 404)
+
+        db.session.delete(element)
+        db.session.commit()
+        return make_response(jsonify({'message': 'Deleted successfully'}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({'error': str(e)}), 400)
 
 
 

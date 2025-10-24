@@ -4542,6 +4542,7 @@ def get_access_point_view():
         return make_response(jsonify({"message": "Error fetching access points", "error": str(e)}), 500)
     
 
+
 @flask_app.route("/def_access_points", methods=["PUT"])
 @jwt_required()
 def update_access_point():
@@ -4553,7 +4554,6 @@ def update_access_point():
         data = request.get_json() or {}
         user_id = get_jwt_identity()
 
-        # Fetch existing access point
         ap = db.session.query(DefAccessPoint).filter_by(def_access_point_id=def_access_point_id).first()
         if not ap:
             return make_response(jsonify({
@@ -4562,9 +4562,6 @@ def update_access_point():
 
 
         def_data_source_id = data.get("def_data_source_id")
-        def_entitlement_id = data.get("def_entitlement_id")
-
-
         if def_data_source_id is not None:
             data_source = db.session.query(DefDataSource).filter_by(def_data_source_id=def_data_source_id).first()
             if not data_source:
@@ -4573,7 +4570,9 @@ def update_access_point():
                     "error": f"Data source with id {def_data_source_id} not found"
                 }), 400)
 
-  
+        def_entitlement_id = data.get("def_entitlement_id")
+
+
         ap.access_point_name = data.get("access_point_name", ap.access_point_name)
         ap.description = data.get("description", ap.description)
         ap.platform = data.get("platform", ap.platform)
@@ -4601,17 +4600,20 @@ def update_access_point():
             ).first()
 
             if entitlement_element:
-                # Update entitlement link if it changed
                 if entitlement_element.def_entitlement_id != def_entitlement_id:
                     entitlement_element.def_entitlement_id = def_entitlement_id
-
                 entitlement_element.last_updated_by = user_id
                 entitlement_element.last_update_date = datetime.utcnow()
 
 
+        db.session.commit()
+
+        return make_response(jsonify({"message": "Edited successfully"}), 200)
+
     except Exception as e:
         db.session.rollback()
         return make_response(jsonify({"message": "Error editing access point","error": str(e)}), 500)
+
 
 
 

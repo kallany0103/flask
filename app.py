@@ -664,7 +664,7 @@ def update_job_title():
         if not job_title_id:
             return make_response(jsonify({"message": "Missing query parameter: job_title_id"}), 400)
 
-        title = DefJobTitle.query.get(job_title_id)
+        title = db.session.get(DefJobTitle, job_title_id)
         if not title:
             return make_response(jsonify({"message": "Job title not found"}), 404)
 
@@ -715,7 +715,7 @@ def delete_job_title():
         if not job_title_id:
             return make_response(jsonify({"message": "Missing query parameter: job_title_id"}), 400)
 
-        title = DefJobTitle.query.get(job_title_id)
+        title = db.session.get(DefJobTitle, job_title_id)
         if not title:
             return make_response(jsonify({"message": "Job title not found"}), 404)
 
@@ -1844,7 +1844,7 @@ def search_execution_methods(page, limit):
 @jwt_required()
 def Show_ExecutionMethod(internal_execution_method):
     try:
-        method = DefAsyncExecutionMethods.query.get(internal_execution_method)
+        method = db.session.query(DefAsyncExecutionMethods).filter_by(internal_execution_method=internal_execution_method).first()
         if not method:
             return jsonify({"message": f"Execution method '{internal_execution_method}' not found"}), 404
         return jsonify(method.json()), 200
@@ -3908,7 +3908,7 @@ def create_def_global_condition_logic():
             return make_response(jsonify({"message": "Missing 'def_global_condition_logic_id'"}), 400)
 
         # Check if ID already exists
-        existing = DefGlobalConditionLogic.query.get(def_global_condition_logic_id)
+        existing = db.session.get(DefGlobalConditionLogic, def_global_condition_logic_id)
         if existing:
             return make_response(jsonify({
                 "message": f"Global Condition Logic ID {def_global_condition_logic_id} already exists."
@@ -4387,17 +4387,18 @@ def create_access_point():
     try:
         data = request.get_json() or {}
 
-        element_name = data.get("element_name")
+        access_point_name = data.get("access_point_name")
         description = data.get("description")
         platform = data.get("platform")
-        element_type = data.get("element_type")
+        access_point_type = data.get("access_point_type")
         access_control = data.get("access_control")
         change_control = data.get("change_control")
         audit = data.get("audit")
         def_data_source_id = data.get("def_data_source_id")
+        def_entitlement_id = data.get("def_entitlement_id")
 
 
-        data_source = DefDataSource.query.get(def_data_source_id)
+        data_source = db.session.query(DefDataSource).filter_by(def_data_source_id=def_data_source_id).first()
         if not data_source:
             return make_response(jsonify({
                 "message": "Invalid data source ID",
@@ -4405,10 +4406,10 @@ def create_access_point():
             }), 400)
 
         access_point = DefAccessPoint(
-            element_name = element_name,
+            access_point_name = access_point_name,
             description = description,
             platform = platform,
-            element_type = element_type,
+            access_point_type = access_point_type,
             access_control = access_control,
             change_control = change_control,
             audit = audit,
@@ -4424,6 +4425,7 @@ def create_access_point():
         element = DefAccessPointElement(
             def_access_point_id = access_point.def_access_point_id,
             def_data_source_id = def_data_source_id,
+            def_entitlement_id = def_entitlement_id,
             created_by = get_jwt_identity(),
             creation_date = datetime.utcnow(),
             last_updated_by = get_jwt_identity(),
@@ -4431,6 +4433,18 @@ def create_access_point():
         )
 
         db.session.add(element)
+
+        entitlement_element = DefAccessEntitlementElement(
+            def_entitlement_id = def_entitlement_id,
+            def_access_point_id = access_point.def_access_point_id,
+            created_by = get_jwt_identity(),
+            creation_date = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
+        )
+
+        
+        db.session.add(entitlement_element)
         db.session.commit()
 
         return make_response(jsonify({'message': 'Added successfully'}), 201)
@@ -4484,6 +4498,7 @@ def get_access_points():
 def get_access_point_view():
     try:
         def_access_point_id = request.args.get("def_access_point_id", type=int)
+        def_entitlement_id = request.args.get("def_entitlement_id", type=int)
         page = request.args.get("page", type=int)
         limit = request.args.get("limit", type=int)
 
@@ -4497,6 +4512,14 @@ def get_access_point_view():
                     "message": f"Access point with id {def_access_point_id} not found"
                 }), 404)
             return jsonify(access_point.json())
+
+        if def_entitlement_id:
+            entitlement = query.filter_by(def_entitlement_id=def_entitlement_id).first()
+            if not entitlement:
+                return make_response(jsonify({
+                    "message": f"Entitlement with id {def_entitlement_id} not found"
+                }), 404)
+            return jsonify(entitlement.json())
 
         if page and limit:
             pagination = query.order_by(DefAccessPointsV.creation_date.desc()).paginate(
@@ -4528,56 +4551,68 @@ def update_access_point():
             return make_response(jsonify({"message": "def_access_point_id is required"}), 400)
 
         data = request.get_json() or {}
+        user_id = get_jwt_identity()
 
-        # Fetch the existing access point
-        ap = DefAccessPoint.query.get(def_access_point_id)
+        # Fetch existing access point
+        ap = db.session.query(DefAccessPoint).filter_by(def_access_point_id=def_access_point_id).first()
         if not ap:
             return make_response(jsonify({
                 "message": f"Access point with id {def_access_point_id} not found"
             }), 404)
 
-        ap.element_name = data.get("element_name", ap.element_name)
-        ap.description = data.get("description", ap.description)
-        ap.platform = data.get("platform", ap.platform)
-        ap.element_type = data.get("element_type", ap.element_type)
-        ap.access_control = data.get("access_control", ap.access_control)
-        ap.change_control = data.get("change_control", ap.change_control)
-        ap.audit = data.get("audit", ap.audit)
-        ap.last_updated_by = get_jwt_identity()
-        ap.last_update_date = datetime.utcnow()
 
-        # Update associated element if def_data_source_id is provided
         def_data_source_id = data.get("def_data_source_id")
+        def_entitlement_id = data.get("def_entitlement_id")
+
+
         if def_data_source_id is not None:
-            ds = DefDataSource.query.get(def_data_source_id)
-            if not ds:
+            data_source = db.session.query(DefDataSource).filter_by(def_data_source_id=def_data_source_id).first()
+            if not data_source:
                 return make_response(jsonify({
                     "message": "Invalid data source ID",
                     "error": f"Data source with id {def_data_source_id} not found"
                 }), 400)
 
-            element = DefAccessPointElement.query.filter_by(def_access_point_id=def_access_point_id).first()
-            if element:
+  
+        ap.access_point_name = data.get("access_point_name", ap.access_point_name)
+        ap.description = data.get("description", ap.description)
+        ap.platform = data.get("platform", ap.platform)
+        ap.access_point_type = data.get("access_point_type", ap.access_point_type)
+        ap.access_control = data.get("access_control", ap.access_control)
+        ap.change_control = data.get("change_control", ap.change_control)
+        ap.audit = data.get("audit", ap.audit)
+        ap.last_updated_by = user_id
+        ap.last_update_date = datetime.utcnow()
+
+
+        element = DefAccessPointElement.query.filter_by(def_access_point_id=def_access_point_id).first()
+        if element:
+            if def_data_source_id is not None:
                 element.def_data_source_id = def_data_source_id
-                element.last_updated_by = get_jwt_identity()
-                element.last_update_date = datetime.utcnow()
-            else:
-                element = DefAccessPointElement(
-                    def_access_point_id = def_access_point_id,
-                    def_data_source_id = def_data_source_id,
-                    created_by = get_jwt_identity(),
-                    creation_date = datetime.utcnow(),
-                    last_updated_by = get_jwt_identity(),
-                    last_update_date = datetime.utcnow()
-                )
-                db.session.add(element)
+            if def_entitlement_id is not None:
+                element.def_entitlement_id = def_entitlement_id
+            element.last_updated_by = user_id
+            element.last_update_date = datetime.utcnow()
 
-        db.session.commit()
 
-        return jsonify({"message": "Edited successfully",})
+        if def_entitlement_id is not None:
+            entitlement_element = DefAccessEntitlementElement.query.filter_by(
+                def_access_point_id=def_access_point_id
+            ).first()
+
+            if entitlement_element:
+                # Update entitlement link if it changed
+                if entitlement_element.def_entitlement_id != def_entitlement_id:
+                    entitlement_element.def_entitlement_id = def_entitlement_id
+
+                entitlement_element.last_updated_by = user_id
+                entitlement_element.last_update_date = datetime.utcnow()
+
 
     except Exception as e:
-        return make_response(jsonify({'message': 'Error editing access point', 'error': str(e)}), 500)
+        db.session.rollback()
+        return make_response(jsonify({"message": "Error editing access point","error": str(e)}), 500)
+
 
 
 @flask_app.route("/def_access_points", methods=["DELETE"])
@@ -4590,7 +4625,7 @@ def delete_access_point():
             return make_response(jsonify({"message": "def_access_point_id is required"}), 400)
 
         # Fetch the access point
-        access_point = DefAccessPoint.query.get(def_access_point_id)
+        access_point = db.session.get(DefAccessPoint, def_access_point_id)
         if not access_point:
             return make_response(jsonify({
                 "message": f"Access point with id {def_access_point_id} not found"
@@ -4991,7 +5026,7 @@ def delete_entitlement_element():
         if not def_entitlement_id or not def_access_point_id:
             return make_response(jsonify({'message': 'def_entitlement_id and def_access_point_id required'}), 400)
 
-        element = DefAccessEntitlementElement.query.get((def_entitlement_id, def_access_point_id))
+        element = db.session.get(DefAccessEntitlementElement, (def_entitlement_id, def_access_point_id))
         if not element:
             return make_response(jsonify({'message': 'Not found'}), 404)
 
@@ -5856,7 +5891,7 @@ def upsert_action_item():
 
         if action_item_id:
             # --- UPDATE ---
-            action_item = DefActionItem.query.get(action_item_id)
+            action_item = db.session.get(DefActionItem, action_item_id)
             if not action_item:
                 return jsonify({"message": f"Action Item with ID {action_item_id} not found"}), 404
 
@@ -5943,7 +5978,7 @@ def update_action_item(action_item_id):
         data = request.get_json()
 
         # Get the action item
-        action_item = DefActionItem.query.get(action_item_id)
+        action_item = db.session.get(DefActionItem, action_item_id)
         if not action_item:
             return make_response(jsonify({"message": "Action item not found"}), 404)
 

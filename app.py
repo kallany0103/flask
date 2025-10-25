@@ -57,7 +57,6 @@ from executors.models import (
     DefGlobalConditionLogicAttribute,
     DefAccessPoint,
     DefAccessPointsV,
-    DefAccessPointElement,
     DefDataSource,
     DefAccessEntitlement,
     DefControl,
@@ -4406,6 +4405,7 @@ def create_access_point():
             }), 400)
 
         access_point = DefAccessPoint(
+            def_data_source_id = def_data_source_id,
             access_point_name = access_point_name,
             description = description,
             platform = platform,
@@ -4421,18 +4421,6 @@ def create_access_point():
 
         db.session.add(access_point)
         db.session.flush()
-
-        element = DefAccessPointElement(
-            def_access_point_id = access_point.def_access_point_id,
-            def_data_source_id = def_data_source_id,
-            def_entitlement_id = def_entitlement_id,
-            created_by = get_jwt_identity(),
-            creation_date = datetime.utcnow(),
-            last_updated_by = get_jwt_identity(),
-            last_update_date = datetime.utcnow()
-        )
-
-        db.session.add(element)
 
         entitlement_element = DefAccessEntitlementElement(
             def_entitlement_id = def_entitlement_id,
@@ -4458,10 +4446,15 @@ def create_access_point():
 def get_access_points():
     try:
         def_access_point_id = request.args.get("def_access_point_id", type=int)
+        access_point_name = request.args.get("access_point_name", type=str)
         page = request.args.get("page", type=int)
         limit = request.args.get("limit", type=int)
 
         query = DefAccessPoint.query
+
+        # Filter by access_point_name if provided
+        if access_point_name:
+            query = query.filter(DefAccessPoint.access_point_name.ilike(f"%{access_point_name}%"))
 
         # Fetch single access point
         if def_access_point_id:
@@ -4499,10 +4492,19 @@ def get_access_point_view():
     try:
         def_access_point_id = request.args.get("def_access_point_id", type=int)
         def_entitlement_id = request.args.get("def_entitlement_id", type=int)
+        access_point_name = request.args.get("access_point_name", type=str)
+        unlinked = request.args.get("unlinked", type=str)
         page = request.args.get("page", type=int)
         limit = request.args.get("limit", type=int)
 
         query = DefAccessPointsV.query
+
+        
+        if access_point_name:
+            query = query.filter(DefAccessPointsV.access_point_name.ilike(f"%{access_point_name}%"))
+
+        if unlinked and unlinked.lower() == "true":
+            query = query.filter(DefAccessPointsV.def_entitlement_id.is_(None))
 
         # Fetch single access point
         if def_access_point_id:
@@ -4513,13 +4515,15 @@ def get_access_point_view():
                 }), 404)
             return jsonify(access_point.json())
 
+
         if def_entitlement_id:
-            entitlement = query.filter_by(def_entitlement_id=def_entitlement_id).first()
+            entitlement = query.filter_by(def_entitlement_id=def_entitlement_id).all()
             if not entitlement:
                 return make_response(jsonify({
                     "message": f"Entitlement with id {def_entitlement_id} not found"
                 }), 404)
-            return jsonify(entitlement.json())
+            results = [ent.json() for ent in entitlement]
+            return jsonify(results)
 
         if page and limit:
             pagination = query.order_by(DefAccessPointsV.creation_date.desc()).paginate(
@@ -4580,30 +4584,20 @@ def update_access_point():
         ap.access_control = data.get("access_control", ap.access_control)
         ap.change_control = data.get("change_control", ap.change_control)
         ap.audit = data.get("audit", ap.audit)
+        ap.def_data_source_id = def_data_source_id if def_data_source_id is not None else ap.def_data_source_id
         ap.last_updated_by = user_id
         ap.last_update_date = datetime.utcnow()
-
-
-        element = DefAccessPointElement.query.filter_by(def_access_point_id=def_access_point_id).first()
-        if element:
-            if def_data_source_id is not None:
-                element.def_data_source_id = def_data_source_id
-            if def_entitlement_id is not None:
-                element.def_entitlement_id = def_entitlement_id
-            element.last_updated_by = user_id
-            element.last_update_date = datetime.utcnow()
-
 
         if def_entitlement_id is not None:
             entitlement_element = DefAccessEntitlementElement.query.filter_by(
                 def_access_point_id=def_access_point_id
-            ).first()
+            ).first()  
 
             if entitlement_element:
-                if entitlement_element.def_entitlement_id != def_entitlement_id:
-                    entitlement_element.def_entitlement_id = def_entitlement_id
+                entitlement_element.def_entitlement_id = def_entitlement_id
                 entitlement_element.last_updated_by = user_id
                 entitlement_element.last_update_date = datetime.utcnow()
+
 
 
         db.session.commit()
@@ -4954,43 +4948,50 @@ def create_entitlement_element(def_entitlement_id):
         data = request.get_json()
         user_id = get_jwt_identity()
 
-        # Check if def_entitlement_id exists
+        # Validate entitlement
         entitlement = db.session.get(DefAccessEntitlement, def_entitlement_id)
         if not entitlement:
             return make_response(jsonify({'error': 'Invalid def_entitlement_id'}), 400)
 
-        # Check if def_access_point_id exists
-        access_point_id = data.get('def_access_point_id')
-        access_point = db.session.get(DefAccessPointElement, access_point_id)
-        if not access_point:
-            return make_response(jsonify({'error': 'Invalid def_access_point_id'}), 400)
+        # Expect a list of access point IDs
+        access_point_ids = data.get('def_access_point_ids') or [data.get('def_access_point_id')]
+        if not access_point_ids or not isinstance(access_point_ids, list):
+            return make_response(jsonify({'error': 'def_access_point_ids must be a list'}), 400)
 
-        # Optionally, prevent duplicates
-        existing = (
-            db.session.query(DefAccessEntitlementElement)
-            .filter_by(def_entitlement_id=def_entitlement_id, def_access_point_id=access_point_id)
-            .first()
-        )
-        if existing:
-            return make_response(jsonify({'error': 'This access point is already assigned to the entitlement'}), 400)
+        for access_point_id in access_point_ids:
+            # Validate access point
+            access_point = db.session.get(DefAccessPoint, access_point_id)
+            if not access_point:
+                return make_response(jsonify({'error': f'Invalid def_access_point_id {access_point_id}'}), 400)
 
-        # Create the element
-        element = DefAccessEntitlementElement(
-            def_entitlement_id = def_entitlement_id,
-            def_access_point_id = access_point_id,
-            created_by = user_id,
-            last_updated_by = user_id,
-            creation_date = datetime.utcnow(),
-            last_update_date = datetime.utcnow()
-        )
-        db.session.add(element)
+            # Skip duplicates
+            exists = (
+                db.session.query(DefAccessEntitlementElement)
+                .filter_by(def_entitlement_id=def_entitlement_id, def_access_point_id=access_point_id)
+                .first()
+            )
+            if exists:
+                continue
+
+            # Add entitlement element
+            db.session.add(DefAccessEntitlementElement(
+                def_entitlement_id = def_entitlement_id,
+                def_access_point_id = access_point_id,
+                created_by = user_id,
+                last_updated_by = user_id,
+                creation_date = datetime.utcnow(),
+                last_update_date = datetime.utcnow()
+            ))
+
+
         db.session.commit()
-
         return make_response(jsonify({'message': 'Added successfully'}), 201)
 
     except Exception as e:
         db.session.rollback()
         return make_response(jsonify({'error': str(e)}), 400)
+
+
 
 
 
@@ -5018,27 +5019,34 @@ def get_entitlement_elements():
 
 
 
-@flask_app.route('/def_access_entitlement_elements', methods=['DELETE'])
+@flask_app.route('/def_access_entitlement_elements/<int:def_entitlement_id>', methods=['DELETE'])
 @jwt_required()
-def delete_entitlement_element():
+def delete_entitlement_element(def_entitlement_id):
     try:
-        def_entitlement_id = request.args.get('def_entitlement_id', type=int)
-        def_access_point_id = request.args.get('def_access_point_id', type=int)
+        data = request.get_json()
+        access_point_ids = data.get('def_access_point_ids')
 
-        if not def_entitlement_id or not def_access_point_id:
-            return make_response(jsonify({'message': 'def_entitlement_id and def_access_point_id required'}), 400)
+        if not access_point_ids or not isinstance(access_point_ids, list):
+            return make_response(jsonify({'message': 'def_access_point_ids (list) is required'}), 400)
 
-        element = db.session.get(DefAccessEntitlementElement, (def_entitlement_id, def_access_point_id))
-        if not element:
-            return make_response(jsonify({'message': 'Not found'}), 404)
+        # Validate entitlement
+        entitlement = db.session.get(DefAccessEntitlement, def_entitlement_id)
+        if not entitlement:
+            return make_response(jsonify({'error': 'Invalid def_entitlement_id'}), 400)
 
-        db.session.delete(element)
+        db.session.query(DefAccessEntitlementElement).filter(
+            DefAccessEntitlementElement.def_entitlement_id == def_entitlement_id,
+            DefAccessEntitlementElement.def_access_point_id.in_(access_point_ids)
+        ).delete(synchronize_session=False)
+
         db.session.commit()
         return make_response(jsonify({'message': 'Deleted successfully'}), 200)
 
     except Exception as e:
         db.session.rollback()
         return make_response(jsonify({'error': str(e)}), 400)
+
+
 
 
 

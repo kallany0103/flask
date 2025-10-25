@@ -781,6 +781,7 @@ class DefAccessPoint(db.Model):
     __table_args__ = {"schema": "apps"}
 
     def_access_point_id = db.Column(db.Integer, primary_key=True)
+    def_data_source_id = db.Column(db.Integer, db.ForeignKey("apps.def_data_sources.def_data_source_id", ondelete="CASCADE"))
     access_point_name = db.Column(db.String(150))
     description = db.Column(db.String(250))
     platform = db.Column(db.String(50))
@@ -796,6 +797,7 @@ class DefAccessPoint(db.Model):
     def json(self):
         return {
             "def_access_point_id": self.def_access_point_id,
+            "def_data_source_id": self.def_data_source_id,
             "access_point_name": self.access_point_name,
             "description": self.description,
             "platform": self.platform,
@@ -815,16 +817,16 @@ class DefAccessPointsV(db.Model):
     __table_args__ = {"schema": "apps"}
 
     def_access_point_id = db.Column(db.Integer, primary_key=True)
+    def_data_source_id = db.Column(db.Integer)
+    def_entitlement_id = db.Column(db.Integer, nullable=True)
     access_point_name = db.Column(db.String)
+    datasource_name = db.Column(db.String)
     description = db.Column(db.String)
     platform = db.Column(db.String)
     access_point_type = db.Column(db.String)
     access_control = db.Column(db.String)
     change_control = db.Column(db.String)
     audit = db.Column(db.String)
-    def_data_source_id = db.Column(db.Integer)
-    def_entitlement_id = db.Column(db.Integer)
-    datasource_name = db.Column(db.String)
     created_by = db.Column(db.Integer)
     creation_date = db.Column(db.DateTime())
     last_updated_by = db.Column(db.Integer)
@@ -833,43 +835,20 @@ class DefAccessPointsV(db.Model):
     def json(self):
         return {
             "def_access_point_id": self.def_access_point_id,
+            "def_data_source_id": self.def_data_source_id,
+            "def_entitlement_id": self.def_entitlement_id,
             "access_point_name": self.access_point_name,
+            "datasource_name": self.datasource_name,
             "description": self.description,
             "platform": self.platform,
             "access_point_type": self.access_point_type,
             "access_control": self.access_control,
             "change_control": self.change_control,
             "audit": self.audit,
-            "def_data_source_id": self.def_data_source_id,
-            "def_entitlement_id": self.def_entitlement_id,
-            "datasource_name": self.datasource_name,
             "created_by": self.created_by,
             "creation_date": self.creation_date,
             "last_updated_by": self.last_updated_by,
             "last_update_date": self.last_update_date
-        }
-
-class DefAccessPointElement(db.Model):
-    __tablename__ = "def_access_point_elements"
-    __table_args__ = {"schema": "apps"}
-
-    def_entitlement_id = db.Column(db.Integer,db.ForeignKey("apps.def_access_entitlements.def_entitlement_id", ondelete="CASCADE"), primary_key=True)
-    def_access_point_id = db.Column(db.Integer,db.ForeignKey("apps.def_access_points.def_access_point_id", ondelete="CASCADE"), primary_key=True)
-    def_data_source_id = db.Column(db.Integer,db.ForeignKey("apps.def_data_sources.def_data_source_id", ondelete="CASCADE"))
-    created_by = db.Column(db.Integer)
-    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by = db.Column(db.Integer)
-    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def json(self):
-        return {
-            "def_entitlement_id": self.def_entitlement_id,
-            "def_access_point_id": self.def_access_point_id,
-            "def_data_source_id": self.def_data_source_id,
-            "created_by": self.created_by,
-            "creation_date": self.creation_date,
-            "last_updated_by": self.last_updated_by,
-            "last_update_date": self.last_update_date,
         }
 
 
@@ -914,8 +893,8 @@ class DefAccessEntitlementElement(db.Model):
     __tablename__ = 'def_access_entitlement_elements'
     __table_args__ = {'schema': 'apps'}
 
+    def_access_point_id = db.Column(db.Integer, db.ForeignKey('apps.def_access_points.def_access_point_id', ondelete="CASCADE"), primary_key=True, nullable=False)
     def_entitlement_id = db.Column(db.Integer, db.ForeignKey('apps.def_access_entitlements.def_entitlement_id', ondelete="CASCADE"), primary_key=True, nullable=False)
-    def_access_point_id = db.Column(db.Integer, db.ForeignKey('apps.def_access_point_elements.def_access_point_id', ondelete="CASCADE"), primary_key=True, nullable=False)
     created_by = db.Column(db.Integer)
     creation_date = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated_by = db.Column(db.Integer)

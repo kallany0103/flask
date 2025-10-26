@@ -4401,7 +4401,7 @@ def create_access_point():
         if not data_source:
             return make_response(jsonify({
                 "message": "Invalid data source ID",
-                "error": f"Data source with id {def_data_source_id} not found"
+                "error": "Data source not found"
             }), 400)
 
         access_point = DefAccessPoint(
@@ -4461,7 +4461,7 @@ def get_access_points():
             access_point = query.filter_by(def_access_point_id=def_access_point_id).first()
             if not access_point:
                 return make_response(jsonify({
-                    "message": f"Access point with id {def_access_point_id} not found"
+                    "message": "Access point not found"
                 }), 404)
             return jsonify(access_point.json())
 
@@ -4511,7 +4511,7 @@ def get_access_point_view():
             access_point = query.filter_by(def_access_point_id=def_access_point_id).first()
             if not access_point:
                 return make_response(jsonify({
-                    "message": f"Access point with id {def_access_point_id} not found"
+                    "message": "Access point not found"
                 }), 404)
             return jsonify(access_point.json())
 
@@ -4520,7 +4520,7 @@ def get_access_point_view():
             entitlement = query.filter_by(def_entitlement_id=def_entitlement_id).all()
             if not entitlement:
                 return make_response(jsonify({
-                    "message": f"Entitlement with id {def_entitlement_id} not found"
+                    "message":  "No access point found"
                 }), 404)
             results = [ent.json() for ent in entitlement]
             return jsonify(results)
@@ -4561,7 +4561,7 @@ def update_access_point():
         ap = db.session.query(DefAccessPoint).filter_by(def_access_point_id=def_access_point_id).first()
         if not ap:
             return make_response(jsonify({
-                "message": f"Access point with id {def_access_point_id} not found"
+                "message": "Access point not found"
             }), 404)
 
 
@@ -4571,7 +4571,7 @@ def update_access_point():
             if not data_source:
                 return make_response(jsonify({
                     "message": "Invalid data source ID",
-                    "error": f"Data source with id {def_data_source_id} not found"
+                    "error": "Data source not found"
                 }), 400)
 
         def_entitlement_id = data.get("def_entitlement_id")
@@ -4962,7 +4962,7 @@ def create_entitlement_element(def_entitlement_id):
             # Validate access point
             access_point = db.session.get(DefAccessPoint, access_point_id)
             if not access_point:
-                return make_response(jsonify({'error': f'Invalid def_access_point_id {access_point_id}'}), 400)
+                return make_response(jsonify({'error': 'Invalid access point ID'}), 400)
 
             # Skip duplicates
             exists = (

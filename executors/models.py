@@ -291,6 +291,40 @@ class Message(db.Model):
             'readers'       : self.readers
         }
     
+
+class DefNotifications(db.Model):
+    __tablename__ = 'def_notifications'
+    __table_args__ = {'schema': 'apps'}  
+
+    notification_id       = db.Column(db.Text, primary_key = True)
+    notification_type     = db.Column(db.Text)
+    notification_body     = db.Column(db.Text) 
+    subject                 = db.Column(db.String(100))
+    status      = db.Column(db.Text) 
+    parent_notification_id = db.Column(db.Text) 
+    involved_users  = db.Column(JSONB)
+    action_item_id =  db.Column(db.Integer())
+    alert_id= db.Column(db.Integer())
+    sender = db.Column(db.Integer())
+    recipients  = db.Column(JSONB)
+
+
+    # JSON serialization method
+    def json(self):
+        return {
+            'notification_id'            : self.notification_id,
+            'notification_type'        : self.notification_type,
+            'notification_body'      : self.notification_body,
+            'subject'       : self.subject,
+            'status'          : self.status,
+            'parent_notification_id'          : self.parent_notification_id,
+            'involved_users'        : self.involved_users,
+            'action_item_id'      : self.action_item_id,
+            'alert_id' : self.alert_id,
+            'sender'       : self.sender,
+            'recipients'       : self.recipients
+        }
+    
     
 
 class DefAsyncExecutionMethods(db.Model):
@@ -982,40 +1016,40 @@ class DefProcess(db.Model):
 
 
 
-class DefNotification(db.Model):
-    __tablename__ = 'def_notifications'
-    __table_args__ = {'schema': 'apps'}
+# class DefNotification(db.Model):
+#     __tablename__ = 'def_notifications'
+#     __table_args__ = {'schema': 'apps'}
 
-    notification_id = db.Column(db.Text, primary_key=True, nullable=False)
-    notification_type = db.Column(db.Text, nullable=False)
-    subject = db.Column(db.Text)
-    notification_body = db.Column(db.Text)
-    status = db.Column(db.Text)  # SENT, DRAFT, DELETED
-    parent_notification_id = db.Column(db.Text)
-    involved_users = db.Column(JSONB)
-    action_item_id = db.Column(db.Integer)
-    alert_id = db.Column(db.Integer)
-    created_by = db.Column(db.Integer)
-    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_by = db.Column(db.Integer)
-    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+#     notification_id = db.Column(db.Text, primary_key=True, nullable=False)
+#     notification_type = db.Column(db.Text, nullable=False)
+#     subject = db.Column(db.Text)
+#     notification_body = db.Column(db.Text)
+#     status = db.Column(db.Text)  # SENT, DRAFT, DELETED
+#     parent_notification_id = db.Column(db.Text)
+#     involved_users = db.Column(JSONB)
+#     action_item_id = db.Column(db.Integer)
+#     alert_id = db.Column(db.Integer)
+#     created_by = db.Column(db.Integer)
+#     creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+#     last_updated_by = db.Column(db.Integer)
+#     last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def json(self):
-        return {
-            'notification_id': self.notification_id,
-            'notification_type': self.notification_type,
-            'subject': self.subject,
-            'notification_body': self.notification_body,
-            'status': self.status,
-            'parent_notification_id': self.parent_notification_id,
-            'involved_users': self.involved_users,
-            'action_item_id': self.action_item_id,
-            'alert_id': self.alert_id,
-            'created_by': self.created_by,
-            'creation_date': self.creation_date,
-            'last_updated_by': self.last_updated_by,
-            'last_update_date': self.last_update_date
-        }
+#     def json(self):
+#         return {
+#             'notification_id': self.notification_id,
+#             'notification_type': self.notification_type,
+#             'subject': self.subject,
+#             'notification_body': self.notification_body,
+#             'status': self.status,
+#             'parent_notification_id': self.parent_notification_id,
+#             'involved_users': self.involved_users,
+#             'action_item_id': self.action_item_id,
+#             'alert_id': self.alert_id,
+#             'created_by': self.created_by,
+#             'creation_date': self.creation_date,
+#             'last_updated_by': self.last_updated_by,
+#             'last_update_date': self.last_update_date
+#         }
 
 
 class DefActionItem(db.Model):

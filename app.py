@@ -62,7 +62,6 @@ from executors.models import (
     DefControl,
     DefActionItem,
     DefActionItemsV,
-    DefNotification,
     DefActionItemAssignment,
     DefAlert,
     DefAlertRecipient,
@@ -70,7 +69,8 @@ from executors.models import (
     DefControlEnvironment,
     NewUserInvitation,
     DefJobTitle,
-    DefAccessEntitlementElement
+    DefAccessEntitlementElement,
+    DefNotifications
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -180,6 +180,7 @@ def create_message():
     except Exception as e:
         return make_response(jsonify({"Message": f"Error: {str(e)}"}), 500)
     
+
     
 @flask_app.route('/messages/<string:id>', methods=['PUT'])
 def update_messages(id):
@@ -5817,17 +5818,26 @@ def create_action_item():
         db.session.flush()  # so we get the ID
 
         # Add assignments
-        for uid in user_ids:
-            assignment = DefActionItemAssignment(
-                action_item_id = new_action_item.action_item_id,
-                user_id = uid,
-                status = status,
-                created_by = created_by,
-                creation_date = datetime.utcnow(),
-                last_updated_by = created_by,
-                last_update_date = datetime.utcnow()
-            )
-            db.session.add(assignment)
+        if new_action_item:
+            for uid in user_ids:
+                assignment = DefActionItemAssignment(
+                    action_item_id = new_action_item.action_item_id,
+                    user_id = uid,
+                    status = status,
+                    created_by = get_jwt_identity(),
+                    # creation_date = datetime.utcnow(),
+                    last_updated_by = get_jwt_identity(),
+                    # last_update_date = datetime.utcnow()
+                )
+                db.session.add(assignment)
+
+    #update action_item_id in def_notifications table
+        if new_action_item:
+            notification = DefNotifications.query.filter_by(notification_id=notification_id).first()
+            if notification:
+                notification.action_item_id = new_action_item.action_item_id
+            
+
 
         db.session.commit()
         return make_response(jsonify({"message": "Added successfully",

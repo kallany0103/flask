@@ -5785,7 +5785,6 @@ def create_action_item():
     try:
         action_item_name = request.json.get('action_item_name')
         description = request.json.get('description')
-        status = request.json.get('status', 'pending')
         notification_id = request.json.get('notification_id')
         user_ids = request.json.get('user_ids')
 
@@ -5823,7 +5822,7 @@ def create_action_item():
                 assignment = DefActionItemAssignment(
                     action_item_id = new_action_item.action_item_id,
                     user_id = uid,
-                    status = status,
+                    status = 'NEW',
                     created_by = get_jwt_identity(),
                     # creation_date = datetime.utcnow(),
                     last_updated_by = get_jwt_identity(),
@@ -6002,6 +6001,7 @@ def update_action_item(action_item_id):
         description = data.get('description')
         notification_id = data.get('notification_id')
         user_ids = data.get('user_ids', [])
+        action = data.get('action')
         
 
         # --- Update DefActionItem main record ---
@@ -6063,10 +6063,17 @@ def update_action_item(action_item_id):
 
         db.session.commit()
 
-        return make_response(jsonify({
-            'message': 'Action Item updated successfully',
-            'updated_action_item': action_item.json()
-        }), 200)
+        if action == 'DRAFT':
+            return make_response(jsonify({
+                'message': 'Action item saved successfully',
+                'updated_action_item': action_item.json()
+            }), 200)
+
+        if action == 'SENT':
+            return make_response(jsonify({
+                'message': 'Action item sent successfully',
+                'updated_action_item': action_item.json()
+            }), 200)
 
     except Exception as e:
         db.session.rollback()

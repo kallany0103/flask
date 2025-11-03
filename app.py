@@ -5991,75 +5991,157 @@ def upsert_action_item():
 
 
  #Update a DefActionItem
+# @flask_app.route('/def_action_items/<int:action_item_id>', methods=['PUT'])
+# @jwt_required()
+# def update_action_item(action_item_id):
+#     try:
+#         data = request.get_json()
+
+#         # Get the action item
+#         action_item = db.session.get(DefActionItem, action_item_id)
+#         if not action_item:
+#             return make_response(jsonify({"message": "Action item not found"}), 404)
+
+#         # Update main fields
+#         if 'action_item_name' in data:
+#             action_item.action_item_name = data['action_item_name']
+#         if 'description' in data:
+#             action_item.description = data['description']
+#         if 'status' in data:
+#             action_item.status = data['status']
+#         if 'notification_id' in data:
+#             action_item.notification_id = data['notification_id']
+
+#         action_item.last_updated_by = get_jwt_identity()
+#         action_item.last_update_date = datetime.utcnow()
+
+#         # Handle assignments update (based on user_ids list)
+#         if 'user_ids' in data:
+#             new_user_ids = set(data['user_ids'])
+#             new_status = data.get('status')
+
+#             # Get existing assigned user IDs for this action item
+#             existing_assignments = DefActionItemAssignment.query.filter_by(
+#                 action_item_id=action_item_id
+#             ).all()
+#             existing_user_ids = {a.user_id for a in existing_assignments}
+
+#             # Update status for existing users (if provided)
+#             if new_status is not None:
+#                 for assignment in existing_assignments:
+#                     if assignment.user_id in new_user_ids:
+#                         assignment.status = new_status
+#                         assignment.last_updated_by = get_jwt_identity()
+#                         assignment.last_update_date = datetime.utcnow()
+
+#             # Users to remove (in DB but not in new list)
+#             to_remove = existing_user_ids - new_user_ids
+#             if to_remove:
+#                 DefActionItemAssignment.query.filter(
+#                     DefActionItemAssignment.action_item_id == action_item_id,
+#                     DefActionItemAssignment.user_id.in_(to_remove)
+#                 ).delete(synchronize_session=False)
+
+#             # Users to add (in new list but not in DB)
+#             to_add = new_user_ids - existing_user_ids
+#             for uid in to_add:
+#                 assignment = DefActionItemAssignment(
+#                     action_item_id=action_item_id,
+#                     user_id=uid,
+#                     status=new_status,
+#                     last_updated_by=get_jwt_identity(),
+#                     last_update_date=datetime.utcnow()
+#                 )
+#                 db.session.add(assignment)
+
+#         db.session.commit()
+#         return make_response(jsonify({"message": "Edited successfully"}), 200)
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return make_response(jsonify({"message": "Error updating action item", "error": str(e)}), 500)
+
 @flask_app.route('/def_action_items/<int:action_item_id>', methods=['PUT'])
 @jwt_required()
 def update_action_item(action_item_id):
     try:
         data = request.get_json()
+        current_user = get_jwt_identity()
 
-        # Get the action item
-        action_item = db.session.get(DefActionItem, action_item_id)
+        action_item_name = data.get('action_item_name')
+        description = data.get('description')
+        notification_id = data.get('notification_id')
+        recipients = data.get('recipients', [])
+        
+
+        # --- Update DefActionItem main record ---
+        action_item = DefActionItem.query.get(action_item_id)
         if not action_item:
-            return make_response(jsonify({"message": "Action item not found"}), 404)
+            return make_response(jsonify({'message': 'Action Item not found'}), 404)
 
-        # Update main fields
-        if 'action_item_name' in data:
-            action_item.action_item_name = data['action_item_name']
-        if 'description' in data:
-            action_item.description = data['description']
-        if 'status' in data:
-            action_item.status = data['status']
-        if 'notification_id' in data:
-            action_item.notification_id = data['notification_id']
+        if action_item_name:
+            action_item.action_item_name = action_item_name
+        if description:
+            action_item.description = description
+        if notification_id:
+            action_item.notification_id = notification_id
 
-        action_item.last_updated_by = get_jwt_identity()
+        action_item.last_updated_by = current_user
         action_item.last_update_date = datetime.utcnow()
 
-        # Handle assignments update (based on user_ids list)
-        if 'user_ids' in data:
-            new_user_ids = set(data['user_ids'])
-            new_status = data.get('status')
+        db.session.commit()
 
-            # Get existing assigned user IDs for this action item
-            existing_assignments = DefActionItemAssignment.query.filter_by(
-                action_item_id=action_item_id
-            ).all()
-            existing_user_ids = {a.user_id for a in existing_assignments}
+        # --- Handle DefActionItemAssignment sync ---
+        existing_assignments = DefActionItemAssignment.query.filter_by(
+            action_item_id=action_item_id
+        ).all()
+        existing_user_ids = {a.user_id for a in existing_assignments}
+        incoming_user_ids = set(map(int, recipients))
 
-            # Update status for existing users (if provided)
-            if new_status is not None:
-                for assignment in existing_assignments:
-                    if assignment.user_id in new_user_ids:
-                        assignment.status = new_status
-                        assignment.last_updated_by = get_jwt_identity()
-                        assignment.last_update_date = datetime.utcnow()
+        # Find differences
+        users_to_add = incoming_user_ids - existing_user_ids
+        users_to_update = incoming_user_ids & existing_user_ids
+        users_to_delete = existing_user_ids - incoming_user_ids
 
-            # Users to remove (in DB but not in new list)
-            to_remove = existing_user_ids - new_user_ids
-            if to_remove:
-                DefActionItemAssignment.query.filter(
-                    DefActionItemAssignment.action_item_id == action_item_id,
-                    DefActionItemAssignment.user_id.in_(to_remove)
-                ).delete(synchronize_session=False)
+        # Add new recipients
+        for uid in users_to_add:
+            new_assignment = DefActionItemAssignment(
+                action_item_id=action_item_id,
+                user_id=uid,
+                status='NEW',
+                created_by=current_user,
+                last_updated_by=current_user
+            )
+            db.session.add(new_assignment)
 
-            # Users to add (in new list but not in DB)
-            to_add = new_user_ids - existing_user_ids
-            for uid in to_add:
-                assignment = DefActionItemAssignment(
-                    action_item_id=action_item_id,
-                    user_id=uid,
-                    status=new_status,
-                    last_updated_by=get_jwt_identity(),
-                    last_update_date=datetime.utcnow()
-                )
-                db.session.add(assignment)
+        # Update existing recipients
+        for uid in users_to_update:
+            assignment = DefActionItemAssignment.query.filter_by(
+                action_item_id=action_item_id,
+                user_id=uid
+            ).first()
+            if assignment:
+                assignment.last_updated_by = current_user
+                assignment.last_update_date = datetime.utcnow()
+
+        # Delete removed recipients
+        if users_to_delete:
+            DefActionItemAssignment.query.filter(
+                DefActionItemAssignment.action_item_id == action_item_id,
+                DefActionItemAssignment.user_id.in_(users_to_delete)
+            ).delete(synchronize_session=False)
 
         db.session.commit()
-        return make_response(jsonify({"message": "Edited successfully"}), 200)
+
+        return make_response(jsonify({
+            'message': 'Action Item updated successfully',
+            'updated_action_item': action_item.json()
+        }), 200)
 
     except Exception as e:
         db.session.rollback()
-        return make_response(jsonify({"message": "Error updating action item", "error": str(e)}), 500)
+        return make_response(jsonify({'error': str(e)}), 500)
+
 
 
 
@@ -6144,7 +6226,7 @@ def get_action_item_assignments():
 
 
 # Update DefActionItemAssignments (replace user_ids for given action_item_id)
-@flask_app.route('/def_action_item_assignments/<int:user_id>/<int:action_item_id>', methods=['PUT'])
+@flask_app.route('/def_action_items/update_status/<int:user_id>/<int:action_item_id>', methods=['PUT'])
 @jwt_required()
 def update_action_item_assignment_status(user_id, action_item_id):
     try:

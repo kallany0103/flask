@@ -18,6 +18,7 @@ class DefTenantEnterpriseSetup(db.Model):
     creation_date    = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated_by  = db.Column(db.Integer)
     last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user_invitation_validity = db.Column(db.String(5), default="1h")
 
     def json(self):
         return {
@@ -27,7 +28,8 @@ class DefTenantEnterpriseSetup(db.Model):
             'created_by'      : self.created_by,
             'creation_date'   : self.creation_date,
             'last_updated_by': self.last_updated_by,
-            'last_update_date': self.last_update_date
+            'last_update_date': self.last_update_date,
+            'user_invitation_validity': self.user_invitation_validity
         }
 
 
@@ -137,7 +139,6 @@ class DefUser(db.Model):
             'user_invitation_id': self.user_invitation_id,
             'profile_picture'   : self.profile_picture
         }
-
 
 
 class DefPerson(db.Model):
@@ -1198,6 +1199,8 @@ class DefControlEnvironment(db.Model):
     
 
 class NewUserInvitation(db.Model):
+
+
     __tablename__ = 'new_user_invitations'
     __table_args__ = {'schema': 'apps'}
 
@@ -1225,3 +1228,93 @@ class NewUserInvitation(db.Model):
             "accepted_at": self.accepted_at, 
             "expires_at": self.expires_at
         }
+    
+
+
+
+
+# class DefPrivilege(db.Model):
+#     __tablename__ = 'def_privileges'
+#     __table_args__ = {'schema': 'apps'}
+
+#     privilege_id = db.Column(db.Integer, primary_key=True)
+#     privilege_name = db.Column(db.String(150), nullable=False)
+
+#     def json(self):
+#         return {
+#             'privilege_id': self.privilege_id,
+#             'privilege_name': self.privilege_name
+#         }
+
+# class UserGrantedPrivilege(db.Model):
+#     __tablename__ = 'user_granted_privileges'
+#     __table_args__ = {'schema': 'apps'}
+
+#     user_id = db.Column(db.Integer, db.ForeignKey('apps.def_users.user_id'), primary_key=True)
+#     privilege_id = db.Column(db.Integer, db.ForeignKey('apps.def_privileges.privilege_id'), primary_key=True)
+
+#     def json(self):
+#         return {
+#             'user_id': self.user_id,
+#             'privilege_id': self.privilege_id
+#         }
+
+# class DefRole(db.Model):
+#     __tablename__ = 'def_roles'
+#     __table_args__ = {'schema': 'apps'}
+
+#     role_id = db.Column(db.Integer, primary_key=True)
+#     role_name = db.Column(db.String(150), nullable=False)
+
+#     def json(self):
+#         return {
+#             'role_id': self.role_id,
+#             'role_name': self.role_name
+#         }
+
+
+# class UserGrantedRole(db.Model):
+#     __tablename__ = 'user_granted_roles'
+#     __table_args__ = {'schema': 'apps'}
+
+#     user_id = db.Column(db.Integer, db.ForeignKey('apps.def_users.user_id'), primary_key=True)
+#     role_id = db.Column(db.Integer, db.ForeignKey('apps.def_roles.role_id'), primary_key=True)
+
+#     def json(self):
+#         return {
+#             'user_id': self.user_id,
+#             'role_id': self.role_id
+#         }
+
+
+# class ApiEndpoint(db.Model):
+#     __tablename__ = 'api_endpoints'
+#     __table_args__ = {'schema': 'apps'}
+
+#     api_endpoint_id = db.Column(db.Integer, primary_key=True)
+#     api_endpoint = db.Column(db.String(250), nullable=False)
+#     parameter = db.Column(db.Text)
+#     method = db.Column(db.String(20), nullable=False)
+#     privilege_id = db.Column(db.Integer, db.ForeignKey('apps.def_privileges.privilege_id'))
+
+#     def json(self):
+#         return {
+#             'api_endpoint_id': self.api_endpoint_id,
+#             'api_endpoint': self.api_endpoint,
+#             'parameter': self.parameter,
+#             'method': self.method,
+#             'privilege_id': self.privilege_id
+#         }
+
+# class ApiEndpointRole(db.Model):
+#     __tablename__ = 'api_endpoint_roles'
+#     __table_args__ = {'schema': 'apps'}
+
+#     api_endpoint_id = db.Column(db.Integer, db.ForeignKey('apps.api_endpoints.api_endpoint_id'), primary_key=True)
+#     role_id = db.Column(db.Integer, db.ForeignKey('apps.def_roles.role_id'), primary_key=True)
+
+#     def json(self):
+#         return {
+#             'api_endpoint_id': self.api_endpoint_id,
+#             'role_id': self.role_id
+#         }

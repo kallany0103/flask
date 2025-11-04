@@ -480,6 +480,7 @@ def update_enterprise(tenant_id):
             data = request.get_json()
             setup.enterprise_name = data.get('enterprise_name', setup.enterprise_name)
             setup.enterprise_type = data.get('enterprise_type', setup.enterprise_type)
+            setup.user_invitation_validity = data.get('user_invitation_validity', setup.user_invitation_validity)
             setup.last_updated_by = get_jwt_identity()
             setup.last_update_date = datetime.utcnow()
             db.session.commit()

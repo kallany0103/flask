@@ -5787,6 +5787,7 @@ def create_action_item():
         description = request.json.get('description')
         notification_id = request.json.get('notification_id')
         user_ids = request.json.get('user_ids')
+        action = request.json.get('action')
 
         created_by = get_jwt_identity()
 
@@ -5839,8 +5840,20 @@ def create_action_item():
 
 
         db.session.commit()
-        return make_response(jsonify({"message": "Added successfully",
-                                      "action_item_id": new_action_item.action_item_id}), 201)
+
+        if action == 'DRAFT':
+            return make_response(jsonify({
+                'message': 'Action item saved successfully',
+                'result': new_action_item.json()
+
+            }), 201)
+
+        if action == 'SENT':
+            return make_response(jsonify({
+                'message': 'Action item sent successfully',
+                'result': new_action_item.json()
+            }), 201)
+
 
     except Exception as e:
         db.session.rollback()
@@ -6066,13 +6079,13 @@ def update_action_item(action_item_id):
         if action == 'DRAFT':
             return make_response(jsonify({
                 'message': 'Action item saved successfully',
-                'updated_action_item': action_item.json()
+                'result': action_item.json()
             }), 200)
 
         if action == 'SENT':
             return make_response(jsonify({
                 'message': 'Action item sent successfully',
-                'updated_action_item': action_item.json()
+                'result': action_item.json()
             }), 200)
 
     except Exception as e:

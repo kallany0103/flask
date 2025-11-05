@@ -427,8 +427,7 @@ def create_update_enterprise(tenant_id):
                 created_by     = get_jwt_identity(),
                 creation_date   = datetime.utcnow(),
                 last_updated_by = get_jwt_identity(),
-                last_update_date = datetime.utcnow(),
-                user_invitation_validity = user_invitation_validity
+                last_update_date = datetime.utcnow()
             )
 
             db.session.add(new_enterprise)

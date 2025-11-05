@@ -218,6 +218,10 @@ def create_tenant():
        data = request.get_json()
     #    tenant_id   = generate_tenant_id()  # Call the function to get the result
        tenant_name = data['tenant_name']
+       existing_name = DefTenant.query.filter_by(tenant_name=tenant_name).first()
+       if existing_name:
+            return make_response(jsonify({"message": "Tenant name already exists"}), 400)
+
 
        new_tenant  = DefTenant(
             tenant_name = tenant_name,
@@ -391,10 +395,19 @@ def create_update_enterprise(tenant_id):
         enterprise_type = data['enterprise_type']
         user_invitation_validity = data.get('user_invitation_validity', "1h")
 
+
+        tenant_exists = DefTenant.query.filter_by(tenant_id=tenant_id).first()
+        if not tenant_exists:
+            return make_response(jsonify({"message": "Tenant does not exist"}), 400)
+        
         existing_enterprise = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
         existing_enterprise_name  = DefTenantEnterpriseSetup.query.filter_by(enterprise_name=enterprise_name).first()
         if existing_enterprise_name and (not existing_enterprise or existing_enterprise_name.tenant_id != tenant_id):
             return make_response(jsonify({"message": f"Enterprise name '{enterprise_name}' already exists."}), 409)
+
+
+
+
 
         if existing_enterprise:
             existing_enterprise.enterprise_name = enterprise_name
@@ -402,6 +415,7 @@ def create_update_enterprise(tenant_id):
             existing_enterprise.user_invitation_validity = user_invitation_validity
             existing_enterprise.last_updated_by = get_jwt_identity()
             existing_enterprise.last_update_date = datetime.utcnow()
+            existing_enterprise.user_invitation_validity = user_invitation_validity
             message = "Edited successfully"
 
         else:
@@ -413,7 +427,8 @@ def create_update_enterprise(tenant_id):
                 created_by     = get_jwt_identity(),
                 creation_date   = datetime.utcnow(),
                 last_updated_by = get_jwt_identity(),
-                last_update_date = datetime.utcnow()
+                last_update_date = datetime.utcnow(),
+                user_invitation_validity = user_invitation_validity
             )
 
             db.session.add(new_enterprise)

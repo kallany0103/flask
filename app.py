@@ -389,12 +389,17 @@ def create_update_enterprise(tenant_id):
         tenant_id       = tenant_id
         enterprise_name = data['enterprise_name']
         enterprise_type = data['enterprise_type']
+        user_invitation_validity = data.get('user_invitation_validity', "1h")
 
         existing_enterprise = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
+        existing_enterprise_name  = DefTenantEnterpriseSetup.query.filter_by(enterprise_name=enterprise_name).first()
+        if existing_enterprise_name and (not existing_enterprise or existing_enterprise_name.tenant_id != tenant_id):
+            return make_response(jsonify({"message": f"Enterprise name '{enterprise_name}' already exists."}), 409)
 
         if existing_enterprise:
             existing_enterprise.enterprise_name = enterprise_name
             existing_enterprise.enterprise_type = enterprise_type
+            existing_enterprise.user_invitation_validity = user_invitation_validity
             existing_enterprise.last_updated_by = get_jwt_identity()
             existing_enterprise.last_update_date = datetime.utcnow()
             message = "Edited successfully"
@@ -404,6 +409,7 @@ def create_update_enterprise(tenant_id):
                 tenant_id = tenant_id,
                 enterprise_name = enterprise_name,
                 enterprise_type = enterprise_type,
+                user_invitation_validity = user_invitation_validity,
                 created_by     = get_jwt_identity(),
                 creation_date   = datetime.utcnow(),
                 last_updated_by = get_jwt_identity(),
@@ -414,7 +420,7 @@ def create_update_enterprise(tenant_id):
             message = "Added successfully"
 
         db.session.commit()
-        return make_response(jsonify({"message": message}), 200)
+        return make_response(jsonify({"message": message, "result": new_enterprise.json() if not existing_enterprise else existing_enterprise.json()}), 200)
 
     except IntegrityError:
         return make_response(jsonify({"message": "Error creating or updating enterprise setup", "error": "Integrity error"}), 409)

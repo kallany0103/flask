@@ -62,6 +62,7 @@ class DefTenantEnterpriseSetupV(db.Model):
     tenant_name = db.Column(db.Text)
     enterprise_name = db.Column(db.Text)
     enterprise_type = db.Column(db.Text)
+    user_invitation_validity = db.Column(db.String(5), default="1h")
     created_by     = db.Column(db.Integer)
     creation_date  = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated_by = db.Column(db.Integer)
@@ -73,6 +74,7 @@ class DefTenantEnterpriseSetupV(db.Model):
             'tenant_name': self.tenant_name,
             'enterprise_name': self.enterprise_name,
             'enterprise_type': self.enterprise_type,
+            'user_invitation_validity': self.user_invitation_validity,
             'created_by'    : self.created_by,
             'creation_date' : self.creation_date,
             'last_updated_by': self.last_updated_by,

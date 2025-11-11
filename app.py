@@ -243,7 +243,7 @@ def create_tenant():
 
 # Get all tenants
 @flask_app.route('/tenants', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def get_tenants():
     try:
         tenants = DefTenant.query.order_by(DefTenant.tenant_id.desc()).all()
@@ -618,7 +618,7 @@ def create_job_title():
 
 
 @flask_app.route('/job_titles', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def get_job_titles():
     try:
         job_title_id = request.args.get('job_title_id', type=int)
@@ -6936,10 +6936,167 @@ def delete_control_environments():
 #         return jsonify({"message": "Error processing invitation", "error": str(e)}), 500
 
 
+#!AGGREGATE TABLES AND MATERIALIZED VIEWS
+
+
+# @flask_app.route('/create_aggregate_table', methods=['POST'])
+# @jwt_required()
+# def create_aggregate_table():
+#     try:
+#         data = request.get_json()
+#         if not data:
+#             return make_response(jsonify({"message": "No JSON data provided"}), 400)
+
+#         materialized_view_name = data.get("materialized_view_name")
+#         schema_name = data.get("schema_name", "public")
+
+#         if not materialized_view_name:
+#             return make_response(jsonify({"message": "Materialized view name is required"}), 400)
+
+#         # Construct SQL with both arguments
+#         sql = text(f"SELECT create_imat('{materialized_view_name}', '{schema_name}')")
+
+#         db.session.execute(sql)
+#         db.session.commit()
+
+#         return make_response(jsonify({
+#             "message": f"Aggregate table created successfully for {materialized_view_name} in schema {schema_name}"
+#         }), 201)
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return make_response(jsonify({
+#             "message": "Error creating aggregate table",
+#             "error": str(e)
+#         }), 500)
 
 
 
 
+
+# @flask_app.route('/create_materialized_view', methods=['POST'])
+# @jwt_required()
+# def create_materialized_view():
+#     try:
+#         data = request.get_json()
+#         if not data:
+#             return make_response(jsonify({"message": "No JSON data provided"}), 400)
+
+#         materialized_view_name = data.get("materialized_view_name")
+#         source_table = data.get("source_table")
+#         group_columns = data.get("group_columns", [])
+#         date_truncation_column = data.get("date_truncation_column")
+#         aggregates = data.get("aggregates", {})
+
+    
+#         if not all([materialized_view_name, source_table, date_truncation_column, group_columns, aggregates]):
+#             return make_response(jsonify({"message": "Some required fields are missing."}), 400)
+
+#         # 1. SELECT columns
+#         select_parts = []
+#         select_parts.extend(group_columns)  # e.g., cab_type_id
+#         select_parts.append(f"DATE_TRUNC('day', {date_truncation_column}) AS {date_truncation_column}")
+
+#         # 2. Add aggregates
+#         for alias, expr in aggregates.items():
+#             select_parts.append(f"{expr} AS {alias}")
+
+#         select_sql = ",\n    ".join(select_parts)
+
+#         # --- Build GROUP BY ---
+#         # Note: order must be group_cols first, then DATE_TRUNC
+#         group_by_items = group_columns + [f"DATE_TRUNC('day', {date_truncation_column})"]
+#         group_by_sql = ", ".join(group_by_items)
+
+#         # --- Final SQL ---
+#         sql = text(f"""
+#         CREATE MATERIALIZED VIEW IF NOT EXISTS imat.{materialized_view_name} AS
+#         SELECT
+#             {select_sql}
+#         FROM {source_table}
+#         GROUP BY {group_by_sql}
+#         WITH NO DATA;
+#         """)
+
+#         db.session.execute(sql)
+#         db.session.commit()
+
+#         return make_response(jsonify({
+#             "message": f"Materialized view imat.{materialized_view_name} created successfully"
+#         }), 201)
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return make_response(jsonify({
+#             "message": "Error creating materialized view",
+#             "error": str(e)
+#         }), 500)
+
+
+
+
+# @flask_app.route('/create_materialized_view/v1', methods=['POST'])
+# @jwt_required()
+# def create_materialized_view_v1():
+#     try:
+#         data = request.get_json()
+#         if not data:
+#             return make_response(jsonify({"message": "No JSON data provided"}), 400)
+
+#         materialized_view_name = data.get("materialized_view_name")
+#         source_table = data.get("source_table")
+#         source_schema = data.get("source_schema", "public")  # default to public schema if not specified
+#         group_columns = data.get("group_columns", [])
+#         date_truncation_column = data.get("date_truncation_column")
+#         date_granularity = data.get("date_granularity", "day")  # default to day if not specified 
+#         aggregates = data.get("aggregates", [])  # Changed to list of objects with type and target
+
+#         if not all([materialized_view_name, source_table, date_truncation_column, group_columns, aggregates]):
+#             return make_response(jsonify({"message": "Some required fields are missing."}), 400)
+
+#         # 1. SELECT columns
+#         select_parts = []
+#         select_parts.extend(group_columns)  # e.g., cab_type_id 
+#         select_parts.append(f"DATE_TRUNC('{date_granularity}', {date_truncation_column}) AS {date_truncation_column}")
+
+#         # 2. Add aggregates with type and target
+#         for agg in aggregates:
+#             agg_type = agg.get("type", "sum")  # default to sum if not specified
+#             target = agg.get("target") 
+#             alias = agg.get("alias")
+#             if target and alias:
+#                 select_parts.append(f"{agg_type}({target}) AS {alias}")
+
+#         select_sql = ",\n    ".join(select_parts)
+
+#         # --- Build GROUP BY ---
+#         # Note: order must be group_cols first, then DATE_TRUNC
+#         group_by_items = group_columns + [f"DATE_TRUNC('{date_granularity}', {date_truncation_column})"]
+#         group_by_sql = ", ".join(group_by_items)
+
+#         # --- Final SQL ---
+#         sql = text(f"""
+#         CREATE MATERIALIZED VIEW IF NOT EXISTS imat.{materialized_view_name} AS
+#         SELECT
+#             {select_sql}
+#         FROM {source_schema}.{source_table}
+#         GROUP BY {group_by_sql}
+#         WITH NO DATA;
+#         """)
+
+#         db.session.execute(sql)
+#         db.session.commit()
+
+#         return make_response(jsonify({
+#             "message": f"Materialized view imat.{materialized_view_name} created successfully"
+#         }), 201)
+
+#     except Exception as e:
+#         db.session.rollback()
+#         return make_response(jsonify({
+#             "message": "Error creating materialized view",
+#             "error": str(e)
+#         }), 500)
 
 
 if __name__ == "__main__":

@@ -140,7 +140,7 @@ class DefUser(db.Model):
             'last_update_date'  : self.last_update_date,
             'tenant_id'         : self.tenant_id,
             'user_invitation_id': self.user_invitation_id,
-            'date_of_birth'     : self.date_of_birth,
+            'date_of_birth'     : self.date_of_birth.isoformat() if self.date_of_birth else None,
             'profile_picture'   : self.profile_picture
         }
 
@@ -254,7 +254,7 @@ class DefUsersView(db.Model):
             'middle_name'       : self.middle_name,
             'last_name'         : self.last_name,
             'email_address'     : self.email_address,
-            'date_of_birth'     : self.date_of_birth,
+            'date_of_birth'     : self.date_of_birth.isoformat() if self.date_of_birth else None,
             'job_title_id'      : self.job_title_id,
             'user_type'         : self.user_type,
             'created_by'        : self.created_by,

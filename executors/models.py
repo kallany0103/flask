@@ -118,7 +118,8 @@ class DefUser(db.Model):
     last_updated_by    = db.Column(db.Integer)
     last_update_date   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     tenant_id          = db.Column(db.Integer, db.ForeignKey('apps.def_tenants.tenant_id'), nullable=False)
-    user_invitation_id = db.Column(db.Integer) 
+    user_invitation_id = db.Column(db.Integer)
+    date_of_birth      = db.Column(db.Date) 
     profile_picture    = db.Column(
     JSONB,
     default=lambda: {
@@ -139,6 +140,7 @@ class DefUser(db.Model):
             'last_update_date'  : self.last_update_date,
             'tenant_id'         : self.tenant_id,
             'user_invitation_id': self.user_invitation_id,
+            'date_of_birth'     : self.date_of_birth,
             'profile_picture'   : self.profile_picture
         }
 
@@ -151,7 +153,7 @@ class DefPerson(db.Model):
     first_name       = db.Column(db.String(40))
     middle_name      = db.Column(db.String(30))
     last_name        = db.Column(db.String(30))
-    job_title        = db.Column(db.String(50))
+    job_title_id     = db.Column(db.Integer, db.ForeignKey('apps.def_job_titles.job_title_id'))
     created_by       = db.Column(db.Integer, nullable=False)
     creation_date    = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated_by  = db.Column(db.Integer)
@@ -163,7 +165,7 @@ class DefPerson(db.Model):
             'first_name'      : self.first_name,
             'middle_name'     : self.middle_name,
             'last_name'       : self.last_name,
-            'job_title'       : self.job_title,
+            'job_title_id'    : self.job_title_id,
             'created_by'      : self.created_by,
             'creation_date'   : self.creation_date,
             'last_updated_by' : self.last_updated_by,
@@ -233,7 +235,8 @@ class DefUsersView(db.Model):
     middle_name        = db.Column(db.String(30))
     last_name          = db.Column(db.String(30))
     email_address      = db.Column(db.Text)
-    job_title          = db.Column(db.String(50))
+    date_of_birth      = db.Column(db.Date)
+    job_title_id       = db.Column(db.Integer())
     user_type          = db.Column(db.String(30))
     created_by         = db.Column(db.Integer)
     creation_date      = db.Column(db.DateTime)
@@ -251,7 +254,8 @@ class DefUsersView(db.Model):
             'middle_name'       : self.middle_name,
             'last_name'         : self.last_name,
             'email_address'     : self.email_address,
-            'job_title'         : self.job_title,
+            'date_of_birth'     : self.date_of_birth,
+            'job_title_id'      : self.job_title_id,
             'user_type'         : self.user_type,
             'created_by'        : self.created_by,
             'creation_date'     : self.creation_date,

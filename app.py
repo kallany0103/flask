@@ -243,7 +243,7 @@ def create_tenant():
 
 # Get all tenants
 @flask_app.route('/tenants', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def get_tenants():
     try:
         tenants = DefTenant.query.order_by(DefTenant.tenant_id.desc()).all()
@@ -618,7 +618,7 @@ def create_job_title():
 
 
 @flask_app.route('/job_titles', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def get_job_titles():
     try:
         job_title_id = request.args.get('job_title_id', type=int)
@@ -804,6 +804,12 @@ def create_def_user():
             "thumbnail": "uploads/profiles/default/thumbnail.jpg"
         }
         user_invitation_id = data.get('user_invitation_id')
+        date_of_birth     = data.get('date_of_birth')
+
+        # Duplicate check
+        existing_user = DefUser.query.filter_by(email_address=email_address).first()
+        if existing_user:
+            return make_response(jsonify({"message": "Email address already exists"}), 409)
         
 
        # Convert the list of email addresses to a JSON-formatted string
@@ -821,7 +827,8 @@ def create_def_user():
           last_update_date= datetime.utcnow(),
           tenant_id       = tenant_id,
           profile_picture = profile_picture,
-          user_invitation_id = user_invitation_id
+          user_invitation_id = user_invitation_id,
+          date_of_birth   = date_of_birth
         )
         # Add the new user to the database session
         db.session.add(new_user)
@@ -919,6 +926,10 @@ def update_user(user_id):
                 user.user_name = data['user_name']
             if 'email_address' in data:
                 user.email_address = data['email_address']
+            if 'tenant_id' in data:
+                user.tenant_id = data['tenant_id']
+            if 'date_of_birth' in data:
+                user.date_of_birth = data['date_of_birth']
             user.last_updated_by = get_jwt_identity()
             user.last_update_date = datetime.utcnow()
             db.session.commit()
@@ -988,7 +999,7 @@ def create_arc_person():
         first_name  = data['first_name']
         middle_name = data['middle_name']
         last_name   = data['last_name']
-        job_title   = data['job_title']  
+        job_title_id = data['job_title_id']  
         
         # create arc persons object 
         person =  DefPerson(
@@ -996,7 +1007,7 @@ def create_arc_person():
             first_name       = first_name,
             middle_name      = middle_name,
             last_name        = last_name,
-            job_title        = job_title,
+            job_title_id     = job_title_id,
             created_by       = get_jwt_identity(),
             creation_date    = datetime.utcnow(),
             last_updated_by  = get_jwt_identity(),
@@ -1101,8 +1112,8 @@ def update_person(user_id):
                 person.middle_name = data['middle_name']
             if 'last_name' in data:
                 person.last_name = data['last_name']
-            if 'job_title' in data:
-                person.job_title = data['job_title']
+            if 'job_title_id' in data:
+                person.job_title_id = data['job_title_id']
             person.last_updated_by = get_jwt_identity()
             person.last_udpate_date = datetime.utcnow()
             db.session.commit()
@@ -1335,11 +1346,12 @@ def register_user():
         created_by      = get_jwt_identity()
         last_updated_by = get_jwt_identity()
         tenant_id       = data['tenant_id']
+        date_of_birth   = data.get('date_of_birth')
         # Extract person fields
         first_name      = data.get('first_name')
         middle_name     = data.get('middle_name')
         last_name       = data.get('last_name')
-        job_title       = data.get('job_title')
+        job_title_id       = data.get('job_title_id')
         user_invitation_id = data.get('user_invitation_id')
         # Extract credentials
         password        = data['password']
@@ -1378,7 +1390,8 @@ def register_user():
             last_update_date   = datetime.utcnow(),
             tenant_id          = tenant_id,
             profile_picture    = profile_picture,
-            user_invitation_id = user_invitation_id
+            user_invitation_id = user_invitation_id,
+            date_of_birth      = date_of_birth
         )
         db.session.add(new_user)
         db.session.flush()
@@ -1390,7 +1403,7 @@ def register_user():
                 first_name       = first_name,
                 middle_name      = middle_name,
                 last_name        = last_name,
-                job_title        = job_title,
+                job_title_id     = job_title_id,
                 created_by       = created_by,
                 creation_date    = datetime.utcnow(),
                 last_updated_by  = last_updated_by,
@@ -1468,6 +1481,8 @@ def update_specific_user(user_id):
         # --- Username & Email uniqueness check ---
         new_user_name     = data.get('user_name')
         new_email_address = data.get('email_address')
+        new_tenant_id     = data.get('tenant_id')
+        new_date_of_birth = data.get('date_of_birth')
 
         if new_user_name or new_email_address:
             conflict_user = DefUser.query.filter(
@@ -1482,6 +1497,10 @@ def update_specific_user(user_id):
             user.user_name = new_user_name
         if new_email_address:
             user.email_address = new_email_address
+        if new_tenant_id:
+            user.tenant_id = new_tenant_id
+        if new_date_of_birth:
+            user.date_of_birth = new_date_of_birth
 
         # Update DefUser fields
         user.last_update_date = datetime.utcnow()
@@ -1496,7 +1515,7 @@ def update_specific_user(user_id):
             person.first_name       = data.get('first_name', person.first_name)
             person.middle_name      = data.get('middle_name', person.middle_name)
             person.last_name        = data.get('last_name', person.last_name)
-            person.job_title        = data.get('job_title', person.job_title)
+            person.job_title_id     = data.get('job_title_id', person.job_title_id)
             person.last_update_date = datetime.utcnow()
             person.last_updated_by  = get_jwt_identity()
     
@@ -6939,164 +6958,214 @@ def delete_control_environments():
 #!AGGREGATE TABLES AND MATERIALIZED VIEWS
 
 
-# @flask_app.route('/create_aggregate_table', methods=['POST'])
-# @jwt_required()
-# def create_aggregate_table():
-#     try:
-#         data = request.get_json()
-#         if not data:
-#             return make_response(jsonify({"message": "No JSON data provided"}), 400)
+@flask_app.route('/create_aggregate_table', methods=['POST'])
+@jwt_required()
+def create_aggregate_table():
+    try:
+        data = request.get_json()
+        if not data:
+            return make_response(jsonify({"message": "No JSON data provided"}), 400)
 
-#         materialized_view_name = data.get("materialized_view_name")
-#         schema_name = data.get("schema_name", "public")
+        materialized_view_name = data.get("materialized_view_name")
+        schema_name = data.get("schema_name", "public")
 
-#         if not materialized_view_name:
-#             return make_response(jsonify({"message": "Materialized view name is required"}), 400)
+        if not materialized_view_name:
+            return make_response(jsonify({"message": "Materialized view name is required"}), 400)
 
-#         # Construct SQL with both arguments
-#         sql = text(f"SELECT create_imat('{materialized_view_name}', '{schema_name}')")
+        # Construct SQL with both arguments
+        sql = text(f"SELECT create_imat('{materialized_view_name}', '{schema_name}')")
 
-#         db.session.execute(sql)
-#         db.session.commit()
+        db.session.execute(sql)
+        db.session.commit()
 
-#         return make_response(jsonify({
-#             "message": f"Aggregate table created successfully for {materialized_view_name} in schema {schema_name}"
-#         }), 201)
+        return make_response(jsonify({
+            "message": f"Aggregate table created successfully for {materialized_view_name} in schema {schema_name}"
+        }), 201)
 
-#     except Exception as e:
-#         db.session.rollback()
-#         return make_response(jsonify({
-#             "message": "Error creating aggregate table",
-#             "error": str(e)
-#         }), 500)
-
-
-
-
-
-# @flask_app.route('/create_materialized_view', methods=['POST'])
-# @jwt_required()
-# def create_materialized_view():
-#     try:
-#         data = request.get_json()
-#         if not data:
-#             return make_response(jsonify({"message": "No JSON data provided"}), 400)
-
-#         materialized_view_name = data.get("materialized_view_name")
-#         source_table = data.get("source_table")
-#         group_columns = data.get("group_columns", [])
-#         date_truncation_column = data.get("date_truncation_column")
-#         aggregates = data.get("aggregates", {})
-
-    
-#         if not all([materialized_view_name, source_table, date_truncation_column, group_columns, aggregates]):
-#             return make_response(jsonify({"message": "Some required fields are missing."}), 400)
-
-#         # 1. SELECT columns
-#         select_parts = []
-#         select_parts.extend(group_columns)  # e.g., cab_type_id
-#         select_parts.append(f"DATE_TRUNC('day', {date_truncation_column}) AS {date_truncation_column}")
-
-#         # 2. Add aggregates
-#         for alias, expr in aggregates.items():
-#             select_parts.append(f"{expr} AS {alias}")
-
-#         select_sql = ",\n    ".join(select_parts)
-
-#         # --- Build GROUP BY ---
-#         # Note: order must be group_cols first, then DATE_TRUNC
-#         group_by_items = group_columns + [f"DATE_TRUNC('day', {date_truncation_column})"]
-#         group_by_sql = ", ".join(group_by_items)
-
-#         # --- Final SQL ---
-#         sql = text(f"""
-#         CREATE MATERIALIZED VIEW IF NOT EXISTS imat.{materialized_view_name} AS
-#         SELECT
-#             {select_sql}
-#         FROM {source_table}
-#         GROUP BY {group_by_sql}
-#         WITH NO DATA;
-#         """)
-
-#         db.session.execute(sql)
-#         db.session.commit()
-
-#         return make_response(jsonify({
-#             "message": f"Materialized view imat.{materialized_view_name} created successfully"
-#         }), 201)
-
-#     except Exception as e:
-#         db.session.rollback()
-#         return make_response(jsonify({
-#             "message": "Error creating materialized view",
-#             "error": str(e)
-#         }), 500)
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "message": "Error creating aggregate table",
+            "error": str(e)
+        }), 500)
 
 
 
 
-# @flask_app.route('/create_materialized_view/v1', methods=['POST'])
-# @jwt_required()
-# def create_materialized_view_v1():
-#     try:
-#         data = request.get_json()
-#         if not data:
-#             return make_response(jsonify({"message": "No JSON data provided"}), 400)
 
-#         materialized_view_name = data.get("materialized_view_name")
-#         source_table = data.get("source_table")
-#         source_schema = data.get("source_schema", "public")  # default to public schema if not specified
-#         group_columns = data.get("group_columns", [])
-#         date_truncation_column = data.get("date_truncation_column")
-#         date_granularity = data.get("date_granularity", "day")  # default to day if not specified 
-#         aggregates = data.get("aggregates", [])  # Changed to list of objects with type and target
 
-#         if not all([materialized_view_name, source_table, date_truncation_column, group_columns, aggregates]):
-#             return make_response(jsonify({"message": "Some required fields are missing."}), 400)
+@flask_app.route('/create_materialized_view', methods=['POST'])
+def create_mv():
+    """
+    Creates a Materialized View in 'imat' schema from a flexible JSON structure.
+    Supports raw expressions in aggregates and grouping columns.
+    """
+    data = request.json
+    mv_name = data.get('mv_name')
+    source_tables_def = data.get('source_tables', [])
+    grouping_defs = data.get('grouping_columns', [])
+    aggregate_defs = data.get('aggregate_functions', [])
 
-#         # 1. SELECT columns
-#         select_parts = []
-#         select_parts.extend(group_columns)  # e.g., cab_type_id 
-#         select_parts.append(f"DATE_TRUNC('{date_granularity}', {date_truncation_column}) AS {date_truncation_column}")
+    if not mv_name or not source_tables_def or not grouping_defs:
+        return jsonify({"status": "error", "message": "Missing mv_name, source_tables, or grouping_columns"}), 400
 
-#         # 2. Add aggregates with type and target
-#         for agg in aggregates:
-#             agg_type = agg.get("type", "sum")  # default to sum if not specified
-#             target = agg.get("target") 
-#             alias = agg.get("alias")
-#             if target and alias:
-#                 select_parts.append(f"{agg_type}({target}) AS {alias}")
+    # --- 1. Build FROM clause ---
+    from_clause_parts = []
+    valid_joins = ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN']
 
-#         select_sql = ",\n    ".join(select_parts)
+    for i, table_def in enumerate(source_tables_def):
+        table_name = table_def.get('table_name')
+        alias = table_def.get('table_alias', '')
+        join_type = table_def.get('join_type')
+        on_condition = table_def.get('on_condition')
 
-#         # --- Build GROUP BY ---
-#         # Note: order must be group_cols first, then DATE_TRUNC
-#         group_by_items = group_columns + [f"DATE_TRUNC('{date_granularity}', {date_truncation_column})"]
-#         group_by_sql = ", ".join(group_by_items)
+        if not table_name:
+            return jsonify({"status": "error", "message": f"Table definition {i} missing 'table_name'"}), 400
 
-#         # --- Final SQL ---
-#         sql = text(f"""
-#         CREATE MATERIALIZED VIEW IF NOT EXISTS imat.{materialized_view_name} AS
-#         SELECT
-#             {select_sql}
-#         FROM {source_schema}.{source_table}
-#         GROUP BY {group_by_sql}
-#         WITH NO DATA;
-#         """)
+        if i == 0:
+            from_clause_parts.append(f'FROM {table_name} {alias}'.strip())
+        else:
+            if not all([join_type, on_condition]):
+                return jsonify({"status": "error", "message": f"Join {i} missing join_type/on_condition"}), 400
+            if join_type.upper() not in valid_joins:
+                return jsonify({"status": "error", "message": f"Invalid join_type '{join_type}'"}), 400
+            from_clause_parts.append(f"{join_type.upper()} {table_name} {alias} ON {on_condition}")
 
-#         db.session.execute(sql)
-#         db.session.commit()
+    # --- 2. Build SELECT and GROUP BY clauses ---
+    select_parts, group_by_parts = [], []
 
-#         return make_response(jsonify({
-#             "message": f"Materialized view imat.{materialized_view_name} created successfully"
-#         }), 201)
+    # Grouping columns
+    for i, col_def in enumerate(grouping_defs):
+        source_column = col_def.get('source_column')
+        result_alias = col_def.get('result_alias')
+        date_trunc_unit = col_def.get('date_trunc_unit')
+        raw_expression = col_def.get('raw_expression')
 
-#     except Exception as e:
-#         db.session.rollback()
-#         return make_response(jsonify({
-#             "message": "Error creating materialized view",
-#             "error": str(e)
-#         }), 500)
+        if date_trunc_unit and source_column:
+            col_expr = f"DATE_TRUNC('{date_trunc_unit.lower()}', {source_column})"
+            result_alias = result_alias or f"{source_column.replace('.', '_')}_{date_trunc_unit.lower()}"
+        elif raw_expression:
+            col_expr = raw_expression
+            result_alias = result_alias or f"col_{i+1}"
+        elif source_column:
+            col_expr = source_column
+            result_alias = result_alias or source_column
+        else:
+            return jsonify({"status": "error", "message": f"Grouping column {i} missing definition"}), 400
+
+        select_parts.append(f"{col_expr} AS \"{result_alias}\"")
+        group_by_parts.append(col_expr)
+
+    # Aggregates
+    for agg_def in aggregate_defs:
+        func = agg_def.get('function')
+        source_column = agg_def.get('source_column')
+        raw_expression = agg_def.get('raw_expression')
+        result_alias = agg_def.get('result_alias')
+
+        if not result_alias or not func or (not source_column and not raw_expression):
+            return jsonify({"status": "error", "message": "Aggregate function definition incomplete"}), 400
+
+        valid_funcs = ['SUM', 'AVG', 'COUNT', 'MIN', 'MAX']
+        if func.upper() not in valid_funcs:
+            return jsonify({"status": "error", "message": f"Invalid aggregate function '{func}'"}), 400
+
+        # Use raw_expression directly if provided
+        if raw_expression:
+            select_parts.append(f"{raw_expression} AS \"{result_alias}\"")
+        else:
+            select_parts.append(f"{func}({source_column}) AS \"{result_alias}\"")
+
+    select_clause = ", ".join(select_parts)
+    from_clause = " ".join(from_clause_parts)
+    group_by_clause = ", ".join(group_by_parts)
+
+    mv_select_sql = f"SELECT {select_clause} {from_clause} GROUP BY {group_by_clause}"
+
+    # --- 3. Create Materialized View ---
+    create_mv_sql = f"CREATE MATERIALIZED VIEW IF NOT EXISTS imat.{mv_name} AS {mv_select_sql};"
+    try:
+        db.session.execute(text(create_mv_sql))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Failed to create MV: {str(e)}"}), 500
+
+    return jsonify({
+        "status": "success",
+        "message": f"imat.{mv_name} created successfully.",
+        "mv_sql": mv_select_sql,
+        "create_mv_sql": create_mv_sql.strip()
+    })
+
+
+
+
+
+
+
+@flask_app.route('/create_materialized_view/v1', methods=['POST'])
+@jwt_required()
+def create_materialized_view_v1():
+    try:
+        data = request.get_json()
+        if not data:
+            return make_response(jsonify({"message": "No JSON data provided"}), 400)
+
+        materialized_view_name = data.get("materialized_view_name")
+        source_table = data.get("source_table")
+        source_schema = data.get("source_schema", "public")  # default to public schema if not specified
+        group_columns = data.get("group_columns", [])
+        date_truncation_column = data.get("date_truncation_column")
+        date_granularity = data.get("date_granularity", "day")  # default to day if not specified 
+        aggregates = data.get("aggregates", [])  # Changed to list of objects with type and target
+
+        if not all([materialized_view_name, source_table, date_truncation_column, group_columns, aggregates]):
+            return make_response(jsonify({"message": "Some required fields are missing."}), 400)
+
+        # 1. SELECT columns
+        select_parts = []
+        select_parts.extend(group_columns)  # e.g., cab_type_id 
+        select_parts.append(f"DATE_TRUNC('{date_granularity}', {date_truncation_column}) AS {date_truncation_column}")
+
+        # 2. Add aggregates with type and target
+        for agg in aggregates:
+            agg_type = agg.get("type", "sum")  # default to sum if not specified
+            target = agg.get("target") 
+            alias = agg.get("alias")
+            if target and alias:
+                select_parts.append(f"{agg_type}({target}) AS {alias}")
+
+        select_sql = ",\n    ".join(select_parts)
+
+        # --- Build GROUP BY ---
+        # Note: order must be group_cols first, then DATE_TRUNC
+        group_by_items = group_columns + [f"DATE_TRUNC('{date_granularity}', {date_truncation_column})"]
+        group_by_sql = ", ".join(group_by_items)
+
+        # --- Final SQL ---
+        sql = text(f"""
+        CREATE MATERIALIZED VIEW IF NOT EXISTS imat.{materialized_view_name} AS
+        SELECT
+            {select_sql}
+        FROM {source_schema}.{source_table}
+        GROUP BY {group_by_sql}
+        WITH NO DATA;
+        """)
+
+        db.session.execute(sql)
+        db.session.commit()
+
+        return make_response(jsonify({
+            "message": f"Materialized view imat.{materialized_view_name} created successfully"
+        }), 201)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "message": "Error creating materialized view",
+            "error": str(e)
+        }), 500)
 
 
 if __name__ == "__main__":

@@ -626,36 +626,25 @@ def get_job_titles():
         page = request.args.get('page', type=int)
         limit = request.args.get('limit', type=int, default=10)
 
-        #If job_title_id is provided → return single object
+        # If job_title_id is provided → return single object
         if job_title_id:
             job = DefJobTitle.query.filter(DefJobTitle.job_title_id == job_title_id).first()
             if not job:
                 return make_response(jsonify({"message": "Job title not found"}), 404)
             return make_response(jsonify(job.json()), 200)
 
-        #If tenant_id is provided → filter by tenant, optionally paginate
+        # Base query
+        query = DefJobTitle.query
+
+        # Filter by tenant if provided
         if tenant_id:
-            query = DefJobTitle.query.filter(DefJobTitle.tenant_id == tenant_id)\
-                                     .order_by(DefJobTitle.job_title_id.desc())
-            
-            if page:
-                paginated = query.paginate(page=page, per_page=limit, error_out=False)
-                return make_response(jsonify({
-                    "items": [item.json() for item in paginated.items],
-                    "total": paginated.total,
-                    "pages": paginated.pages,
-                    "page": paginated.page
-                }), 200)
+            query = query.filter(DefJobTitle.tenant_id == tenant_id)
 
-            # No pagination but still tenant filtered
-            items = query.all()
-            if not items:
-                return make_response(jsonify({"message": "No job titles found for tenant"}), 404)
-            return make_response(jsonify([item.json() for item in items]), 200)
+        # Always order by id descending
+        query = query.order_by(DefJobTitle.job_title_id.desc())
 
-        #If neither job_title_id nor tenant_id → require pagination
+        # Pagination if page parameter provided
         if page:
-            query = DefJobTitle.query.order_by(DefJobTitle.job_title_id.desc())
             paginated = query.paginate(page=page, per_page=limit, error_out=False)
             return make_response(jsonify({
                 "items": [item.json() for item in paginated.items],
@@ -664,16 +653,18 @@ def get_job_titles():
                 "page": paginated.page
             }), 200)
 
-        #Otherwise — no valid params
-        return make_response(jsonify({
-            "message": "Please provide job_title_id, tenant_id, or pagination parameters"
-        }), 400)
+        # No pagination → return all matching items
+        items = query.all()
+        if not items:
+            return make_response(jsonify({"message": "No job titles found"}), 404)
+        return make_response(jsonify([item.json() for item in items]), 200)
 
     except Exception as e:
         return make_response(jsonify({
             "message": "Failed to retrieve job titles",
             "error": str(e)
         }), 500)
+
 
 
 

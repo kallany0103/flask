@@ -1239,88 +1239,146 @@ class NewUserInvitation(db.Model):
 
 
 
-# class DefPrivilege(db.Model):
-#     __tablename__ = 'def_privileges'
-#     __table_args__ = {'schema': 'apps'}
 
-#     privilege_id = db.Column(db.Integer, primary_key=True)
-#     privilege_name = db.Column(db.String(150), nullable=False)
-
-#     def json(self):
-#         return {
-#             'privilege_id': self.privilege_id,
-#             'privilege_name': self.privilege_name
-#         }
-
-# class UserGrantedPrivilege(db.Model):
-#     __tablename__ = 'user_granted_privileges'
-#     __table_args__ = {'schema': 'apps'}
-
-#     user_id = db.Column(db.Integer, db.ForeignKey('apps.def_users.user_id'), primary_key=True)
-#     privilege_id = db.Column(db.Integer, db.ForeignKey('apps.def_privileges.privilege_id'), primary_key=True)
-
-#     def json(self):
-#         return {
-#             'user_id': self.user_id,
-#             'privilege_id': self.privilege_id
-#         }
-
-# class DefRole(db.Model):
-#     __tablename__ = 'def_roles'
-#     __table_args__ = {'schema': 'apps'}
-
-#     role_id = db.Column(db.Integer, primary_key=True)
-#     role_name = db.Column(db.String(150), nullable=False)
-
-#     def json(self):
-#         return {
-#             'role_id': self.role_id,
-#             'role_name': self.role_name
-#         }
+#----------------RBAC------------
 
 
-# class UserGrantedRole(db.Model):
-#     __tablename__ = 'user_granted_roles'
-#     __table_args__ = {'schema': 'apps'}
+class DefPrivilege(db.Model):
+    __tablename__ = 'def_privileges'
+    __table_args__ = {'schema': 'apps'}
 
-#     user_id = db.Column(db.Integer, db.ForeignKey('apps.def_users.user_id'), primary_key=True)
-#     role_id = db.Column(db.Integer, db.ForeignKey('apps.def_roles.role_id'), primary_key=True)
+    privilege_id = db.Column(db.Integer, primary_key=True)
+    privilege_name = db.Column(db.String(150), nullable=False)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-#     def json(self):
-#         return {
-#             'user_id': self.user_id,
-#             'role_id': self.role_id
-#         }
+    def json(self):
+        return {
+            'privilege_id': self.privilege_id,
+            'privilege_name': self.privilege_name,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
+        }
+
+class DefUserGrantedPrivilege(db.Model):
+    __tablename__ = 'def_user_granted_privileges'
+    __table_args__ = {'schema': 'apps'}
+
+    user_id = db.Column(db.Integer, db.ForeignKey('apps.def_users.user_id'), primary_key=True)
+    privilege_id = db.Column(db.Integer, db.ForeignKey('apps.def_privileges.privilege_id'), primary_key=True)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            'user_id': self.user_id,
+            'privilege_id': self.privilege_id,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
+        }
+
+class DefRoles(db.Model):
+    __tablename__ = 'def_roles'
+    __table_args__ = {'schema': 'apps'}
+
+    role_id = db.Column(db.Integer, primary_key=True)
+    role_name = db.Column(db.String(150), nullable=False)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            'role_id': self.role_id,
+            'role_name': self.role_name,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
+        }
 
 
-# class ApiEndpoint(db.Model):
-#     __tablename__ = 'api_endpoints'
-#     __table_args__ = {'schema': 'apps'}
+class DefUserGrantedRole(db.Model):
+    __tablename__ = 'def_user_granted_roles'
+    __table_args__ = {'schema': 'apps'}
 
-#     api_endpoint_id = db.Column(db.Integer, primary_key=True)
-#     api_endpoint = db.Column(db.String(250), nullable=False)
-#     parameter = db.Column(db.Text)
-#     method = db.Column(db.String(20), nullable=False)
-#     privilege_id = db.Column(db.Integer, db.ForeignKey('apps.def_privileges.privilege_id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('apps.def_users.user_id'), primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('apps.def_roles.role_id'), primary_key=True)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-#     def json(self):
-#         return {
-#             'api_endpoint_id': self.api_endpoint_id,
-#             'api_endpoint': self.api_endpoint,
-#             'parameter': self.parameter,
-#             'method': self.method,
-#             'privilege_id': self.privilege_id
-#         }
 
-# class ApiEndpointRole(db.Model):
-#     __tablename__ = 'api_endpoint_roles'
-#     __table_args__ = {'schema': 'apps'}
+    def json(self):
+        return {
+            'user_id': self.user_id,
+            'role_id': self.role_id,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
+        }
 
-#     api_endpoint_id = db.Column(db.Integer, db.ForeignKey('apps.api_endpoints.api_endpoint_id'), primary_key=True)
-#     role_id = db.Column(db.Integer, db.ForeignKey('apps.def_roles.role_id'), primary_key=True)
 
-#     def json(self):
-#         return {
-#             'api_endpoint_id': self.api_endpoint_id,
-#             'role_id': self.role_id
-#         }
+class DefApiEndpoint(db.Model):
+    __tablename__ = 'def_api_endpoints'
+    __table_args__ = {'schema': 'apps'}
+
+    api_endpoint_id = db.Column(db.Integer, primary_key=True)
+    api_endpoint = db.Column(db.Text)
+    parameter1 = db.Column(db.Text)
+    parameter2 = db.Column(db.Text)
+    method = db.Column(db.Text)
+    privilege_id = db.Column(db.Integer, db.ForeignKey('apps.def_privileges.privilege_id'))
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            'api_endpoint_id': self.api_endpoint_id,
+            'api_endpoint': self.api_endpoint,
+            'parameter1': self.parameter1,
+            'parameter2': self.parameter2,
+            'method': self.method,
+            'privilege_id': self.privilege_id,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
+        }
+
+
+
+class DefApiEndpointRole(db.Model):
+    __tablename__ = 'def_api_endpoint_roles'
+    __table_args__ = {'schema': 'apps'}
+
+    api_endpoint_id = db.Column(db.Integer, db.ForeignKey('apps.def_api_endpoints.api_endpoint_id'), primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('apps.def_roles.role_id'), primary_key=True)
+    created_by = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_by = db.Column(db.Integer)
+    last_update_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def json(self):
+        return {
+            'api_endpoint_id': self.api_endpoint_id,
+            'role_id': self.role_id,
+            'created_by': self.created_by,
+            'creation_date': self.creation_date,
+            'last_updated_by': self.last_updated_by,
+            'last_update_date': self.last_update_date
+        }
+

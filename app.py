@@ -70,7 +70,13 @@ from executors.models import (
     NewUserInvitation,
     DefJobTitle,
     DefAccessEntitlementElement,
-    DefNotifications
+    DefNotifications,
+    DefRoles,
+    DefUserGrantedRole,
+    DefPrivilege,
+    DefUserGrantedPrivilege,
+    DefApiEndpoint,
+    DefApiEndpointRole
 )
 from redbeat_s.red_functions import create_redbeat_schedule, update_redbeat_schedule, delete_schedule_from_redis
 from ad_hoc.ad_hoc_functions import execute_ad_hoc_task, execute_ad_hoc_task_v1
@@ -6946,6 +6952,1078 @@ def delete_control_environments():
 #         return jsonify({"message": "Error processing invitation", "error": str(e)}), 500
 
 
+
+
+
+#-----------------RBAC--------------
+
+@flask_app.route('/def_privileges', methods=['GET'])
+@jwt_required()
+def get_def_privileges():
+    try:
+        privilege_id = request.args.get("privilege_id", type=int)
+
+        # Single-record lookup if privilege_id is provided
+        if privilege_id is not None:
+            record = DefPrivilege.query.get(privilege_id)
+            if not record:
+                return make_response(jsonify({
+                    "error": f"Privilege with id={privilege_id} not found"
+                }), 404)
+            return make_response(jsonify(record.json()), 200)
+
+        # Otherwise return all records
+        records = DefPrivilege.query.order_by(DefPrivilege.privilege_id.desc()).all()
+        return make_response(jsonify([r.json() for r in records]), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error fetching privileges"
+        }), 500)
+
+
+
+
+@flask_app.route('/def_privileges', methods=['POST'])
+@jwt_required()
+def create_def_privilege():
+    try:
+        data = request.get_json()
+        privilege_id = request.json.get('privilege_id')
+        privilege_name = data.get('privilege_name')
+
+        if not privilege_id:
+            return make_response(jsonify({'error': 'privilege_id is required'}), 400)
+
+        if not privilege_name:
+            return make_response({"error": "privilege_name is required"}, 400)
+        
+        existing = DefPrivilege.query.filter_by(privilege_id=privilege_id).first()
+        if existing:
+            return make_response(jsonify({'error': 'privilege_id already exists'}), 400)
+
+        new_record = DefPrivilege(
+            privilege_id=privilege_id,
+            privilege_name=privilege_name,
+            created_by=get_jwt_identity(),
+            creation_date=datetime.utcnow(),
+        )
+
+        db.session.add(new_record)
+        db.session.commit()
+
+        return make_response(new_record.json(), 201)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response({"error": str(e)}, 500)
+
+
+
+@flask_app.route('/def_privileges', methods=['PUT'])
+@jwt_required()
+def update_privilege():
+    try:
+        privilege_id = request.args.get("privilege_id", type=int)
+        if privilege_id is None:
+            return make_response(jsonify({
+                "error": "Query parameter 'privilege_id' is required"
+            }), 400)
+        
+        privilege_name = request.json.get('privilege_name')
+        # updated_by = get_jwt_identity()
+
+        privilege = DefPrivilege.query.filter_by(privilege_id=privilege_id).first()
+        if not privilege:
+            return make_response(jsonify({'error': 'Privilege not found'}), 404)
+
+        if privilege_name:
+            privilege.privilege_name = privilege_name
+
+        privilege.last_updated_by = get_jwt_identity()
+        privilege.last_update_date = datetime.utcnow()
+
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Edited successfully'}), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            'error': str(e),
+            'message': 'Error updating privilege'
+        }), 500)
+
+
+@flask_app.route('/def_privileges', methods=['DELETE'])
+@jwt_required()
+def delete_privilege():
+    try:
+        privilege_id = request.args.get("privilege_id", type=int)
+        if privilege_id is None:
+            return make_response(jsonify({
+                "error": "Query parameter 'privilege_id' is required"
+            }), 400)
+        
+        privilege = DefPrivilege.query.filter_by(privilege_id=privilege_id).first()
+
+        if not privilege:
+            return make_response(jsonify({'error': 'Privilege not found'}), 404)
+
+        db.session.delete(privilege)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Privilege deleted successfully'}), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            'error': str(e),
+            'message': 'Error deleting privilege'
+        }), 500)
+
+
+
+
+
+@flask_app.route('/def_roles', methods=['POST'])
+@jwt_required()
+def create_role():
+    try:
+        role_id = request.json.get('role_id')
+        role_name = request.json.get('role_name')
+
+        if not role_id:
+            return make_response(jsonify({'error': 'role_id is required'}), 400)
+
+        if not role_name:
+            return make_response(jsonify({'error': 'role_name is required'}), 400)
+
+        existing = DefRoles.query.filter_by(role_id=role_id).first()
+        if existing:
+            return make_response(jsonify({'error': 'role_id already exists'}), 400)
+
+        new_role = DefRoles(
+            role_id=role_id,
+            role_name=role_name,
+            created_by     = get_jwt_identity(),
+            creation_date  = datetime.utcnow(),
+        )
+
+        db.session.add(new_role)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
+
+    except Exception as e:
+        return make_response(jsonify({
+            'error': str(e),
+            'message': 'Error creating role'
+        }), 500)
+
+
+
+@flask_app.route('/def_roles', methods=['GET'])
+@jwt_required()
+def get_roles():
+    try:
+        role_id = request.args.get("role_id", type=int)
+
+        # Single-role lookup if role_id is provided
+        if role_id is not None:
+            role = DefRoles.query.filter_by(role_id=role_id).first()
+            if not role:
+                return make_response(jsonify({
+                    "error": f"Role with id={role_id} not found"
+                }), 404)
+            return make_response(jsonify(role.json()), 200)
+
+        # Otherwise return all roles
+        roles = DefRoles.query.order_by(DefRoles.role_id.desc()).all()
+        return make_response(jsonify([r.json() for r in roles]), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error fetching roles"
+        }), 500)
+
+
+
+@flask_app.route('/def_roles', methods=['PUT'])
+@jwt_required()
+def update_role():
+    try:
+        role_id = request.args.get("role_id", type=int)
+        if role_id is None:
+            return make_response(jsonify({
+                "error": "Query parameter 'role_id' is required"
+            }), 400)
+        role_name = request.json.get('role_name')
+
+        role = DefRoles.query.filter_by(role_id=role_id).first()
+        if not role:
+            return make_response(jsonify({'error': 'Role not found'}), 404)
+
+        if role_name:
+            role.role_name = role_name
+
+
+        role.last_updated_by = get_jwt_identity()
+        role.last_update_date = datetime.utcnow()
+
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Updated successfully'}), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            'error': str(e),
+            'message': 'Error updating role'
+        }), 500)
+
+
+@flask_app.route('/def_roles', methods=['DELETE'])
+@jwt_required()
+def delete_role():
+    try:
+        role_id = request.args.get("role_id", type=int)
+        if role_id is None:
+            return make_response(jsonify({
+                "error": "Query parameter 'role_id' is required"
+            }), 400)
+
+        role = DefRoles.query.filter_by(role_id=role_id).first()
+
+        if not role:
+            return make_response(jsonify({'error': 'Role not found'}), 404)
+
+        db.session.delete(role)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Deleted successfully'}), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            'error': str(e),
+            'message': 'Error deleting role'
+        }), 500)
+
+
+
+
+@flask_app.route('/def_api_endpoints', methods=['POST'])
+@jwt_required()
+def create_api_endpoint():
+    try:
+        api_endpoint_id = request.json.get('api_endpoint_id')
+        api_endpoint = request.json.get('api_endpoint')
+        parameter1 = request.json.get('parameter1')
+        parameter2 = request.json.get('parameter2')
+        method = request.json.get('method')
+        privilege_id = request.json.get('privilege_id')
+
+
+        if not api_endpoint_id:
+            return make_response(jsonify({'error': 'api_endpoint_id is required'}), 400)
+
+        if DefApiEndpoint.query.filter_by(api_endpoint_id=api_endpoint_id).first():
+            return make_response(jsonify({'error': 'api_endpoint_id already exists'}), 400)
+
+        # FK validation
+        if privilege_id and not DefPrivilege.query.filter_by(privilege_id=privilege_id).first():
+            return make_response(jsonify({'error': 'privilege_id not found'}), 404)
+
+        new_api = DefApiEndpoint(
+            api_endpoint_id=api_endpoint_id,
+            api_endpoint=api_endpoint,
+            parameter1=parameter1,
+            parameter2=parameter2,
+            method=method,
+            privilege_id=privilege_id,
+            created_by     = get_jwt_identity(),
+            creation_date  = datetime.utcnow(),
+            last_updated_by = get_jwt_identity(),
+            last_update_date = datetime.utcnow()
+        )
+
+        db.session.add(new_api)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'API endpoint listed'}), 201)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({"error": str(e)}), 500)
+
+
+
+
+
+@flask_app.route('/def_api_endpoints', methods=['GET'])
+@jwt_required()
+def get_api_endpoints():
+    try:
+        api_endpoint_id = request.args.get("api_endpoint_id", type=int)
+
+        # Single-record lookup if api_endpoint_id is provided
+        if api_endpoint_id is not None:
+            endpoint = DefApiEndpoint.query.filter_by(api_endpoint_id=api_endpoint_id).first()
+            if not endpoint:
+                return make_response(jsonify({
+                    "error": f"API endpoint with id={api_endpoint_id} not found"
+                }), 404)
+            return make_response(jsonify(endpoint.json()), 200)
+
+        # Otherwise return all endpoints
+        endpoints = DefApiEndpoint.query.order_by(DefApiEndpoint.api_endpoint_id.desc()).all()
+        return make_response(jsonify([e.json() for e in endpoints]), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error fetching API endpoints"
+        }), 500)
+
+
+
+@flask_app.route('/def_api_endpoints', methods=['PUT'])
+@jwt_required()
+def update_api_endpoint():
+    try:
+        api_endpoint_id = request.args.get("api_endpoint_id", type=int)
+
+        # Validate required param
+        if api_endpoint_id is None:
+            return make_response(jsonify({
+                "error": "Query parameter 'api_endpoint_id' is required"
+            }), 400)
+        
+        row = DefApiEndpoint.query.filter_by(api_endpoint_id=api_endpoint_id).first()
+        if not row:
+            return make_response(jsonify({'error': 'API endpoint not found'}), 404)
+
+        row.api_endpoint = request.json.get('api_endpoint', row.api_endpoint)
+        row.parameter1 = request.json.get('parameter1', row.parameter1)
+        row.parameter2 = request.json.get('parameter2', row.parameter2)
+        row.method = request.json.get('method', row.method)
+
+        privilege_id = request.json.get('privilege_id', row.privilege_id)
+        if privilege_id and not DefPrivilege.query.filter_by(privilege_id=privilege_id).first():
+            return make_response(jsonify({'error': 'privilege_id not found'}), 404)
+        row.privilege_id = privilege_id
+
+        row.last_updated_by = get_jwt_identity()
+        row.last_update_date = datetime.utcnow()
+
+        db.session.commit()
+        return make_response(jsonify({'message': 'API endpoint updated'}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({"error": str(e)}), 500)
+
+
+
+@flask_app.route('/def_api_endpoints', methods=['DELETE'])
+@jwt_required()
+def delete_api_endpoint():
+    try:
+        api_endpoint_id = request.args.get("api_endpoint_id", type=int)
+
+        # Validate required param
+        if api_endpoint_id is None:
+            return make_response(jsonify({
+                "error": "Query parameter 'api_endpoint_id' is required"
+            }), 400)
+        
+        row = DefApiEndpoint.query.filter_by(api_endpoint_id=api_endpoint_id).first()
+        if not row:
+            return make_response(jsonify({'error': 'API endpoint not found'}), 404)
+
+        db.session.delete(row)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'API endpoint deleted'}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({"error": str(e)}), 500)
+
+
+
+
+@flask_app.route('/def_api_endpoint_roles', methods=['POST'])
+@jwt_required()
+def create_api_endpoint_role():
+    try:
+        api_endpoint_id = request.json.get('api_endpoint_id')
+        role_id = request.json.get('role_id')
+
+
+        # Validation
+        if not api_endpoint_id or not role_id:
+            return make_response(jsonify({
+                "error": "api_endpoint_id and role_id are required"
+            }), 400)
+
+        # FK Check: API Endpoint
+        endpoint = DefApiEndpoint.query.filter_by(api_endpoint_id=api_endpoint_id).first()
+        if not endpoint:
+            return make_response(jsonify({
+                "error": f"API Endpoint ID {api_endpoint_id} does not exist"
+            }), 404)
+
+        # FK Check: Role
+        role = DefRoles.query.filter_by(role_id=role_id).first()
+        if not role:
+            return make_response(jsonify({
+                "error": f"Role ID {role_id} does not exist"
+            }), 404)
+
+        # Check duplicate
+        existing = DefApiEndpointRole.query.filter_by(
+            api_endpoint_id=api_endpoint_id,
+            role_id=role_id
+        ).first()
+        if existing:
+            return make_response(jsonify({
+                "error": "Mapping already exists"
+            }), 409)
+
+        new_mapping = DefApiEndpointRole(
+            api_endpoint_id=api_endpoint_id,
+            role_id=role_id,
+            created_by     = get_jwt_identity(),
+            creation_date  = datetime.utcnow()
+
+        )
+
+        db.session.add(new_mapping)
+        db.session.commit()
+
+        return make_response(jsonify(new_mapping.json()), 201)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error creating API endpoint role"
+        }), 500)
+
+
+@flask_app.route('/def_api_endpoint_roles', methods=['GET'])
+@jwt_required()
+def get_api_endpoint_roles():
+    try:
+        api_endpoint_id = request.args.get("api_endpoint_id", type=int)
+        role_id = request.args.get("role_id", type=int)
+
+        # If both provided -> single-record lookup
+        if api_endpoint_id is not None and role_id is not None:
+            record = DefApiEndpointRole.query.filter_by(
+                api_endpoint_id=api_endpoint_id,
+                role_id=role_id
+            ).first()
+            if not record:
+                return make_response(jsonify({
+                    "error": f"No data found for api_endpoint_id={api_endpoint_id} and role_id={role_id}"
+                }), 404)
+            return make_response(jsonify(record.json()), 200)
+
+        # Otherwise build a list query (may be empty)
+        query = DefApiEndpointRole.query
+
+        if api_endpoint_id is not None:
+            query = query.filter_by(api_endpoint_id=api_endpoint_id)
+        if role_id is not None:
+            query = query.filter_by(role_id=role_id)
+
+        records = query.order_by(DefApiEndpointRole.creation_date.desc()).all()
+        return make_response(jsonify([r.json() for r in records]), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error fetching API endpoint roles"
+        }), 500)
+
+
+
+
+
+@flask_app.route('/def_api_endpoint_roles', methods=['PUT'])
+@jwt_required()
+def update_api_endpoint_role():
+    try:
+        api_endpoint_id = request.args.get("api_endpoint_id", type=int)
+        role_id = request.args.get("role_id", type=int)
+
+        # Validate required params
+        if api_endpoint_id is None or role_id is None:
+            return make_response(jsonify({
+                "error": "Query parameters 'api_endpoint_id' and 'role_id' are required"
+            }), 400)
+
+        record = DefApiEndpointRole.query.filter_by(
+            api_endpoint_id=api_endpoint_id,
+            role_id=role_id
+        ).first()
+
+        if not record:
+            return make_response(jsonify({
+                "error": "Record not found",
+                "message": "API Endpoint-Role mapping does not exist"
+            }), 404)
+        
+        record.api_endpoint_id = request.json.get('api_endpoint_id', record.api_endpoint_id)
+        record.role_id = request.json.get('role_id', record.role_id)
+
+        record.last_updated_by = get_jwt_identity()
+        record.last_update_date = datetime.utcnow()
+
+        db.session.commit()
+
+        return make_response(jsonify({
+            "message": "API endpoint-role mapping updated successfully",
+            "data": record.json()
+        }), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error updating API endpoint-role mapping"
+        }), 500)
+
+
+
+@flask_app.route('/def_api_endpoint_roles', methods=['DELETE'])
+@jwt_required()
+def delete_api_endpoint_role():
+    try:
+        api_endpoint_id = request.args.get("api_endpoint_id", type=int)
+        role_id = request.args.get("role_id", type=int)
+
+        # Validate required params
+        if api_endpoint_id is None or role_id is None:
+            return make_response(jsonify({
+                "error": "Query parameters 'api_endpoint_id' and 'role_id' are required"
+            }), 400)
+
+        # Find the record
+        record = DefApiEndpointRole.query.filter_by(
+            api_endpoint_id=api_endpoint_id,
+            role_id=role_id
+        ).first()
+
+        if not record:
+            return make_response(jsonify({
+                "error": f"No mapping found for api_endpoint_id={api_endpoint_id} and role_id={role_id}"
+            }), 404)
+
+        db.session.delete(record)
+        db.session.commit()
+
+        return make_response(jsonify({
+            "message": "Deleted successfully"}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error deleting API endpoint-role"
+        }), 500)
+
+
+
+
+
+
+@flask_app.route('/def_user_granted_roles', methods=['POST'])
+@jwt_required()
+def create_user_granted_roles():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        role_ids = data.get('role_ids')
+
+        # Validate input
+        if not user_id or not role_ids or not isinstance(role_ids, list):
+            return make_response(jsonify({"error": "user_id and role_ids (list) are required"}), 400)
+
+        # Check if user exists
+        user = DefUser.query.filter_by(user_id=user_id).first()
+        if not user:
+            return make_response(jsonify({"error": f"User ID {user_id} does not exist"}), 404)
+
+
+        # 1. Check for duplicates in one query
+        existing_roles = DefUserGrantedRole.query.filter(
+            DefUserGrantedRole.user_id == user_id,
+            DefUserGrantedRole.role_id.in_(role_ids)
+        ).all()
+        duplicate_role_ids = [r.role_id for r in existing_roles]
+
+        if duplicate_role_ids:
+            return make_response(jsonify({
+                "error": "Some roles are already assigned to the user",
+                "duplicate_roles": duplicate_role_ids
+            }), 409)
+
+        # 2. Fetch all roles in one query to ensure they exist
+        roles = DefRoles.query.filter(DefRoles.role_id.in_(role_ids)).all()
+        found_role_ids = [r.role_id for r in roles]
+        missing_role_ids = list(set(role_ids) - set(found_role_ids))
+
+        if missing_role_ids:
+            return make_response(jsonify({
+                "error": "Some roles do not exist",
+                "missing_roles": missing_role_ids
+            }), 404)
+
+        # 3. Create new mappings
+        new_mappings = []
+        for role in roles:
+            new_mapping = DefUserGrantedRole(
+                user_id=user_id,
+                role_id=role.role_id,
+                created_by=get_jwt_identity(),
+                creation_date=datetime.utcnow(),
+                last_updated_by=get_jwt_identity(),
+                last_update_date=datetime.utcnow()
+            )
+            db.session.add(new_mapping)
+            new_mappings.append(new_mapping)
+
+        db.session.commit()
+
+        # Return response with success message
+        return make_response(jsonify({
+            "message": "Roles assigned successfully",
+            "assigned_roles": [m.json() for m in new_mappings]
+        }), 201)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error creating user-role mappings"
+        }), 500)
+
+
+
+@flask_app.route('/def_user_granted_roles', methods=['GET'])
+@jwt_required()
+def get_user_granted_roles():
+    try:
+        user_id = request.args.get('user_id', type=int)
+        role_id = request.args.get('role_id', type=int)
+
+        query = DefUserGrantedRole.query
+
+        # Filter by user_id if provided
+        if user_id:
+            query = query.filter_by(user_id=user_id)
+
+        # Filter by role_id if provided
+        if role_id:
+            query = query.filter_by(role_id=role_id)
+
+        results = query.all()
+
+        # If both params given and no record found → return 404
+        if user_id and role_id and not results:
+            return make_response(jsonify({
+                "error": f"No mapping found for user_id={user_id} and role_id={role_id}"
+            }), 404)
+
+        return make_response(jsonify([m.json() for m in results]), 200)
+
+    except Exception as e:
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error fetching user-role mappings"
+        }), 500)
+
+
+
+
+
+@flask_app.route('/def_user_granted_roles', methods=['PUT'])
+@jwt_required()
+def update_user_granted_roles():
+    try:
+        # user_id from query params
+        user_id = request.args.get("user_id", type=int)
+        if not user_id:
+            return make_response(jsonify({"error": "user_id is required"}), 400)
+
+        data = request.json
+        role_ids = data.get("role_ids")
+
+        # Validate role_ids
+        if not role_ids or not isinstance(role_ids, list):
+            return make_response(jsonify({"error": "role_ids (list) is required"}), 400)
+
+        # Check user exists
+        user = DefUser.query.filter_by(user_id=user_id).first()
+        if not user:
+            return make_response(jsonify({"error": f"User ID {user_id} does not exist"}), 404)
+
+        current_user = get_jwt_identity()
+        now = datetime.utcnow()
+
+        # Fetch existing roles
+        existing = DefUserGrantedRole.query.filter_by(user_id=user_id).all()
+        existing_role_ids = {r.role_id for r in existing}
+
+        incoming_role_ids = set(map(int, role_ids))
+
+        # Determine differences
+        to_add = incoming_role_ids - existing_role_ids
+        to_remove = existing_role_ids - incoming_role_ids
+
+        # Validate that incoming roles exist
+        valid_roles = DefRoles.query.filter(
+            DefRoles.role_id.in_(incoming_role_ids)
+        ).all()
+        found_ids = {r.role_id for r in valid_roles}
+
+        missing = incoming_role_ids - found_ids
+        if missing:
+            return make_response(jsonify({
+                "error": "Some roles do not exist",
+                "missing_role_ids": list(missing)
+            }), 404)
+
+        # Delete removed roles
+        if to_remove:
+            DefUserGrantedRole.query.filter(
+                DefUserGrantedRole.user_id == user_id,
+                DefUserGrantedRole.role_id.in_(to_remove)
+            ).delete(synchronize_session=False)
+
+        # Add new roles
+        for rid in to_add:
+            db.session.add(
+                DefUserGrantedRole(
+                    user_id=user_id,
+                    role_id=rid,
+                    created_by=current_user,
+                    creation_date=now,
+                    last_updated_by=current_user,
+                    last_update_date=now
+                )
+            )
+
+        # Update audit fields for kept roles
+        for rid in incoming_role_ids & existing_role_ids:
+            mapping = DefUserGrantedRole.query.filter_by(
+                user_id=user_id, role_id=rid
+            ).first()
+            mapping.last_updated_by = current_user
+            mapping.last_update_date = now
+
+        db.session.commit()
+
+        return make_response(jsonify({
+            "message": "User roles updated successfully",
+            "role_ids": sorted(list(incoming_role_ids))
+        }), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error updating user-role mappings"
+        }), 500)
+
+
+
+
+
+
+
+@flask_app.route('/def_user_granted_roles', methods=['DELETE'])
+@jwt_required()
+def delete_user_granted_role():
+    try:
+
+        # Extract query parameters
+        user_id = request.args.get("user_id", type=int)
+        role_id = request.args.get("role_id", type=int)
+
+        if not user_id or not role_id:
+            return make_response(jsonify({
+                "error": "Missing required query parameters: user_id, role_id"
+            }), 400)
+        
+        # Find the mapping
+        mapping = DefUserGrantedRole.query.filter_by(
+            user_id=user_id,
+            role_id=role_id
+        ).first()
+
+        if not mapping:
+            return make_response(jsonify({
+                "error": f"Mapping for user_id={user_id} and role_id={role_id} not found"
+            }), 404)
+
+        # Set who performed the delete (audit tracking)
+        mapping.last_updated_by = get_jwt_identity()
+
+        db.session.delete(mapping)
+        db.session.commit()
+
+        return make_response(jsonify({"message": "Deleted successfully"}), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error deleting user granted role"
+        }), 500)
+
+
+
+
+
+
+
+
+@flask_app.route('/def_user_granted_privileges', methods=['POST'])
+@jwt_required()
+def create_user_granted_privileges():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        privilege_ids = data.get('privilege_ids')
+
+        # Validate input
+        if not user_id or not privilege_ids or not isinstance(privilege_ids, list):
+            return make_response(jsonify({"error": "user_id and privilege_ids (list) are required"}), 400)
+
+        # Check if user exists
+        user = DefUser.query.filter_by(user_id=user_id).first()
+        if not user:
+            return make_response(jsonify({"error": f"User ID {user_id} does not exist"}), 404)
+
+        current_user = get_jwt_identity()
+        now = datetime.utcnow()
+
+        # 1. Check for duplicates in one query
+        existing_privileges = DefUserGrantedPrivilege.query.filter(
+            DefUserGrantedPrivilege.user_id == user_id,
+            DefUserGrantedPrivilege.privilege_id.in_(privilege_ids)
+        ).all()
+        duplicate_privilege_ids = [p.privilege_id for p in existing_privileges]
+
+        if duplicate_privilege_ids:
+            return make_response(jsonify({
+                "error": "Some privileges are already assigned to the user",
+                "duplicate_privileges": duplicate_privilege_ids
+            }), 409)
+
+        # 2. Fetch all privileges in one query to ensure they exist
+        privileges = DefPrivilege.query.filter(DefPrivilege.privilege_id.in_(privilege_ids)).all()
+        found_privilege_ids = [p.privilege_id for p in privileges]
+        missing_privilege_ids = list(set(privilege_ids) - set(found_privilege_ids))
+
+        if missing_privilege_ids:
+            return make_response(jsonify({
+                "error": "Some privileges do not exist",
+                "missing_privileges": missing_privilege_ids
+            }), 404)
+
+        # 3. Create new mappings
+        new_mappings = []
+        for privilege in privileges:
+            new_mapping = DefUserGrantedPrivilege(
+                user_id=user_id,
+                privilege_id=privilege.privilege_id,
+                created_by=current_user,
+                creation_date=now,
+                last_updated_by=current_user,
+                last_update_date=now
+            )
+            db.session.add(new_mapping)
+            new_mappings.append(new_mapping)
+
+        db.session.commit()
+
+        # Return response with success message
+        return make_response(jsonify({
+            "message": "Privileges assigned successfully",
+            "assigned_privileges": [m.json() for m in new_mappings]
+        }), 201)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error creating user-privilege mappings"
+        }), 500)
+
+
+
+
+@flask_app.route('/def_user_granted_privileges', methods=['GET'])
+@jwt_required()
+def get_user_granted_privileges():
+    try:
+        user_id = request.args.get("user_id", type=int)
+        privilege_id = request.args.get("privilege_id", type=int)
+
+        # If both provided -> single-record lookup
+        if user_id is not None and privilege_id is not None:
+            record = DefUserGrantedPrivilege.query.filter_by(
+                user_id=user_id, privilege_id=privilege_id
+            ).first()
+            if not record:
+                return make_response(jsonify({
+                    "error": f"No mapping found for user_id={user_id} and privilege_id={privilege_id}"
+                }), 404)
+            return make_response(jsonify(record.json()), 200)
+
+        # Otherwise build a list query (may be empty)
+        query = DefUserGrantedPrivilege.query
+
+        if user_id is not None:
+            query = query.filter_by(user_id=user_id)
+        if privilege_id is not None:
+            query = query.filter_by(privilege_id=privilege_id)
+
+        records = query.order_by(DefUserGrantedPrivilege.creation_date.desc()).all()
+        return make_response(jsonify([r.json() for r in records]), 200)
+
+    except Exception as e:
+        return make_response(jsonify({"error": str(e), "message": "Error fetching user-privilege mappings"}), 500)
+
+
+
+
+@flask_app.route('/def_user_granted_privileges', methods=['PUT'])
+@jwt_required()
+def update_user_granted_privileges():
+    try:
+        # user_id comes from query param
+        user_id = request.args.get("user_id", type=int)
+        data = request.json
+        privilege_ids = data.get("privilege_ids")
+
+        # Validate input
+        if not user_id:
+            return make_response(jsonify({"error": "user_id query parameter is required"}), 400)
+
+        if not privilege_ids or not isinstance(privilege_ids, list):
+            return make_response(jsonify({
+                "error": "privilege_ids (list) is required"
+            }), 400)
+
+        # Validate user exists
+        user = DefUser.query.filter_by(user_id=user_id).first()
+        if not user:
+            return make_response(jsonify({"error": f"User ID {user_id} does not exist"}), 404)
+
+        current_user = get_jwt_identity()
+        now = datetime.utcnow()
+
+        # Fetch existing privilege assignments
+        existing = DefUserGrantedPrivilege.query.filter_by(
+            user_id=user_id
+        ).all()
+        existing_priv_ids = {p.privilege_id for p in existing}
+
+        incoming_priv_ids = set(privilege_ids)
+
+        # Determine differences
+        to_add = incoming_priv_ids - existing_priv_ids
+        to_remove = existing_priv_ids - incoming_priv_ids
+
+        # Validate incoming privileges exist
+        valid_privileges = DefPrivilege.query.filter(
+            DefPrivilege.privilege_id.in_(incoming_priv_ids)
+        ).all()
+        found_ids = {p.privilege_id for p in valid_privileges}
+
+        missing = incoming_priv_ids - found_ids
+        if missing:
+            return make_response(jsonify({
+                "error": "Some privileges do not exist",
+                "missing_privilege_ids": list(missing)
+            }), 404)
+
+        # Remove removed privileges
+        if to_remove:
+            DefUserGrantedPrivilege.query.filter(
+                DefUserGrantedPrivilege.user_id == user_id,
+                DefUserGrantedPrivilege.privilege_id.in_(to_remove)
+            ).delete(synchronize_session=False)
+
+        # Add new privileges
+        for pid in to_add:
+            db.session.add(
+                DefUserGrantedPrivilege(
+                    user_id=user_id,
+                    privilege_id=pid,
+                    created_by=current_user,
+                    creation_date=now,
+                    last_updated_by=current_user,
+                    last_update_date=now
+                )
+            )
+
+        db.session.commit()
+
+        return make_response(jsonify({
+            "message": "User privileges updated successfully",
+            "privilege_ids": sorted(list(incoming_priv_ids))
+        }), 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+            "error": str(e),
+            "message": "Error updating user-privilege mappings"
+        }), 500)
+
+
+
+
+@flask_app.route('/def_user_granted_privileges', methods=['DELETE'])
+@jwt_required()
+def delete_user_granted_privilege():
+    try:
+        user_id = request.args.get("user_id", type=int)
+        privilege_id = request.args.get("privilege_id", type=int)
+
+        # Validate required params
+        if user_id is None or privilege_id is None:
+            return make_response(jsonify({
+                "error": "Query parameters 'user_id' and 'privilege_id' are required"
+            }), 400)
+
+        record = DefUserGrantedPrivilege.query.filter_by(
+            user_id=user_id,
+            privilege_id=privilege_id
+        ).first()
+
+        if not record:
+            return make_response(jsonify({"error": "User-privilege not found"}), 404)
+
+        db.session.delete(record)
+        db.session.commit()
+
+        return make_response(jsonify({"message": "Deleted successfully"}), 200)
+
+    except Exception as e:
+        return make_response(jsonify({"error": str(e)}), 500)
+
+
+
+
+
+
 #!AGGREGATE TABLES AND MATERIALIZED VIEWS
 
 
@@ -6985,178 +8063,223 @@ def create_aggregate_table():
 
 
 
-@flask_app.route('/create_materialized_view', methods=['POST'])
-def create_mv():
+
+@flask_app.route("/create_mv", methods=["POST"])
+def create_mv_endpoint():
     """
-    Creates a Materialized View in 'imat' schema from a flexible JSON structure.
-    Supports raw expressions in aggregates and grouping columns.
+    API to create a materialized view with structured payload.
+    All helper functions are inside the route.
     """
-    data = request.json
-    mv_name = data.get('mv_name')
-    source_tables_def = data.get('source_tables', [])
-    grouping_defs = data.get('grouping_columns', [])
-    aggregate_defs = data.get('aggregate_functions', [])
 
-    if not mv_name or not source_tables_def or not grouping_defs:
-        return jsonify({"status": "error", "message": "Missing mv_name, source_tables, or grouping_columns"}), 400
+    # -------------------------
+    # HELPER FUNCTIONS
+    # -------------------------
+    IDENT_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
-    # --- 1. Build FROM clause ---
-    from_clause_parts = []
-    valid_joins = ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN']
+    def validate_ident(name):
+        if not isinstance(name, str):
+            raise ValueError(f"Identifier must be a string, got: {name!r}")
+        if not IDENT_RE.match(name):
+            raise ValueError(f"Invalid identifier: {name!r}")
 
-    for i, table_def in enumerate(source_tables_def):
-        table_name = table_def.get('table_name')
-        alias = table_def.get('table_alias', '')
-        join_type = table_def.get('join_type')
-        on_condition = table_def.get('on_condition')
+    def build_column_expr(col_def):
+        """
+        Build SQL for one select item.
+        Supports:
+        - simple column
+        - aggregate functions (COUNT, SUM, AVG, etc.)
+        - functions (date_trunc, custom functions)
+        - aliasing
+        """
+        if not isinstance(col_def, dict):
+            raise ValueError(f"Select item must be a dict, got: {col_def!r}")
 
-        if not table_name:
-            return jsonify({"status": "error", "message": f"Table definition {i} missing 'table_name'"}), 400
+        expr = None
 
-        if i == 0:
-            from_clause_parts.append(f'FROM {table_name} {alias}'.strip())
+        # 1️⃣ Simple column
+        if 'column' in col_def and 'aggregate' not in col_def and 'function' not in col_def:
+            expr = col_def['column']
+
+        # 2️⃣ Aggregate function
+        elif 'aggregate' in col_def:
+            col = col_def.get('column')
+            if col is None:
+                raise ValueError("Aggregate item must have a 'column' key")
+            func = col_def['aggregate'].upper()
+            distinct = col_def.get('distinct', False)
+
+            if col == "*":
+                expr = f"{func}(*)"
+            else:
+                expr = f"{func}({('DISTINCT ' if distinct else '')}{col})"
+
+        # 3️⃣ Function call
+        elif 'function' in col_def:
+            func = col_def['function']
+            func_name = func.get('name')
+            if not func_name:
+                raise ValueError("Function must have a 'name'")
+            args = func.get('args', [])
+            if not isinstance(args, list):
+                raise ValueError("Function 'args' must be a list")
+            args_list = []
+            for arg in args:
+                if isinstance(arg, dict) and 'column' in arg:
+                    args_list.append(arg['column'])
+                else:
+                    args_list.append(str(arg))
+            expr = f"{func_name}({', '.join(args_list)})"
+
         else:
-            if not all([join_type, on_condition]):
-                return jsonify({"status": "error", "message": f"Join {i} missing join_type/on_condition"}), 400
-            if join_type.upper() not in valid_joins:
-                return jsonify({"status": "error", "message": f"Invalid join_type '{join_type}'"}), 400
-            from_clause_parts.append(f"{join_type.upper()} {table_name} {alias} ON {on_condition}")
+            raise ValueError(f"Unknown select item: {col_def}")
 
-    # --- 2. Build SELECT and GROUP BY clauses ---
-    select_parts, group_by_parts = [], []
+        # 4️⃣ Alias
+        alias = col_def.get('alias')
+        if alias:
+            validate_ident(alias)
+            expr += f" AS {alias}"
 
-    # Grouping columns
-    for i, col_def in enumerate(grouping_defs):
-        source_column = col_def.get('source_column')
-        result_alias = col_def.get('result_alias')
-        date_trunc_unit = col_def.get('date_trunc_unit')
-        raw_expression = col_def.get('raw_expression')
+        if expr is None:
+            raise ValueError(f"Failed to build SQL expression from: {col_def}")
 
-        if date_trunc_unit and source_column:
-            col_expr = f"DATE_TRUNC('{date_trunc_unit.lower()}', {source_column})"
-            result_alias = result_alias or f"{source_column.replace('.', '_')}_{date_trunc_unit.lower()}"
-        elif raw_expression:
-            col_expr = raw_expression
-            result_alias = result_alias or f"col_{i+1}"
-        elif source_column:
-            col_expr = source_column
-            result_alias = result_alias or source_column
-        else:
-            return jsonify({"status": "error", "message": f"Grouping column {i} missing definition"}), 400
+        return expr
 
-        select_parts.append(f"{col_expr} AS \"{result_alias}\"")
-        group_by_parts.append(col_expr)
 
-    # Aggregates
-    for agg_def in aggregate_defs:
-        func = agg_def.get('function')
-        source_column = agg_def.get('source_column')
-        raw_expression = agg_def.get('raw_expression')
-        result_alias = agg_def.get('result_alias')
+    def build_select_clause(select_list):
+        if not select_list:
+            raise ValueError("select list cannot be empty")
+        return ", ".join(build_column_expr(item) for item in select_list)
 
-        if not result_alias or not func or (not source_column and not raw_expression):
-            return jsonify({"status": "error", "message": "Aggregate function definition incomplete"}), 400
+    def build_from_clause(from_obj):
+        schema = from_obj.get("schema", "public")
+        table = from_obj["table"]
+        alias = from_obj.get("alias")
+        validate_ident(schema)
+        validate_ident(table)
+        if alias:
+            validate_ident(alias)
+        base = f"{schema}.{table}"
+        return f"{base} {alias}" if alias else base
 
-        valid_funcs = ['SUM', 'AVG', 'COUNT', 'MIN', 'MAX']
-        if func.upper() not in valid_funcs:
-            return jsonify({"status": "error", "message": f"Invalid aggregate function '{func}'"}), 400
+    def build_join_clause(joins):
+        if not joins:
+            return ""
+        parts = []
+        for j in joins:
+            jtype = j.get("type", "INNER").upper()
+            schema = j["schema"]
+            table = j["table"]
+            alias = j.get("alias")
+            validate_ident(schema)
+            validate_ident(table)
+            if alias:
+                validate_ident(alias)
+            tbl = f"{schema}.{table}" + (f" {alias}" if alias else "")
+            conditions = j.get("conditions", [])
+            if not conditions:
+                raise ValueError(f"Join {tbl} must have at least one condition")
+            cond_exprs = []
+            for cond in conditions:
+                cond_exprs.append(f"{cond['left']} {cond['op']} {cond['right']}")
+            cond_str = " AND ".join(cond_exprs)
+            parts.append(f"{jtype} JOIN {tbl} ON {cond_str}")
+        return " ".join(parts)
 
-        # Use raw_expression directly if provided
-        if raw_expression:
-            select_parts.append(f"{raw_expression} AS \"{result_alias}\"")
-        else:
-            select_parts.append(f"{func}({source_column}) AS \"{result_alias}\"")
+    def build_group_by_clause(group_by_list):
+        if not group_by_list:
+            return ""
+        exprs = []
+        for item in group_by_list:
+            if 'column' in item:
+                exprs.append(item['column'])
+            elif 'function' in item:
+                func = item['function']
+                args = func.get('args', [])
+                if not args:
+                    raise ValueError("Function in group_by must have args")
+                args_list = []
+                for arg in args:
+                    if isinstance(arg, dict) and 'column' in arg:
+                        args_list.append(arg['column'])
+                    else:
+                        args_list.append(str(arg))
+                exprs.append(f"{func['name']}({', '.join(args_list)})")
+            else:
+                raise ValueError(f"Unknown group_by item: {item}")
+        return ", ".join(exprs)
 
-    select_clause = ", ".join(select_parts)
-    from_clause = " ".join(from_clause_parts)
-    group_by_clause = ", ".join(group_by_parts)
+    # -------------------------
+    # PARSE PAYLOAD
+    # -------------------------
+    payload = request.get_json()
+    if not payload:
+        return jsonify({"ok": False, "error": "JSON payload required"}), 400
 
-    mv_select_sql = f"SELECT {select_clause} {from_clause} GROUP BY {group_by_clause}"
+    mv_name = payload.get("mv_name")
+    mv_schema = payload.get("mv_schema", "imat")
+    select_list = payload.get("select")
+    from_obj = payload.get("from")
+    joins = payload.get("joins", [])
+    group_by = payload.get("group_by", [])
 
-    # --- 3. Create Materialized View ---
-    create_mv_sql = f"CREATE MATERIALIZED VIEW IF NOT EXISTS imat.{mv_name} AS {mv_select_sql};"
+    # validate identifiers
     try:
-        db.session.execute(text(create_mv_sql))
+        validate_ident(mv_name)
+        validate_ident(mv_schema)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    if not select_list or not from_obj:
+        return jsonify({"ok": False, "error": "select[] and from{} are required"}), 400
+
+    # -------------------------
+    # BUILD SQL
+    # -------------------------
+    try:
+        select_clause = build_select_clause(select_list)
+        from_clause = build_from_clause(from_obj)
+        join_clause = build_join_clause(joins)
+        group_clause = build_group_by_clause(group_by)
+
+        sql = f"SELECT {select_clause} FROM {from_clause}"
+        if join_clause:
+            sql += " " + join_clause
+        if group_clause:
+            sql += f" GROUP BY {group_clause}"
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Error building SQL: {str(e)}"}), 400
+
+    # -------------------------
+    # CREATE MATERIALIZED VIEW
+    # -------------------------
+    create_mv_sql = f"""
+    CREATE SCHEMA IF NOT EXISTS {mv_schema};
+    DROP MATERIALIZED VIEW IF EXISTS {mv_schema}.{mv_name} CASCADE;
+    CREATE MATERIALIZED VIEW {mv_schema}.{mv_name} AS {sql} WITH NO DATA;
+    REFRESH MATERIALIZED VIEW {mv_schema}.{mv_name};
+    """
+
+    try:
+        conn = db.session.connection()
+        conn.execute(text(create_mv_sql))
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return jsonify({"status": "error", "message": f"Failed to create MV: {str(e)}"}), 500
+        return jsonify({
+            "error": "Failed creating MV",
+            "detail": str(e),
+            "sql": sql
+        }), 500
 
     return jsonify({
-        "status": "success",
-        "message": f"imat.{mv_name} created successfully.",
-        "mv_sql": mv_select_sql,
-        "create_mv_sql": create_mv_sql.strip()
-    })
+        "message": "Materialized view created successfully",
+        "mv": f"{mv_schema}.{mv_name}",
+        "generated_sql": sql
+    }), 201
 
 
 
-
-
-
-
-@flask_app.route('/create_materialized_view/v1', methods=['POST'])
-@jwt_required()
-def create_materialized_view_v1():
-    try:
-        data = request.get_json()
-        if not data:
-            return make_response(jsonify({"message": "No JSON data provided"}), 400)
-
-        materialized_view_name = data.get("materialized_view_name")
-        source_table = data.get("source_table")
-        source_schema = data.get("source_schema", "public")  # default to public schema if not specified
-        group_columns = data.get("group_columns", [])
-        date_truncation_column = data.get("date_truncation_column")
-        date_granularity = data.get("date_granularity", "day")  # default to day if not specified 
-        aggregates = data.get("aggregates", [])  # Changed to list of objects with type and target
-
-        if not all([materialized_view_name, source_table, date_truncation_column, group_columns, aggregates]):
-            return make_response(jsonify({"message": "Some required fields are missing."}), 400)
-
-        # 1. SELECT columns
-        select_parts = []
-        select_parts.extend(group_columns)  # e.g., cab_type_id 
-        select_parts.append(f"DATE_TRUNC('{date_granularity}', {date_truncation_column}) AS {date_truncation_column}")
-
-        # 2. Add aggregates with type and target
-        for agg in aggregates:
-            agg_type = agg.get("type", "sum")  # default to sum if not specified
-            target = agg.get("target") 
-            alias = agg.get("alias")
-            if target and alias:
-                select_parts.append(f"{agg_type}({target}) AS {alias}")
-
-        select_sql = ",\n    ".join(select_parts)
-
-        # --- Build GROUP BY ---
-        # Note: order must be group_cols first, then DATE_TRUNC
-        group_by_items = group_columns + [f"DATE_TRUNC('{date_granularity}', {date_truncation_column})"]
-        group_by_sql = ", ".join(group_by_items)
-
-        # --- Final SQL ---
-        sql = text(f"""
-        CREATE MATERIALIZED VIEW IF NOT EXISTS imat.{materialized_view_name} AS
-        SELECT
-            {select_sql}
-        FROM {source_schema}.{source_table}
-        GROUP BY {group_by_sql}
-        WITH NO DATA;
-        """)
-
-        db.session.execute(sql)
-        db.session.commit()
-
-        return make_response(jsonify({
-            "message": f"Materialized view imat.{materialized_view_name} created successfully"
-        }), 201)
-
-    except Exception as e:
-        db.session.rollback()
-        return make_response(jsonify({
-            "message": "Error creating materialized view",
-            "error": str(e)
-        }), 500)
 
 
 if __name__ == "__main__":

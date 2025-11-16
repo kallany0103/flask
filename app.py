@@ -7073,7 +7073,7 @@ def delete_privilege():
         db.session.delete(privilege)
         db.session.commit()
 
-        return make_response(jsonify({'message': 'Privilege deleted successfully'}), 200)
+        return make_response(jsonify({'message': 'Deleted successfully'}), 200)
 
     except Exception as e:
         return make_response(jsonify({
@@ -7173,7 +7173,7 @@ def update_role():
 
         db.session.commit()
 
-        return make_response(jsonify({'message': 'Updated successfully'}), 200)
+        return make_response(jsonify({'message': 'Edited successfully'}), 200)
 
     except Exception as e:
         return make_response(jsonify({
@@ -7249,7 +7249,7 @@ def create_api_endpoint():
         db.session.add(new_api)
         db.session.commit()
 
-        return make_response(jsonify({'message': 'API endpoint listed'}), 201)
+        return make_response(jsonify({'message': 'Added successfully'}), 201)
 
     except Exception as e:
         db.session.rollback()
@@ -7316,7 +7316,7 @@ def update_api_endpoint():
         row.last_update_date = datetime.utcnow()
 
         db.session.commit()
-        return make_response(jsonify({'message': 'API endpoint updated'}), 200)
+        return make_response(jsonify({'message': 'Edited successfully'}), 200)
 
     except Exception as e:
         db.session.rollback()
@@ -7343,7 +7343,7 @@ def delete_api_endpoint():
         db.session.delete(row)
         db.session.commit()
 
-        return make_response(jsonify({'message': 'API endpoint deleted'}), 200)
+        return make_response(jsonify({'message': 'Deleted successfully'}), 200)
 
     except Exception as e:
         db.session.rollback()
@@ -7484,7 +7484,7 @@ def update_api_endpoint_role():
         db.session.commit()
 
         return make_response(jsonify({
-            "message": "API endpoint-role mapping updated successfully",
+            "message": "Edited successfully",
             "data": record.json()
         }), 200)
 
@@ -7727,7 +7727,7 @@ def update_user_granted_roles():
         db.session.commit()
 
         return make_response(jsonify({
-            "message": "User roles updated successfully",
+            "message": "Edited successfully",
             "role_ids": sorted(list(incoming_role_ids))
         }), 200)
 
@@ -7976,7 +7976,7 @@ def update_user_granted_privileges():
         db.session.commit()
 
         return make_response(jsonify({
-            "message": "User privileges updated successfully",
+            "message": "Edited successfully",
             "privilege_ids": sorted(list(incoming_priv_ids))
         }), 200)
 

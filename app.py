@@ -4026,10 +4026,13 @@ def update_def_global_condition():
     except Exception as e:
         return make_response(jsonify({'message': 'Error editing Global Condition', 'error': str(e)}), 500)
 
-@flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['DELETE'])
+@flask_app.route('/def_global_conditions', methods=['DELETE'])
 @jwt_required()
-def delete_def_global_condition(def_global_condition_id):
+def delete_def_global_condition():
     try:
+        def_global_condition_id = request.args.get('def_global_condition_id', type=int)
+        if not def_global_condition_id:
+            return make_response(jsonify({'message': 'def_global_condition_id query parameter is required'}), 400)
         condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
         if condition:
             db.session.delete(condition)
@@ -4262,10 +4265,13 @@ def get_def_global_condition_logics():
 
 
 
-@flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['PUT'])
+@flask_app.route('/def_global_condition_logics', methods=['PUT'])
 @jwt_required()
-def update_def_global_condition_logic(def_global_condition_logic_id):
+def update_def_global_condition_logic():
     try:
+        def_global_condition_logic_id = request.args.get('def_global_condition_logic_id', type=int)
+        if not def_global_condition_logic_id:
+            return make_response(jsonify({'message': 'def_global_condition_logic_id query parameter is required'}), 400)
         logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
         if logic:
             logic.def_global_condition_id = request.json.get('def_global_condition_id', logic.def_global_condition_id)
@@ -4283,10 +4289,13 @@ def update_def_global_condition_logic(def_global_condition_logic_id):
         return make_response(jsonify({'message': 'Error editing Global Condition Logic', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['DELETE'])
+@flask_app.route('/def_global_condition_logics', methods=['DELETE'])
 @jwt_required()
-def delete_def_global_condition_logic(def_global_condition_logic_id):
+def delete_def_global_condition_logic():
     try:
+        def_global_condition_logic_id = request.args.get('def_global_condition_logic_id', type=int)
+        if not def_global_condition_logic_id:
+            return make_response(jsonify({'message': 'def_global_condition_logic_id query parameter is required'}), 400)
         logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
         if logic:
             db.session.delete(logic)
@@ -4520,10 +4529,13 @@ def upsert_def_global_condition_logic_attributes():
         }), 500)
 
 
-@flask_app.route('/def_global_condition_logic_attributes/<int:id>', methods=['PUT'])
+@flask_app.route('/def_global_condition_logic_attributes', methods=['PUT'])
 @jwt_required()
-def update_def_global_condition_logic_attribute(id):
+def update_def_global_condition_logic_attribute():
     try:
+        id = request.args.get('id', type=int)
+        if not id:
+            return make_response(jsonify({'message': 'id query parameter is required'}), 400)
         data = request.get_json()
         attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
 
@@ -4550,10 +4562,13 @@ def update_def_global_condition_logic_attribute(id):
 
 
 
-@flask_app.route('/def_global_condition_logic_attributes/<int:id>', methods=['DELETE'])
+@flask_app.route('/def_global_condition_logic_attributes', methods=['DELETE'])
 @jwt_required()
-def delete_def_global_condition_logic_attribute(id):
+def delete_def_global_condition_logic_attribute():
     try:
+        id = request.args.get('id', type=int)
+        if not id:
+            return make_response(jsonify({'message': 'id query parameter is required'}), 400)
         attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
 
         if not attribute:

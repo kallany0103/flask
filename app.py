@@ -304,7 +304,7 @@ def delete_message(id):
 
 
 # Create a tenant
-@flask_app.route('/tenants', methods=['POST'])
+@flask_app.route('/def_tenants', methods=['POST'])
 @jwt_required()
 def create_tenant():
     try:
@@ -335,7 +335,7 @@ def create_tenant():
        
 
 # Get all tenants
-@flask_app.route('/tenants', methods=['GET'])
+@flask_app.route('/def_tenants', methods=['GET'])
 @jwt_required()
 def get_tenants():
     try:
@@ -415,10 +415,14 @@ def get_tenant(tenant_id):
 
 
 # Update a tenant
-@flask_app.route('/tenants/<int:tenant_id>', methods=['PUT'])
+@flask_app.route('/def_tenants', methods=['PUT'])
 @jwt_required()
-def update_tenant(tenant_id):
+def update_tenant():
     try:
+        tenant_id = request.args.get('tenant_id', type=int)
+        if not tenant_id:
+            return make_response(jsonify({"message": "tenant_id query parameter is required"}), 400)
+
         tenant = DefTenant.query.filter_by(tenant_id=tenant_id).first()
         if tenant:
             data = request.get_json()
@@ -434,10 +438,14 @@ def update_tenant(tenant_id):
 
 
 # Delete a tenant
-@flask_app.route('/tenants/<int:tenant_id>', methods=['DELETE'])
+@flask_app.route('/def_tenants', methods=['DELETE'])
 @jwt_required()
-def delete_tenant(tenant_id):
+def delete_tenant():
     try:
+        tenant_id = request.args.get('tenant_id', type=int)
+        if not tenant_id:
+            return make_response(jsonify({"message": "tenant_id query parameter is required"}), 400)
+
         user = DefTenant.query.filter_by(tenant_id=tenant_id).first()
         if user:
             db.session.delete(user)
@@ -478,12 +486,15 @@ def create_enterprise(tenant_id):
         return make_response(jsonify({"message": "Failed to add enterprise setup.", "error": str(e)}), 500)
 
 # Create or update enterprise setup
-@flask_app.route('/create_enterprise/<int:tenant_id>', methods=['POST'])
+@flask_app.route('/def_tenant_enterprise_setup', methods=['POST'])
 @jwt_required()
-def create_update_enterprise(tenant_id):
+def create_update_enterprise():
     try:
+        tenant_id = request.args.get('tenant_id', type=int)
+        if not tenant_id:
+            return make_response(jsonify({"message": "tenant_id query parameter is required"}), 400)
+
         data = request.get_json()
-        tenant_id       = tenant_id
         enterprise_name = data['enterprise_name']
         enterprise_type = data['enterprise_type']
         user_invitation_validity = data.get('user_invitation_validity', "1h")
@@ -556,10 +567,15 @@ def get_enterprises_v1():
 
 
 # Get one enterprise setup by tenant_id
-@flask_app.route('/get_enterprise/<int:tenant_id>', methods=['GET'])
+# Get one enterprise setup by tenant_id
+@flask_app.route('/def_tenant_enterprise_setup', methods=['GET'])
 @jwt_required()
-def get_enterprise(tenant_id):
+def get_enterprise():
     try:
+        tenant_id = request.args.get('tenant_id', type=int)
+        if not tenant_id:
+            return make_response(jsonify({"message": "tenant_id query parameter is required"}), 400)
+
         setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
         if setup:
             return make_response(jsonify(setup.json()), 200)
@@ -604,10 +620,14 @@ def update_enterprise(tenant_id):
 
 
 # Delete enterprise setup
-@flask_app.route('/delete_enterprise/<int:tenant_id>', methods=['DELETE'])
+@flask_app.route('/def_tenant_enterprise_setup', methods=['DELETE'])
 @jwt_required()
-def delete_enterprise(tenant_id):
+def delete_enterprise():
     try:
+        tenant_id = request.args.get('tenant_id', type=int)
+        if not tenant_id:
+            return make_response(jsonify({"message": "tenant_id query parameter is required"}), 400)
+
         setup = DefTenantEnterpriseSetup.query.filter_by(tenant_id=tenant_id).first()
         if setup:
             db.session.delete(setup)
@@ -3250,73 +3270,63 @@ def create_def_access_models():
 @jwt_required()
 def get_def_access_models():
     try:
-        models = DefAccessModel.query.order_by(DefAccessModel.def_access_model_id.desc()).all()
-        return make_response(jsonify([model.json() for model in models]), 200)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
+        # Query parameters
+        def_access_model_id = request.args.get('def_access_model_id', type=int)
+        page = request.args.get('page', type=int)
+        limit = request.args.get('limit', type=int)
+        model_name = request.args.get('model_name', '').strip()
 
-@flask_app.route('/def_access_models/<int:page>/<int:limit>', methods=['GET'])
-@jwt_required()
-def get_paginated_def_access_models(page, limit):
-    try:
-        query = DefAccessModel.query.order_by(DefAccessModel.def_access_model_id.desc())
-        paginated = query.paginate(page=page, per_page=limit, error_out=False)
+        # Case 1: Get Single Model by ID
+        if def_access_model_id:
+            model = DefAccessModel.query.filter_by(def_access_model_id=def_access_model_id).first()
+            if model:
+                return make_response(jsonify(model.json()), 200)
+            else:
+                return make_response(jsonify({"message": "Access Model not found"}), 404)
 
-        return make_response(jsonify({
-            "items": [model.json() for model in paginated.items],
-            "total": paginated.total,
-            "pages": paginated.pages,
-            "page": paginated.page
-        }), 200)
-
-    except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
-
-
-@flask_app.route('/def_access_models/search/<int:page>/<int:limit>', methods=['GET'])
-@jwt_required()
-def search_def_access_models(page, limit):
-    try:
-        search_query = request.args.get('model_name', '').strip()
-        search_underscore = search_query.replace(' ', '_')
-        search_space = search_query.replace('_', ' ')
+        # Base Query
         query = DefAccessModel.query
 
-        if search_query:
+        # Case 2: Search by model_name
+        if model_name:
+            search_underscore = model_name.replace(' ', '_')
+            search_space = model_name.replace('_', ' ')
             query = query.filter(
                 or_(
-                    DefAccessModel.model_name.ilike(f'%{search_query}%'),
+                    DefAccessModel.model_name.ilike(f'%{model_name}%'),
                     DefAccessModel.model_name.ilike(f'%{search_underscore}%'),
                     DefAccessModel.model_name.ilike(f'%{search_space}%')
                 )
             )
 
-        paginated = query.order_by(DefAccessModel.def_access_model_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+        # Order by ID descending
+        query = query.order_by(DefAccessModel.def_access_model_id.desc())
 
-        return make_response(jsonify({
-            "items": [model.json() for model in paginated.items],
-            "total": paginated.total,
-            "pages": 1 if paginated.total == 0 else paginated.pages,
-            "page":  paginated.page
-        }), 200)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error searching access models", "error": str(e)}), 500)
+        # Case 3: Pagination
+        if page and limit:
+            paginated = query.paginate(page=page, per_page=limit, error_out=False)
+            return make_response(jsonify({
+                "result": [model.json() for model in paginated.items],
+                "total": paginated.total,
+                "pages": paginated.pages,
+                "page": paginated.page
+            }), 200)
 
+        # Case 4: Get All (No pagination, no ID)
+        models = query.all()
+        return make_response(jsonify([model.json() for model in models]), 200)
 
-@flask_app.route('/def_access_models/<int:def_access_model_id>', methods=['GET'])
-@jwt_required()
-def get_def_access_model(def_access_model_id):
-    try:
-        model = DefAccessModel.query.filter_by(def_access_model_id=def_access_model_id).first()
-        return make_response(jsonify(model.json()), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving access models", "error": str(e)}), 500)
 
 
-@flask_app.route('/def_access_models/<int:def_access_model_id>', methods=['PUT'])
+@flask_app.route('/def_access_models', methods=['PUT'])
 @jwt_required()
-def update_def_access_model(def_access_model_id):
+def update_def_access_model():
     try:
+        def_access_model_id = request.args.get('def_access_model_id', type=int)
+        if not def_access_model_id:
+            return make_response(jsonify({'message': 'def_access_model_id query parameter is required'}), 400)
         model = DefAccessModel.query.filter_by(def_access_model_id=def_access_model_id).first()
         if model:
             data = request.get_json()
@@ -3349,10 +3359,13 @@ def update_def_access_model(def_access_model_id):
     except Exception as e:
         return make_response(jsonify({'message': 'Error Editing Access Model', 'error': str(e)}), 500)
 
-@flask_app.route('/def_access_models/<int:def_access_model_id>', methods=['DELETE'])
+@flask_app.route('/def_access_models', methods=['DELETE'])
 @jwt_required()
-def delete_def_access_model(def_access_model_id):
+def delete_def_access_model():
     try:
+        def_access_model_id = request.args.get('def_access_model_id', type=int)
+        if not def_access_model_id:
+            return make_response(jsonify({'message': 'def_access_model_id query parameter is required'}), 400)
         model = DefAccessModel.query.filter_by(def_access_model_id=def_access_model_id).first()
         if model:
             db.session.delete(model)
@@ -3572,29 +3585,28 @@ def upsert_def_access_model_logics():
 @jwt_required()
 def get_def_access_model_logics():
     try:
+        def_access_model_logic_id = request.args.get('def_access_model_logic_id', type=int)
+
+        if def_access_model_logic_id:
+            logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
+            if logic:
+                return make_response(jsonify(logic.json()), 200)
+            else:
+                return make_response(jsonify({'message': 'access model logic not found'}), 404)
+        
         logics = DefAccessModelLogic.query.order_by(DefAccessModelLogic.def_access_model_logic_id.desc()).all()
         return make_response(jsonify([logic.json() for logic in logics]), 200)
     except Exception as e:
         return make_response(jsonify({'message': 'Error retrieving access model logics', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_model_logics/<int:def_access_model_logic_id>', methods=['GET'])
+@flask_app.route('/def_access_model_logics', methods=['PUT'])
 @jwt_required()
-def get_def_access_model_logic(def_access_model_logic_id):
+def update_def_access_model_logic():
     try:
-        logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
-        if logic:
-            return make_response(jsonify(logic.json()), 200)
-        else:
-            return make_response(jsonify({'message': 'access model logic not found'}), 404)
-    except Exception as e:
-        return make_response(jsonify({'message': 'Error retrieving access model logic', 'error': str(e)}), 500)
-
-
-@flask_app.route('/def_access_model_logics/<int:def_access_model_logic_id>', methods=['PUT'])
-@jwt_required()
-def update_def_access_model_logic(def_access_model_logic_id):
-    try:
+        def_access_model_logic_id = request.args.get('def_access_model_logic_id', type=int)
+        if not def_access_model_logic_id:
+            return make_response(jsonify({'message': 'def_access_model_logic_id query parameter is required'}), 400)
         logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
         if logic:
             # logic.def_access_model_id = request.json.get('def_access_model_id', logic.def_access_model_id)
@@ -3614,10 +3626,13 @@ def update_def_access_model_logic(def_access_model_logic_id):
         return make_response(jsonify({'message': 'Error editing Access Model Logic', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_model_logics/<int:def_access_model_logic_id>', methods=['DELETE'])
+@flask_app.route('/def_access_model_logics', methods=['DELETE'])
 @jwt_required()
-def delete_def_access_model_logic(def_access_model_logic_id):
+def delete_def_access_model_logic():
     try:
+        def_access_model_logic_id = request.args.get('def_access_model_logic_id', type=int)
+        if not def_access_model_logic_id:
+            return make_response(jsonify({'message': 'def_access_model_logic_id query parameter is required'}), 400)
         logic = DefAccessModelLogic.query.filter_by(def_access_model_logic_id=def_access_model_logic_id).first()
         if logic:
             db.session.delete(logic)
@@ -3675,11 +3690,18 @@ def create_def_access_model_logic_attribute():
 @jwt_required()
 def get_def_access_model_logic_attributes():
     try:
+        id = request.args.get('id', type=int)
+        if id:
+            attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
+            if attribute:
+                return make_response(jsonify(attribute.json()), 200)
+            else:
+                return make_response(jsonify({'message': 'Attribute not found'}), 404)
+
         attributes = DefAccessModelLogicAttribute.query.order_by(DefAccessModelLogicAttribute.id.desc()).all()
         return make_response(jsonify([attr.json() for attr in attributes]), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving attributes", "error": str(e)}), 500)
-
 
 
 @flask_app.route('/def_access_model_logic_attributes/upsert', methods=['POST'])
@@ -3797,24 +3819,13 @@ def upsert_def_access_model_logic_attributes():
         }), 500)
 
 
-
-@flask_app.route('/def_access_model_logic_attributes/<int:id>', methods=['GET'])
+@flask_app.route('/def_access_model_logic_attributes', methods=['PUT'])
 @jwt_required()
-def get_def_access_model_logic_attribute(id):
+def update_def_access_model_logic_attribute():
     try:
-        attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
-        if attribute:
-            return make_response(jsonify(attribute.json()), 200)
-        else:
-            return make_response(jsonify({'message': 'Attribute not found'}), 404)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving attribute", "error": str(e)}), 500)
-
-
-@flask_app.route('/def_access_model_logic_attributes/<int:id>', methods=['PUT'])
-@jwt_required()
-def update_def_access_model_logic_attribute(id):
-    try:
+        id = request.args.get('id', type=int)
+        if not id:
+            return make_response(jsonify({'message': 'id query parameter is required'}), 400)
         attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
         if attribute:
             # attribute.def_access_model_logic_id = request.json.get('def_access_model_logic_id', attribute.def_access_model_logic_id)
@@ -3831,10 +3842,13 @@ def update_def_access_model_logic_attribute(id):
         return make_response(jsonify({'message': 'Error editing attribute', 'error': str(e)}), 500)
 
 
-@flask_app.route('/def_access_model_logic_attributes/<int:id>', methods=['DELETE'])
+@flask_app.route('/def_access_model_logic_attributes', methods=['DELETE'])
 @jwt_required()
-def delete_def_access_model_logic_attribute(id):
+def delete_def_access_model_logic_attribute():
     try:
+        id = request.args.get('id', type=int)
+        if not id:
+            return make_response(jsonify({'message': 'id query parameter is required'}), 400)
         attribute = DefAccessModelLogicAttribute.query.filter_by(id=id).first()
         if attribute:
             db.session.delete(attribute)
@@ -3881,82 +3895,62 @@ def create_def_global_condition():
 @jwt_required()
 def get_def_global_conditions():
     try:
-        conditions = DefGlobalCondition.query.order_by(DefGlobalCondition.def_global_condition_id.desc()).all()
-        return make_response(jsonify([condition.json() for condition in conditions]), 200)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving GlobalConditions", "error": str(e)}), 500)
+        # Query parameters
+        def_global_condition_id = request.args.get('def_global_condition_id', type=int)
+        page = request.args.get('page', type=int)
+        limit = request.args.get('limit', type=int)
+        name = request.args.get('name', '').strip()
 
+        # Case 1: Get Single Condition by ID
+        if def_global_condition_id:
+            condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
+            if condition:
+                return make_response(jsonify(condition.json()), 200)
+            return make_response(jsonify({"message": "Global condition not found"}), 404)
 
-@flask_app.route('/def_global_conditions/search/<int:page>/<int:limit>', methods=['GET'])
-@jwt_required()
-def search_def_global_conditions(page, limit):
-    try:
-        search_query = request.args.get('name', '').strip()
-        search_underscore = search_query.replace(' ', '_')
-        search_space = search_query.replace('_', ' ')
+        # Base Query
         query = DefGlobalCondition.query
 
-        if search_query:
+        # Case 2: Search by name
+        if name:
+            search_underscore = name.replace(' ', '_')
+            search_space = name.replace('_', ' ')
             query = query.filter(
                 or_(
-                    DefGlobalCondition.name.ilike(f'%{search_query}%'),
+                    DefGlobalCondition.name.ilike(f'%{name}%'),
                     DefGlobalCondition.name.ilike(f'%{search_underscore}%'),
                     DefGlobalCondition.name.ilike(f'%{search_space}%')
                 )
             )
 
-        paginated = query.order_by(DefGlobalCondition.def_global_condition_id.desc()).paginate(page=page, per_page=limit, error_out=False)
+        # Order by ID descending
+        query = query.order_by(DefGlobalCondition.def_global_condition_id.desc())
 
-        return make_response(jsonify({
-            "items": [item.json() for item in paginated.items],
-            "total": paginated.total,
-            "pages": 1 if paginated.total == 0 else paginated.pages,
-            "page":  paginated.page
-        }), 200)
-    except Exception as e:
-        return make_response(jsonify({
-            "message": "Error searching Global Conditions",
-            "error": str(e)
-        }), 500)
+        # Case 3: Pagination
+        if page and limit:
+            paginated = query.paginate(page=page, per_page=limit, error_out=False)
+            return make_response(jsonify({
+                "result": [item.json() for item in paginated.items],
+                "total": paginated.total,
+                "pages": paginated.pages,
+                "page": paginated.page
+            }), 200)
 
-
-@flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['GET'])
-@jwt_required()
-def get_def_global_condition(def_global_condition_id):
-    try:
-        condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
-        if condition:
-            return make_response(jsonify(condition.json()), 200)
-        return make_response(jsonify({"message": "Global condition not found"}), 404)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving Global Condition", "error": str(e)}), 500)
-
-
-@flask_app.route('/def_global_conditions/<int:page>/<int:limit>', methods=['GET'])
-@jwt_required()
-def get_paginated_def_global_conditions(page, limit):
-    try:
-        query = DefGlobalCondition.query.order_by(DefGlobalCondition.def_global_condition_id.desc())
-        paginated = query.paginate(page=page, per_page=limit, error_out=False)
-
-        return make_response(jsonify({
-            "items": [item.json() for item in paginated.items],
-            "total": paginated.total,
-            "pages": paginated.pages,
-            "page": paginated.page
-        }), 200)
+        # Case 4: Get All (No pagination, no ID)
+        conditions = query.all()
+        return make_response(jsonify([condition.json() for condition in conditions]), 200)
 
     except Exception as e:
-        return make_response(jsonify({
-            "message": "Error retrieving Global Conditions",
-            "error": str(e)
-        }), 500)
+        return make_response(jsonify({"message": "Error retrieving GlobalConditions", "error": str(e)}), 500)
 
 
-@flask_app.route('/def_global_conditions/<int:def_global_condition_id>', methods=['PUT'])
+@flask_app.route('/def_global_conditions', methods=['PUT'])
 @jwt_required()
-def update_def_global_condition(def_global_condition_id):
+def update_def_global_condition():
     try:
+        def_global_condition_id = request.args.get('def_global_condition_id', type=int)
+        if not def_global_condition_id:
+            return make_response(jsonify({'message': 'def_global_condition_id query parameter is required'}), 400)
         condition = DefGlobalCondition.query.filter_by(def_global_condition_id=def_global_condition_id).first()
         if condition:
             condition.name        = request.json.get('name', condition.name)
@@ -4176,23 +4170,18 @@ def upsert_def_global_condition_logics():
 @jwt_required()
 def get_def_global_condition_logics():
     try:
+        def_global_condition_logic_id = request.args.get('def_global_condition_logic_id', type=int)
+
+        if def_global_condition_logic_id:
+            logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
+            if logic:
+                return make_response(jsonify(logic.json()), 200)
+            return make_response(jsonify({"message": "Global Condition Logic not found"}), 404)
+
         logics = DefGlobalConditionLogic.query.order_by(DefGlobalConditionLogic.def_global_condition_logic_id.desc()).all()
         return make_response(jsonify([logic.json() for logic in logics]), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving Global Condition Logics", "error": str(e)}), 500)
-
-
-
-@flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['GET'])
-@jwt_required()
-def get_def_global_condition_logic(def_global_condition_logic_id):
-    try:
-        logic = DefGlobalConditionLogic.query.filter_by(def_global_condition_logic_id=def_global_condition_logic_id).first()
-        if logic:
-            return make_response(jsonify(logic.json()), 200)
-        return make_response(jsonify({"message": "Global Condition Logic not found"}), 404)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving Global Condition Logic", "error": str(e)}), 500)
 
 
 @flask_app.route('/def_global_condition_logics/<int:def_global_condition_logic_id>', methods=['PUT'])
@@ -4293,24 +4282,20 @@ def create_def_global_condition_logic_attribute():
 
 @flask_app.route('/def_global_condition_logic_attributes', methods=['GET'])
 @jwt_required()
-def get_all_def_global_condition_logic_attributes():
+def get_def_global_condition_logic_attributes():
     try:
+        id = request.args.get('id', type=int)
+
+        if id:
+            attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
+            if attribute:
+                return make_response(jsonify(attribute.json()), 200)
+            return make_response(jsonify({"message": "Global Condition Logic Attribute not found"}), 404)
+
         attributes = DefGlobalConditionLogicAttribute.query.order_by(DefGlobalConditionLogicAttribute.id.desc()).all()
         return make_response(jsonify([attribute.json() for attribute in attributes]), 200)
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving condition logic attributes", "error": str(e)}), 500)
-
-
-@flask_app.route('/def_global_condition_logic_attributes/<int:id>', methods=['GET'])
-@jwt_required()
-def get_def_global_condition_logic_attribute(id):
-    try:
-        attribute = DefGlobalConditionLogicAttribute.query.filter_by(id=id).first()
-        if attribute:
-            return make_response(jsonify(attribute.json()), 200)
-        return make_response(jsonify({"message": "Global Condition Logic Attribute not found"}), 404)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error retrieving global condition logic attribute", "error": str(e)}), 500)
     
 
 @flask_app.route('/def_global_condition_logic_attributes/<int:page>/<int:limit>', methods=['GET'])

@@ -883,7 +883,7 @@ def delete_job_title():
 
 # DELETE ALL TENANT
 
-@flask_app.route('/tenants/cascade_delete', methods=['DELETE'])
+@flask_app.route('/def_tenants/cascade_delete', methods=['DELETE'])
 @jwt_required()
 def delete_tenant_and_related():
     try:
@@ -1082,40 +1082,7 @@ def delete_user(user_id):
 
 
 
-@flask_app.route('/def_combined_user/<int:page>/<int:limit>', methods=['GET'])
-@jwt_required()
-def get_paginated_combined_users(page, limit):
-    try:
-        query = DefUsersView.query.order_by(DefUsersView.user_id.desc())
-        paginated = query.paginate(page=page, per_page=limit, error_out=False)
-        return make_response(jsonify({
-            "items": [user.json() for user in paginated.items],
-            "total": paginated.total,
-            "pages": paginated.pages,
-            "page": paginated.page
-        }), 200)
-    except Exception as e:
-        return make_response(jsonify({'message': 'Error fetching users', 'error': str(e)}), 500)
-        
 
-@flask_app.route('/def_combined_user/search/<int:page>/<int:limit>', methods=['GET'])
-@jwt_required()
-def search_combined_users(page, limit):
-    user_name = request.args.get('user_name', '').strip()
-    try:
-        query = DefUsersView.query
-        if user_name:
-            query = query.filter(DefUsersView.user_name.ilike(f'%{user_name}%'))
-        query = query.order_by(DefUsersView.user_id.desc())
-        paginated = query.paginate(page=page, per_page=limit, error_out=False)
-        return make_response(jsonify({
-            "items": [user.json() for user in paginated.items],
-            "total": paginated.total,
-            "pages": 1 if paginated.total == 0 else paginated.pages,
-            "page":  paginated.page
-        }), 200)
-    except Exception as e:
-        return make_response(jsonify({'message': 'Error searching users', 'error': str(e)}), 500)
 
 
 @flask_app.route('/defpersons', methods=['POST'])
@@ -1573,25 +1540,47 @@ def register_user():
 
 @flask_app.route('/users', methods=['GET'])
 @jwt_required()
-def defusers():
+def get_users_unified():
     try:
-        defusers = DefUsersView.query.order_by(DefUsersView.user_id.desc()).all()
-        return make_response(jsonify([defuser.json() for defuser in defusers]), 200)
+        # Check for specific user ID
+        user_id = request.args.get('user_id', type=int)
+        if user_id:
+            user = DefUsersView.query.filter_by(user_id=user_id).first()
+            if user:
+                return make_response(jsonify(user.json()), 200)
+            return make_response(jsonify({'message': 'User not found'}), 404)
+
+        # Base query
+        query = DefUsersView.query
+
+        # Search filter
+        user_name = request.args.get('user_name', '').strip()
+        if user_name:
+            query = query.filter(DefUsersView.user_name.ilike(f'%{user_name}%'))
+
+        # Ordering
+        query = query.order_by(DefUsersView.user_id.desc())
+
+        # Pagination
+        page = request.args.get('page', type=int)
+        limit = request.args.get('limit', type=int)
+
+        if page and limit:
+            paginated = query.paginate(page=page, per_page=limit, error_out=False)
+            return make_response(jsonify({
+                "items": [user.json() for user in paginated.items],
+                "total": paginated.total,
+                "pages": paginated.pages,
+                "page": paginated.page
+            }), 200)
+        
+        # Return all if no pagination
+        users = query.all()
+        return make_response(jsonify([user.json() for user in users]), 200)
+
     except Exception as e:
-        return make_response(jsonify({'message': 'Error getting users', 'error': str(e)}), 500)
-    
-    
-@flask_app.route('/users/<int:user_id>', methods=['GET'])
-@jwt_required()
-def get_specific_user(user_id):
-    try:
-        user = DefUsersView.query.filter_by(user_id=user_id).first()
-        if user:
-            return make_response(jsonify(user.json()), 200)
-        return make_response(jsonify({'message': 'User not found'}), 404)
-    except Exception as e:
-        return make_response(jsonify({'message': 'Error getting User', 'error': str(e)}), 500)  
-    
+        return make_response(jsonify({'message': 'Error fetching users', 'error': str(e)}), 500)
+
 
 @flask_app.route('/users/<int:user_id>', methods=['PUT'])
 @jwt_required()

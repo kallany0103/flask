@@ -608,20 +608,40 @@ def get_enterprise():
         }), 500)
 
 
-@flask_app.route('/def_tenant_enterprise_setup/<int:page>/<int:limit>', methods=['GET'])
+@flask_app.route('/def_tenant_enterprise_setup_v', methods=['GET'])
 @jwt_required()
-def get_paginated_enterprises(page, limit):
+def get_tenant_enterprise_setup_v():
     try:
-        query = db.session.query(DefTenantEnterpriseSetupV).order_by(DefTenantEnterpriseSetupV.tenant_id.desc())
-        paginated = query.paginate(page=page, per_page=limit, error_out=False)
-        return jsonify({
-            "items": [row.json() for row in paginated.items],
-            "total": paginated.total,
-            "pages": paginated.pages,
-            "page": paginated.page
-        }), 200
+        # Base query using the View model
+        query = db.session.query(DefTenantEnterpriseSetupV)
+
+        # Search filter
+        enterprise_name = request.args.get('enterprise_name', '').strip()
+        if enterprise_name:
+            query = query.filter(DefTenantEnterpriseSetupV.enterprise_name.ilike(f'%{enterprise_name}%'))
+
+        # Ordering
+        query = query.order_by(DefTenantEnterpriseSetupV.tenant_id.desc())
+
+        # Pagination
+        page = request.args.get('page', type=int)
+        limit = request.args.get('limit', type=int)
+
+        if page and limit:
+            paginated = query.paginate(page=page, per_page=limit, error_out=False)
+            return make_response(jsonify({
+                "result": [row.json() for row in paginated.items],
+                "total": paginated.total,
+                "pages": paginated.pages,
+                "page": paginated.page
+            }), 200)
+        
+        # Return all if no pagination
+        results = query.all()
+        return make_response(jsonify({"result": [row.json() for row in results]}), 200)
+
     except Exception as e:
-        return jsonify({"message": "Error fetching enterprises", "error": str(e)}), 500
+        return make_response(jsonify({"message": "Error fetching enterprises", "error": str(e)}), 500)
 
 # Update enterprise setup
 @flask_app.route('/update_enterprise/<int:tenant_id>', methods=['PUT'])
@@ -668,55 +688,11 @@ def delete_enterprise():
 
 
 #get all tenants enterprise setups
-@flask_app.route('/enterprises', methods=['GET'])
-@jwt_required()
-def enterprises():
-    try:
-        # results = db.session.query(DefTenantEnterpriseSetupV).all()
-        results = db.session.query(DefTenantEnterpriseSetupV).order_by(
-            DefTenantEnterpriseSetupV.tenant_id.desc()
-        ).all()
-        
-        if not results:
-            return jsonify({'data': [], 'message': 'No records found'}), 200
-
-        data = [row.json() for row in results]
-        
-        return jsonify(data), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 
 
-@flask_app.route('/def_tenant_enterprise_setup/search/<int:page>/<int:limit>', methods=['GET'])
-@jwt_required()
-def search_enterprises(page, limit):
-    try:
-        search_query = request.args.get('enterprise_name', '').strip().lower()
-        search_underscore = search_query.replace(' ', '_')
-        search_space = search_query.replace('_', ' ')
-        query = db.session.query(DefTenantEnterpriseSetupV)
 
-        if search_query:
-            query = query.filter(
-                or_(
-                    DefTenantEnterpriseSetupV.enterprise_name.ilike(f'%{search_query}%'),
-                    DefTenantEnterpriseSetupV.enterprise_name.ilike(f'%{search_underscore}%'),
-                    DefTenantEnterpriseSetupV.enterprise_name.ilike(f'%{search_space}%')
-                )
-            )
 
-        paginated = query.order_by(DefTenantEnterpriseSetupV.tenant_id.desc()).paginate(page=page, per_page=limit, error_out=False)
-
-        return make_response(jsonify({
-            "items": [row.json() for row in paginated.items],
-            "total": paginated.total,
-            "pages": 1 if paginated.total == 0 else paginated.pages,
-            "page":  paginated.page
-        }), 200)
-    except Exception as e:
-        return make_response(jsonify({"message": "Error searching enterprises", "error": str(e)}), 500)
 
 
 @flask_app.route('/job_titles', methods=['POST'])
@@ -1568,7 +1544,7 @@ def get_users_unified():
         if page and limit:
             paginated = query.paginate(page=page, per_page=limit, error_out=False)
             return make_response(jsonify({
-                "items": [user.json() for user in paginated.items],
+                "result": [user.json() for user in paginated.items],
                 "total": paginated.total,
                 "pages": paginated.pages,
                 "page": paginated.page
@@ -1576,7 +1552,7 @@ def get_users_unified():
         
         # Return all if no pagination
         users = query.all()
-        return make_response(jsonify([user.json() for user in users]), 200)
+        return make_response(jsonify({"result": [user.json() for user in users]}), 200)
 
     except Exception as e:
         return make_response(jsonify({'message': 'Error fetching users', 'error': str(e)}), 500)
@@ -6070,30 +6046,60 @@ def create_action_item():
 @jwt_required()
 def get_action_items():
     try:
-        action_items = DefActionItem.query.all()
-        if action_items:
-            return make_response(jsonify([item.json() for item in action_items]), 200)
+        user_id = request.args.get('user_id', type=int)
+        page = request.args.get('page', type=int)
+        limit = request.args.get('limit', type=int)
+        status = request.args.get('status')
+        action_item_name = request.args.get('action_item_name', '').strip()
+
+        if user_id:
+            query = DefActionItemsV.query.filter_by(user_id=user_id).filter(
+                func.lower(func.trim(DefActionItemsV.notification_status)) == "sent"
+            )
+
+            if status:
+                query = query.filter(
+                    func.lower(func.trim(DefActionItemsV.status)) == func.lower(func.trim(status))
+                )
+
+            if action_item_name:
+                search_underscore = action_item_name.replace(' ', '_')
+                search_space = action_item_name.replace('_', ' ')
+                query = query.filter(
+                    or_(
+                        DefActionItemsV.action_item_name.ilike(f'%{action_item_name}%'),
+                        DefActionItemsV.action_item_name.ilike(f'%{search_underscore}%'),
+                        DefActionItemsV.action_item_name.ilike(f'%{search_space}%')
+                    )
+                )
+            
+            query = query.order_by(DefActionItemsV.action_item_id.desc())
+
         else:
-            return make_response(jsonify({"message": "No action items found"}), 404)
+            query = DefActionItem.query.order_by(DefActionItem.action_item_id.desc())
+
+        if page and limit:
+            paginated = query.paginate(page=page, per_page=limit, error_out=False)
+            return make_response(jsonify({
+                "result": {
+                    "result": [item.json() for item in paginated.items],
+                    "total": paginated.total,
+                    "pages": paginated.pages,
+                    "page": paginated.page
+                }
+            }), 200)
+
+        items = query.all()
+        return make_response(jsonify({
+            "result": [item.json() for item in items]
+        }), 200)
 
     except Exception as e:
         return make_response(jsonify({"message": "Error retrieving action items", "error": str(e)}), 500)
 
 
 # Get paginated DefActionItems
-@flask_app.route('/def_action_items/<int:page>/<int:limit>', methods=['GET'])
-@jwt_required()
-def get_paginated_action_items(page, limit):
-    try:
-        paginated = DefActionItem.query.order_by(DefActionItem.action_item_id.desc()).paginate(page=page, per_page=limit, error_out=False)
-        return make_response(jsonify({
-            'items': [item.json() for item in paginated.items],
-            'total': paginated.total,
-            'pages': paginated.pages,
-            'page': paginated.page
-        }), 200)
-    except Exception as e:
-        return make_response(jsonify({'message': 'Error fetching action items', 'error': str(e)}), 500)
+
 
 
 # Get a single DefActionItem by ID
@@ -6429,69 +6435,7 @@ def delete_action_item_assignment(action_item_id, user_id):
         return make_response(jsonify({"message": "Error deleting assignment", "error": str(e)}), 500)
 
 
-@flask_app.route('/def_action_items_view/<int:user_id>/<int:page>/<int:limit>', methods=['GET'])
-@jwt_required()
-def get_paginated_action_items_view(user_id, page, limit):
-    try:
-        status = request.args.get('status')
-        action_item_name = request.args.get('action_item_name', '').strip()
-        search_underscore = action_item_name.replace(' ', '_')
-        search_space = action_item_name.replace('_', ' ')
 
-        # Validate pagination
-        if page < 1 or limit < 1:
-            return make_response(jsonify({
-                "message": "Page and limit must be positive integers"
-            }), 400)
-
-        # Base 
-        # query = DefActionItemsV.query.filter_by(user_id=user_id)
-
-        # Base query: filter by user_id and only SENT status
-        query = DefActionItemsV.query.filter_by(user_id=user_id).filter(
-            func.lower(func.trim(DefActionItemsV.notification_status)) == "sent"
-        )
-
-        #Apply status filter if provided
-        if status:
-            query = query.filter(
-                func.lower(func.trim(DefActionItemsV.status)) == func.lower(func.trim(status))
-            )
-
-        if action_item_name:
-            query = query.filter(
-                or_(
-                    DefActionItemsV.action_item_name.ilike(f'%{action_item_name}%'),
-                    DefActionItemsV.action_item_name.ilike(f'%{search_underscore}%'),
-                    DefActionItemsV.action_item_name.ilike(f'%{search_space}%')
-                )
-            )
-
-        query = query.order_by(DefActionItemsV.action_item_id.desc())
-
-        
-        # paginated
-        paginated = query.paginate(page=page, per_page=limit, error_out=False)
-        return make_response(jsonify({
-            "items": [item.json() for item in paginated.items],
-            "total": paginated.total,
-            "pages": paginated.pages,
-            "page": paginated.page
-        }), 200)
-
-        # Without pagination
-        
-        # items = query.all()
-        # return make_response(jsonify({
-        #     "items": [item.json() for item in items],
-        #     "total": len(items)
-        # }), 200)
-
-    except Exception as e:
-        return make_response(jsonify({
-            'message': 'Error fetching action items view',
-            'error': str(e)
-        }), 500)
 
 
 @flask_app.route('/def_action_items_view/<int:user_id>/<string:status>/<int:page>/<int:limit>', methods=['GET'])
